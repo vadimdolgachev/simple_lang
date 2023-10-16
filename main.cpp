@@ -325,7 +325,7 @@ int getBinOpPrecedence(const char binOp) {
     int binOpPrec = -1;
     if (binOp == '+' || binOp == '-') {
         binOpPrec = 1;
-    } else if (binOp == '\\' || binOp == '*') {
+    } else if (binOp == '/' || binOp == '*') {
         binOpPrec = 2;
     }
     return binOpPrec;
