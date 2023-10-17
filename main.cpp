@@ -175,13 +175,29 @@ int getPeekChar() {
     return stream->peek();
 }
 
+bool isSignOfNumber(const int ch) {
+    return ch == '+' || ch == '-';
+}
+
+bool isCharOfNumber(const int ch) {
+    return isdigit(ch) || ch == '.';
+}
+
 void parseNumber() {
     numberValue.clear();
     do {
-        if (isdigit(lastChar) || lastChar == '.' || (lastChar == '-' && numberValue.empty())) {
-            numberValue.push_back(lastChar);
-            const char next = getPeekChar();
-            if (!(isdigit(next) || next == '.')) {
+        if (isspace(lastChar)) {
+            if (ispunct(getPeekChar())) {
+                break;
+            }
+            readNextChar();
+            continue;
+        }
+
+        if ((isSignOfNumber(lastChar) && numberValue.empty()) || isCharOfNumber(lastChar)) {
+            numberValue.push_back(static_cast<char>(lastChar));
+            // last symbol of number
+            if (ispunct(getPeekChar()) && getPeekChar() != '.') {
                 break;
             }
             readNextChar();
@@ -234,9 +250,7 @@ void readNextToken(const bool inExpression = false) {
 
     currentToken = TokenType::OtherToken;
     // parse number
-    const int peek = getPeekChar();
-    if (((lastChar == '-' && !inExpression) && (isdigit(peek) || peek == '.'))
-        || isdigit(lastChar) || lastChar == '.') {
+    if ((isSignOfNumber(lastChar) && !inExpression) || isCharOfNumber(lastChar)) {
         currentToken = TokenType::NumberToken;
         parseNumber();
     } else {
@@ -557,6 +571,37 @@ void testParseBinExpression() {
             }
             const auto *rhs = dynamic_cast<NumberAst *>(binOpRhs->rhs.get());
             if (rhs == nullptr || rhs->value != 2) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+        }
+        printExpr(expr);
+    }
+
+    {
+        stream = std::make_unique<std::istringstream>("+1 *  (   2    +3.0);");
+        readNextToken();
+        const auto expr = parseExpression();
+        const auto *binOp = dynamic_cast<BinOpAst *>(expr.get());
+        if (binOp == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        {
+            const auto *lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
+            if (lhsNumber == nullptr || lhsNumber->value != 1) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+        }
+        {
+            const auto *binOpRhs = dynamic_cast<BinOpAst *>(binOp->rhs.get());
+            if (binOpRhs == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            const auto *lhs = dynamic_cast<NumberAst *>(binOpRhs->lhs.get());
+            if (lhs == nullptr || lhs->value != 2) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            const auto *rhs = dynamic_cast<NumberAst *>(binOpRhs->rhs.get());
+            if (rhs == nullptr || rhs->value != 3.0) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
         }
