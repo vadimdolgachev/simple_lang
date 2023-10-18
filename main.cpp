@@ -101,17 +101,17 @@ struct ProtoFunctionAst : public ExprAst {
 };
 
 struct FunctionAst : public ExprAst {
-    FunctionAst(std::unique_ptr<ProtoFunctionAst> protoAst, std::unique_ptr<ExprAst> body) :
-            protoAst(std::move(protoAst)),
+    FunctionAst(std::unique_ptr<ProtoFunctionAst> proto, std::unique_ptr<ExprAst> body) :
+            proto(std::move(proto)),
             body(std::move(body)) {
 
     }
 
     [[nodiscard]] std::string toString() const override {
-        return protoAst->toString();
+        return proto->toString();
     }
 
-    const std::unique_ptr<ProtoFunctionAst> protoAst;
+    const std::unique_ptr<ProtoFunctionAst> proto;
     const std::unique_ptr<ExprAst> body;
 };
 
@@ -361,7 +361,7 @@ std::unique_ptr<ExprAst> parseExpression() {
 void printExpr(const std::unique_ptr<ExprAst> &expr) {
     std::list<BinOpAst *> values;
     std::cout << "expr: " << expr->toString() << std::endl;
-    auto ptr = dynamic_cast<BinOpAst *>(expr.get());
+    auto *ptr = dynamic_cast<BinOpAst *>(expr.get());
     do {
         if (!values.empty()) {
             ptr = values.front();
@@ -479,14 +479,21 @@ void testVarDefinition() {
 }
 
 void testDefinition() {
-    stream = std::make_unique<std::istringstream>("def foo(id1, (12.1+1), id2);");
+    stream = std::make_unique<std::istringstream>("def foo(id1, (12.1+1), id2) {varPtr=1+10;}");
     readNextToken();
     if (currentToken != TokenType::DefinitionToken) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
-    readNextToken(); // eat def
-    auto proto = parseProto();
-    if (proto == nullptr || proto->name != "foo" || proto->args.size() != 3) {
+    const auto func = parseDefinition();
+    if (func == nullptr) {
+        throw std::logic_error(makeTestFailMsg(__LINE__));
+    }
+    const auto *const funcPtr = dynamic_cast<FunctionAst *>(func.get());
+    if (func == nullptr || funcPtr->proto->name != "foo" || funcPtr->proto->args.size() != 3) {
+        throw std::logic_error(makeTestFailMsg(__LINE__));
+    }
+    const auto *const varPtr = dynamic_cast<VariableDefinitionAst *>(funcPtr->body.get());
+    if (varPtr == nullptr || varPtr->name != "varPtr" || varPtr->expr == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
 }
