@@ -20,7 +20,7 @@ public:
     }
 
     [[nodiscard]] std::string toString() const override {
-        return std::to_string(value);
+        return "number=" + std::to_string(value);
     }
 
     const double value;
@@ -34,7 +34,7 @@ public:
     }
 
     [[nodiscard]] std::string toString() const override {
-        return name;
+        return "var=" + name;
     }
 
     const std::string name;
@@ -207,30 +207,6 @@ void parseNumber() {
     } while (*stream);
 }
 
-void printCurrentToken() {
-    std::string text;
-    switch (currentToken) {
-        case TokenType::IdentifierToken:
-            text = "identifier=" + identifier;
-            break;
-        case TokenType::EosToken:
-            text = "eos";
-            break;
-        case TokenType::NumberToken:
-            text = "number=" + numberValue;
-            break;
-        case TokenType::DefinitionToken:
-            text = "definition=" + identifier;
-            break;
-        case TokenType::OtherToken:
-            text = "OtherToken=";
-            break;
-        default:
-            text = "unknown token";
-    }
-    std::cout << "read token: " << text << ", lastChar=" << static_cast<char>(lastChar) << "\n";
-}
-
 void readNextToken(const bool inExpression = false) {
     do {
         readNextChar();
@@ -244,7 +220,6 @@ void readNextToken(const bool inExpression = false) {
 
     if (lastChar == EOF) {
         currentToken = TokenType::EosToken;
-        printCurrentToken();
         return;
     }
 
@@ -272,7 +247,6 @@ void readNextToken(const bool inExpression = false) {
             }
         }
     }
-    printCurrentToken();
 }
 
 std::unique_ptr<ExprAst> parseNumberExpr(const bool inExpression = false) {
@@ -298,9 +272,9 @@ std::unique_ptr<ExprAst> parseElement(bool inExpression = false);
 
 std::unique_ptr<ExprAst> parseIdentifier() {
     const std::string name = identifier;
-    readNextToken();
+    readNextToken(); // eat identifier
     if (lastChar == '=') {
-        readNextToken();
+        readNextToken(); // eat =
         auto expr = parseExpression();
         return std::make_unique<VariableDefinitionAst>(name, std::move(expr));
     }
@@ -309,16 +283,23 @@ std::unique_ptr<ExprAst> parseIdentifier() {
     }
 
     std::vector<std::unique_ptr<ExprAst>> args;
-    readNextToken();
+    readNextToken(); // eat '('
     while (true) {
         if (auto arg = parseElement()) {
             args.push_back(std::move(arg));
-            readNextToken();
+            if (lastChar == ',') {
+                readNextToken(); // eat ','
+            } else {
+                break;
+            }
         } else {
             break;
         }
     }
-
+    if (lastChar != ')') {
+        return nullptr;
+    }
+    readNextToken(); // eat ')'
     return std::make_unique<CallFunctionExpr>(name, std::move(args));
 }
 
@@ -412,7 +393,7 @@ std::unique_ptr<ProtoFunctionAst> parseProto() {
         if (arg != nullptr) {
             args.push_back(std::move(arg));
             if (lastChar == ',') {
-                readNextToken();
+                readNextToken(); // eat next arg
             }
         } else {
             break;
