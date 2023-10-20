@@ -585,8 +585,11 @@ void testVarDefinition() {
     stream = std::make_unique<std::istringstream>("varName=2*(1-2);");
     readNextToken();
     const auto varExprAst = parseIdentifier();
+    if (varExprAst == nullptr) {
+        throw std::logic_error(makeTestFailMsg(__LINE__));
+    }
     const auto *const var = dynamic_cast<VariableDefinitionAst *>(varExprAst.get());
-    if (var == nullptr || var->name != "varName") {
+    if (var->name != "varName") {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
     printExpr(varExprAst);
@@ -622,8 +625,11 @@ void testParseNumber() {
         stream = std::make_unique<std::istringstream>(" -123.123;");
         readNextToken();
         const auto expr = parseElement();
-        const auto *numberAst = dynamic_cast<const NumberAst *>(expr.get());
-        if (numberAst == nullptr || numberAst->value != -123.123) {
+        if (expr == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        const auto *const numberAst = dynamic_cast<const NumberAst *>(expr.get());
+        if (numberAst->value != -123.123) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
         printExpr(expr);
@@ -638,15 +644,18 @@ void testParseBinExpression() {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
         const auto expr = parseExpression();
-        const auto *binOp = dynamic_cast<BinOpAst *>(expr.get());
-        if (binOp == nullptr || binOp->binOp != '-') {
+        if (expr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
+        const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
+        if (binOp->binOp != '-') {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        const auto *const lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
         if (lhsNumber == nullptr || lhsNumber->value != -1) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *rhsNumber = dynamic_cast<NumberAst *>(binOp->rhs.get());
+        const auto *const rhsNumber = dynamic_cast<NumberAst *>(binOp->rhs.get());
         if (rhsNumber == nullptr || rhsNumber->value != 21.2) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -657,10 +666,10 @@ void testParseBinExpression() {
         stream = std::make_unique<std::istringstream>("(2*(1+2));");
         readNextToken();
         const auto expr = parseExpression();
-        const auto *binOp = dynamic_cast<BinOpAst *>(expr.get());
-        if (binOp == nullptr) {
+        if (expr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
+        const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
         {
             const auto *lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
             if (lhsNumber == nullptr || lhsNumber->value != 2) {
@@ -668,15 +677,15 @@ void testParseBinExpression() {
             }
         }
         {
-            const auto *binOpRhs = dynamic_cast<BinOpAst *>(binOp->rhs.get());
+            const auto *const binOpRhs = dynamic_cast<BinOpAst *>(binOp->rhs.get());
             if (binOpRhs == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *lhs = dynamic_cast<NumberAst *>(binOpRhs->lhs.get());
+            const auto *const lhs = dynamic_cast<NumberAst *>(binOpRhs->lhs.get());
             if (lhs == nullptr || lhs->value != 1) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *rhs = dynamic_cast<NumberAst *>(binOpRhs->rhs.get());
+            const auto *const rhs = dynamic_cast<NumberAst *>(binOpRhs->rhs.get());
             if (rhs == nullptr || rhs->value != 2) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -688,10 +697,10 @@ void testParseBinExpression() {
         stream = std::make_unique<std::istringstream>("+1 *  (   2    +3.0);");
         readNextToken();
         const auto expr = parseExpression();
-        const auto *binOp = dynamic_cast<BinOpAst *>(expr.get());
-        if (binOp == nullptr) {
+        if (expr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
+        const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
         {
             const auto *lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
             if (lhsNumber == nullptr || lhsNumber->value != 1) {
@@ -699,15 +708,15 @@ void testParseBinExpression() {
             }
         }
         {
-            const auto *binOpRhs = dynamic_cast<BinOpAst *>(binOp->rhs.get());
+            const auto *const binOpRhs = dynamic_cast<BinOpAst *>(binOp->rhs.get());
             if (binOpRhs == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *lhs = dynamic_cast<NumberAst *>(binOpRhs->lhs.get());
+            const auto *const lhs = dynamic_cast<NumberAst *>(binOpRhs->lhs.get());
             if (lhs == nullptr || lhs->value != 2) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *rhs = dynamic_cast<NumberAst *>(binOpRhs->rhs.get());
+            const auto *const rhs = dynamic_cast<NumberAst *>(binOpRhs->rhs.get());
             if (rhs == nullptr || rhs->value != 3.0) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -725,7 +734,7 @@ void testIdentifier() {
     }
     printExpr(expr);
     const auto *const callFunc = dynamic_cast<CallFunctionExpr *>(expr.get());
-    if (callFunc == nullptr || callFunc->callee != "foo") {
+    if (callFunc->callee != "foo") {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
     if (callFunc->args.size() != 5) {
