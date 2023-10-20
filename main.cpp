@@ -4,12 +4,31 @@
 #include <memory>
 #include <sstream>
 #include <vector>
+#include <unordered_map>
+
+#include "llvm/ADT/APFloat.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Verifier.h"
+
+std::unique_ptr<llvm::LLVMContext> llvmContext;
+std::unique_ptr<llvm::Module> llvmModule;
+std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
+std::unordered_map<std::string, llvm::Value *> namedValues;
 
 class ExprAst {
 public:
     virtual ~ExprAst() = default;
 
     [[nodiscard]] virtual std::string toString() const = 0;
+
+    [[nodiscard]] virtual llvm::Value *codegen() const = 0;
 };
 
 class NumberAst : public ExprAst {
@@ -23,7 +42,11 @@ public:
         return "number=" + std::to_string(value);
     }
 
-    const double value;
+    [[nodiscard]] llvm::Value *codegen() const override {
+        return llvm::ConstantFP::get(*llvmContext, llvm::APFloat(value));
+    }
+
+    double value;
 };
 
 class VariableAst : public ExprAst {
@@ -35,6 +58,11 @@ public:
 
     [[nodiscard]] std::string toString() const override {
         return "var=" + name;
+    }
+
+    [[nodiscard]] llvm::Value *codegen() const override {
+        //TODO: implement it
+        return nullptr;
     }
 
     const std::string name;
@@ -51,6 +79,14 @@ public:
 
     [[nodiscard]] std::string toString() const override {
         return "var definition name=" + name + ", expr=" + expr->toString();
+    }
+
+    [[nodiscard]] llvm::Value *codegen() const override {
+        //TODO: implement it
+        llvmModule->getOrInsertGlobal(name, llvmIRBuilder->getDoubleTy());
+        auto *gVar = llvmModule->getNamedGlobal(name);
+        gVar->setLinkage(llvm::GlobalValue::CommonLinkage);
+        return gVar;
     }
 
     const std::string name;
@@ -80,6 +116,27 @@ public:
                 .append(rhs->toString()).append(isRhsBinOp ? ")" : "");
     }
 
+    [[nodiscard]] llvm::Value *codegen() const override {
+        auto *lhsValue = lhs->codegen();
+        auto *rhsValue = rhs->codegen();
+        if (lhsValue == nullptr || rhsValue == nullptr) {
+            return nullptr;
+        }
+        switch (binOp) {
+            case '+':
+                return llvmIRBuilder->CreateFAdd(lhsValue, rhsValue, "addtmp");
+            case '-':
+                return llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "subtmp");
+            case '*':
+                return llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "multmp");
+            case '<':
+                lhsValue = llvmIRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmptmp");
+                // Convert bool 0/1 to double 0.0 or 1.0
+                return llvmIRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*llvmContext), "booltmp");
+        }
+        return nullptr;
+    }
+
     const char binOp;
     const std::unique_ptr<ExprAst> lhs;
     const std::unique_ptr<ExprAst> rhs;
@@ -96,6 +153,17 @@ struct ProtoFunctionAst : public ExprAst {
         return "proto func:" + name;
     }
 
+    [[nodiscard]] llvm::Value *codegen() const override {
+        std::vector<llvm::Type *> functionParams(args.size(), llvm::Type::getDoubleTy(*llvmContext));
+        auto *functionType = llvm::FunctionType::get(llvm::Type::getDoubleTy(*llvmContext), functionParams, false);
+        auto *function = llvm::Function::Create(functionType, llvm::Function::InternalLinkage, name, llvmModule.get());
+        for (auto it = function->arg_begin(); it != function->arg_end(); ++it) {
+            const auto index = std::distance(function->arg_begin(), it);
+            it->setName(dynamic_cast<VariableAst *>(args[index].get())->name);
+        }
+        return function;
+    }
+
     const std::string name;
     const std::vector<std::unique_ptr<ExprAst>> args;
 };
@@ -109,6 +177,40 @@ struct FunctionAst : public ExprAst {
 
     [[nodiscard]] std::string toString() const override {
         return proto->toString();
+    }
+
+    [[nodiscard]] llvm::Value *codegen() const override {
+        auto *function = llvmModule->getFunction(proto->name);
+        if (!function) {
+            function = reinterpret_cast<llvm::Function *>(proto->codegen());
+        }
+        if (!function) {
+            return nullptr;
+        }
+
+        // Create a new basic block to start insertion into.
+        auto *basicBlock = llvm::BasicBlock::Create(*llvmContext, "entry", function);
+        llvmIRBuilder->SetInsertPoint(basicBlock);
+
+        // Record the function arguments in the namedValues map.
+        namedValues.clear();
+        for (auto &arg: function->args()) {
+            namedValues[std::string(arg.getName())] = &arg;
+        }
+
+        if (auto *const retVal = body->codegen()) {
+            // Finish off the function.
+            llvmIRBuilder->CreateRet(retVal);
+
+            // Validate the generated code, checking for consistency.
+            verifyFunction(*function);
+
+            return function;
+        }
+
+        // Error reading body, remove function.
+        function->eraseFromParent();
+        return nullptr;
     }
 
     const std::unique_ptr<ProtoFunctionAst> proto;
@@ -140,6 +242,11 @@ public:
         return ss.str();
     }
 
+    [[nodiscard]] llvm::Value *codegen() const override {
+        //TODO: implement it
+        return nullptr;
+    }
+
     const std::string callee;
     const std::vector<std::unique_ptr<ExprAst>> args;
 };
@@ -164,7 +271,7 @@ std::unique_ptr<ExprAst> parseExpression();
 void readNextChar() {
     do {
         lastChar = stream->get();
-        std::cout << "read char:" << static_cast<char>(lastChar) << "\n";
+//        std::cout << "read char:" << static_cast<char>(lastChar) << "\n";
         if (!stream->eof()) {
             break;
         }
@@ -359,6 +466,11 @@ std::unique_ptr<ExprAst> parseExpression() {
 }
 
 void printExpr(const std::unique_ptr<ExprAst> &expr) {
+    if (const auto *const llvmIR = expr->codegen()) {
+        llvm::outs() << "IR: ";
+        llvmIR->print(llvm::outs(), true);
+        llvm::outs() << '\n';
+    }
     std::list<BinOpAst *> values;
     std::cout << "expr: " << expr->toString() << std::endl;
     auto *ptr = dynamic_cast<BinOpAst *>(expr.get());
@@ -389,8 +501,10 @@ std::unique_ptr<ProtoFunctionAst> parseProto() {
     readNextToken(); // eat (
     std::vector<std::unique_ptr<ExprAst>> args;
     while (*stream) {
-        auto arg = parseElement();
-        if (arg != nullptr) {
+        if (currentToken != TokenType::IdentifierToken) {
+            break;
+        }
+        if (auto arg = parseIdentifier()) {
             args.push_back(std::move(arg));
             if (lastChar == ',') {
                 readNextToken(); // eat next arg
@@ -451,6 +565,10 @@ void testIdentifier();
 void testVarDefinition();
 
 int main() {
+    llvmContext = std::make_unique<llvm::LLVMContext>();
+    llvmModule = std::make_unique<llvm::Module>("my cool jit", *llvmContext);
+    llvmIRBuilder = std::make_unique<llvm::IRBuilder<>>(*llvmContext);
+
     testParseBinExpression();
     testParseNumber();
     testDefinition();
@@ -467,11 +585,11 @@ void testVarDefinition() {
     stream = std::make_unique<std::istringstream>("varName=2*(1-2);");
     readNextToken();
     const auto varExprAst = parseIdentifier();
-    printExpr(varExprAst);
     const auto *const var = dynamic_cast<VariableDefinitionAst *>(varExprAst.get());
     if (var == nullptr || var->name != "varName") {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
+    printExpr(varExprAst);
     const auto *const binOp = dynamic_cast<BinOpAst *>(var->expr.get());
     if (binOp == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -479,7 +597,7 @@ void testVarDefinition() {
 }
 
 void testDefinition() {
-    stream = std::make_unique<std::istringstream>("def foo(id1, (12.1+1), id2) {varPtr=1+10;}");
+    stream = std::make_unique<std::istringstream>("def foo(id1, id2, id3) {varPtr=1+id1;}");
     readNextToken();
     if (currentToken != TokenType::DefinitionToken) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -488,6 +606,7 @@ void testDefinition() {
     if (func == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
+    printExpr(func);
     const auto *const funcPtr = dynamic_cast<FunctionAst *>(func.get());
     if (func == nullptr || funcPtr->proto->name != "foo" || funcPtr->proto->args.size() != 3) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
