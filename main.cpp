@@ -22,13 +22,18 @@ std::unique_ptr<llvm::Module> llvmModule;
 std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
 std::unordered_map<std::string, llvm::Value *> namedValues;
 
-class ExprAst {
+class BaseAstItem {
 public:
-    virtual ~ExprAst() = default;
-
-    [[nodiscard]] virtual std::string toString() const = 0;
+    virtual ~BaseAstItem() = default;
 
     [[nodiscard]] virtual llvm::Value *codegen() const = 0;
+
+    [[nodiscard]] virtual std::string toString() const = 0;
+};
+
+class ExprAst : public BaseAstItem {
+public:
+    ~ExprAst() override = default;
 };
 
 class NumberAst : public ExprAst {
@@ -68,31 +73,6 @@ public:
     const std::string name;
 };
 
-class VariableDefinitionAst : public ExprAst {
-public:
-    VariableDefinitionAst(std::string var,
-                          std::unique_ptr<ExprAst> expr) :
-            name(std::move(var)),
-            expr(std::move(expr)) {
-
-    }
-
-    [[nodiscard]] std::string toString() const override {
-        return "var definition name=" + name + ", expr=" + expr->toString();
-    }
-
-    [[nodiscard]] llvm::Value *codegen() const override {
-        //TODO: implement it
-        llvmModule->getOrInsertGlobal(name, llvmIRBuilder->getDoubleTy());
-        auto *gVar = llvmModule->getNamedGlobal(name);
-        gVar->setLinkage(llvm::GlobalValue::CommonLinkage);
-        return gVar;
-    }
-
-    const std::string name;
-    const std::unique_ptr<ExprAst> expr;
-};
-
 class BinOpAst : public ExprAst {
 public:
     BinOpAst(const char binOp,
@@ -118,7 +98,7 @@ public:
 
     [[nodiscard]] llvm::Value *codegen() const override {
         auto *lhsValue = lhs->codegen();
-        auto *rhsValue = rhs->codegen();
+        auto *const rhsValue = rhs->codegen();
         if (lhsValue == nullptr || rhsValue == nullptr) {
             return nullptr;
         }
@@ -142,7 +122,32 @@ public:
     const std::unique_ptr<ExprAst> rhs;
 };
 
-struct ProtoFunctionAst : public ExprAst {
+class VariableDefinitionAst : public ExprAst {
+public:
+    VariableDefinitionAst(std::string name,
+                          std::unique_ptr<ExprAst> rvalue) :
+            name(std::move(name)),
+            rvalue(std::move(rvalue)) {
+
+    }
+
+    [[nodiscard]] std::string toString() const override {
+        return "var definition name=" + name + ", rvalue=" + rvalue->toString();
+    }
+
+    [[nodiscard]] llvm::Value *codegen() const override {
+        //TODO: implement it
+        llvmModule->getOrInsertGlobal(name, llvmIRBuilder->getDoubleTy());
+        auto *gVar = llvmModule->getNamedGlobal(name);
+        gVar->setLinkage(llvm::GlobalValue::CommonLinkage);
+        return gVar;
+    }
+
+    const std::string name;
+    const std::unique_ptr<ExprAst> rvalue;
+};
+
+struct ProtoFunctionAst : public BaseAstItem {
     ProtoFunctionAst(std::string name, std::vector<std::unique_ptr<ExprAst>> args) :
             name(std::move(name)),
             args(std::move(args)) {
@@ -155,8 +160,10 @@ struct ProtoFunctionAst : public ExprAst {
 
     [[nodiscard]] llvm::Value *codegen() const override {
         std::vector<llvm::Type *> functionParams(args.size(), llvm::Type::getDoubleTy(*llvmContext));
-        auto *functionType = llvm::FunctionType::get(llvm::Type::getDoubleTy(*llvmContext), functionParams, false);
-        auto *function = llvm::Function::Create(functionType, llvm::Function::InternalLinkage, name, llvmModule.get());
+        auto *const functionType = llvm::FunctionType::get(llvm::Type::getDoubleTy(*llvmContext), functionParams,
+                                                           false);
+        auto *const function = llvm::Function::Create(functionType, llvm::Function::InternalLinkage, name,
+                                                      llvmModule.get());
         for (auto it = function->arg_begin(); it != function->arg_end(); ++it) {
             const auto index = std::distance(function->arg_begin(), it);
             it->setName(dynamic_cast<VariableAst *>(args[index].get())->name);
@@ -168,7 +175,7 @@ struct ProtoFunctionAst : public ExprAst {
     const std::vector<std::unique_ptr<ExprAst>> args;
 };
 
-struct FunctionAst : public ExprAst {
+struct FunctionAst : public BaseAstItem {
     FunctionAst(std::unique_ptr<ProtoFunctionAst> proto, std::unique_ptr<ExprAst> body) :
             proto(std::move(proto)),
             body(std::move(body)) {
@@ -181,15 +188,15 @@ struct FunctionAst : public ExprAst {
 
     [[nodiscard]] llvm::Value *codegen() const override {
         auto *function = llvmModule->getFunction(proto->name);
-        if (!function) {
+        if (function == nullptr) {
             function = reinterpret_cast<llvm::Function *>(proto->codegen());
         }
-        if (!function) {
+        if (function == nullptr) {
             return nullptr;
         }
 
         // Create a new basic block to start insertion into.
-        auto *basicBlock = llvm::BasicBlock::Create(*llvmContext, "entry", function);
+        auto *const basicBlock = llvm::BasicBlock::Create(*llvmContext, "entry", function);
         llvmIRBuilder->SetInsertPoint(basicBlock);
 
         // Record the function arguments in the namedValues map.
@@ -465,15 +472,15 @@ std::unique_ptr<ExprAst> parseExpression() {
     return nullptr;
 }
 
-void printExpr(const std::unique_ptr<ExprAst> &expr) {
-    if (const auto *const llvmIR = expr->codegen()) {
+void print(const BaseAstItem *const itemAst) {
+    if (const auto *const llvmIR = itemAst->codegen()) {
         llvm::outs() << "IR: ";
         llvmIR->print(llvm::outs(), true);
         llvm::outs() << '\n';
     }
     std::list<BinOpAst *> values;
-    std::cout << "expr: " << expr->toString() << std::endl;
-    auto *ptr = dynamic_cast<BinOpAst *>(expr.get());
+    std::cout << "rvalue: " << itemAst->toString() << std::endl;
+    auto *ptr = dynamic_cast<const BinOpAst *>(itemAst);
     do {
         if (!values.empty()) {
             ptr = values.front();
@@ -520,7 +527,7 @@ std::unique_ptr<ProtoFunctionAst> parseProto() {
     return std::make_unique<ProtoFunctionAst>(name, std::move(args));
 }
 
-std::unique_ptr<ExprAst> parseDefinition() {
+std::unique_ptr<FunctionAst> parseDefinition() {
     readNextToken(); // eat def
     auto proto = parseProto();
     if (lastChar != '{') {
@@ -531,7 +538,7 @@ std::unique_ptr<ExprAst> parseDefinition() {
     if (lastChar != '}') {
         return nullptr;
     }
-    printExpr(body);
+    print(body.get());
     return std::make_unique<FunctionAst>(std::move(proto), std::move(body));
 }
 
@@ -540,16 +547,16 @@ void mainHandler() {
         readNextToken();
 
         if (currentToken == TokenType::DefinitionToken) {
-            auto expr = parseDefinition();
-            if (expr != nullptr) {
-                printExpr(expr);
+            auto definition = parseDefinition();
+            if (definition != nullptr) {
+                print(definition.get());
             }
         } else {
             auto expr = parseExpression();
             if (expr == nullptr) {
                 continue;
             }
-            printExpr(expr);
+            print(expr.get());
         }
     } while (currentToken != TokenType::EosToken);
 }
@@ -592,8 +599,8 @@ void testVarDefinition() {
     if (var->name != "varName") {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
-    printExpr(varExprAst);
-    const auto *const binOp = dynamic_cast<BinOpAst *>(var->expr.get());
+    print(varExprAst.get());
+    const auto *const binOp = dynamic_cast<BinOpAst *>(var->rvalue.get());
     if (binOp == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
@@ -609,13 +616,13 @@ void testDefinition() {
     if (func == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
-    printExpr(func);
+    print(func.get());
     const auto *const funcPtr = dynamic_cast<FunctionAst *>(func.get());
     if (func == nullptr || funcPtr->proto->name != "foo" || funcPtr->proto->args.size() != 3) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
     const auto *const varPtr = dynamic_cast<VariableDefinitionAst *>(funcPtr->body.get());
-    if (varPtr == nullptr || varPtr->name != "varPtr" || varPtr->expr == nullptr) {
+    if (varPtr == nullptr || varPtr->name != "varPtr" || varPtr->rvalue == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
 }
@@ -632,7 +639,7 @@ void testParseNumber() {
         if (numberAst->value != -123.123) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        printExpr(expr);
+        print(expr.get());
     }
 }
 
@@ -659,7 +666,7 @@ void testParseBinExpression() {
         if (rhsNumber == nullptr || rhsNumber->value != 21.2) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        printExpr(expr);
+        print(expr.get());
     }
 
     {
@@ -671,7 +678,7 @@ void testParseBinExpression() {
         }
         const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
         {
-            const auto *lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
+            const auto *const lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
             if (lhsNumber == nullptr || lhsNumber->value != 2) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -690,7 +697,7 @@ void testParseBinExpression() {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
         }
-        printExpr(expr);
+        print(expr.get());
     }
 
     {
@@ -702,7 +709,7 @@ void testParseBinExpression() {
         }
         const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
         {
-            const auto *lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
+            const auto *const lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
             if (lhsNumber == nullptr || lhsNumber->value != 1) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -721,7 +728,7 @@ void testParseBinExpression() {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
         }
-        printExpr(expr);
+        print(expr.get());
     }
 }
 
@@ -732,7 +739,7 @@ void testIdentifier() {
     if (expr == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
-    printExpr(expr);
+    print(expr.get());
     const auto *const callFunc = dynamic_cast<CallFunctionExpr *>(expr.get());
     if (callFunc->callee != "foo") {
         throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -740,7 +747,7 @@ void testIdentifier() {
     if (callFunc->args.size() != 5) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
-    if (auto *number = dynamic_cast<NumberAst *>(callFunc->args[0].get()); number->value != 1) {
+    if (auto *const number = dynamic_cast<NumberAst *>(callFunc->args[0].get()); number->value != 1) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
     if (auto *const number = dynamic_cast<NumberAst *>(callFunc->args[1].get()); number->value != 12.1) {
