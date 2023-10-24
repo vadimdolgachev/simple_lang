@@ -22,16 +22,16 @@ std::unique_ptr<llvm::Module> llvmModule;
 std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
 std::unordered_map<std::string, llvm::Value *> namedValues;
 
-class BaseAstItem {
+class BaseAstNode {
 public:
-    virtual ~BaseAstItem() = default;
+    virtual ~BaseAstNode() = default;
 
     [[nodiscard]] virtual llvm::Value *codegen() const = 0;
 
     [[nodiscard]] virtual std::string toString() const = 0;
 };
 
-class ExprAst : public BaseAstItem {
+class ExprAst : public BaseAstNode {
 public:
     ~ExprAst() override = default;
 };
@@ -147,7 +147,7 @@ public:
     const std::unique_ptr<ExprAst> rvalue;
 };
 
-struct ProtoFunctionAst : public BaseAstItem {
+struct ProtoFunctionAst : public BaseAstNode {
     ProtoFunctionAst(std::string name, std::vector<std::unique_ptr<ExprAst>> args) :
             name(std::move(name)),
             args(std::move(args)) {
@@ -175,7 +175,7 @@ struct ProtoFunctionAst : public BaseAstItem {
     const std::vector<std::unique_ptr<ExprAst>> args;
 };
 
-struct FunctionAst : public BaseAstItem {
+struct FunctionAst : public BaseAstNode {
     FunctionAst(std::unique_ptr<ProtoFunctionAst> proto, std::unique_ptr<ExprAst> body) :
             proto(std::move(proto)),
             body(std::move(body)) {
@@ -261,9 +261,8 @@ public:
 enum class TokenType {
     EosToken,
     NumberToken,
-    DefinitionToken,
+    FunctionDefinitionToken,
     IdentifierToken,
-    OperatorToken,
     OtherToken,
 };
 
@@ -355,7 +354,7 @@ void readNextToken(const bool inExpression = false) {
                 readNextChar();
             }
             if (identifier == "def") {
-                currentToken = TokenType::DefinitionToken;
+                currentToken = TokenType::FunctionDefinitionToken;
             } else {
                 currentToken = TokenType::IdentifierToken;
             }
@@ -382,7 +381,7 @@ std::unique_ptr<ExprAst> parseParentheses() {
     return expr;
 }
 
-std::unique_ptr<ExprAst> parseElement(bool inExpression = false);
+std::unique_ptr<ExprAst> parseExpr(bool inExpression = false);
 
 std::unique_ptr<ExprAst> parseIdentifier() {
     const std::string name = identifier;
@@ -391,15 +390,14 @@ std::unique_ptr<ExprAst> parseIdentifier() {
         readNextToken(); // eat =
         auto expr = parseExpression();
         return std::make_unique<VariableDefinitionAst>(name, std::move(expr));
-    }
-    if (lastChar != '(') {
+    } else if (lastChar != '(') {
         return std::make_unique<VariableAst>(name);
     }
 
     std::vector<std::unique_ptr<ExprAst>> args;
     readNextToken(); // eat '('
     while (true) {
-        if (auto arg = parseElement()) {
+        if (auto arg = parseExpr()) {
             args.push_back(std::move(arg));
             if (lastChar == ',') {
                 readNextToken(); // eat ','
@@ -417,7 +415,7 @@ std::unique_ptr<ExprAst> parseIdentifier() {
     return std::make_unique<CallFunctionExpr>(name, std::move(args));
 }
 
-std::unique_ptr<ExprAst> parseElement(const bool inExpression) {
+std::unique_ptr<ExprAst> parseExpr(const bool inExpression) {
     if (currentToken == TokenType::NumberToken) {
         return parseNumberExpr(inExpression);
     } else if (currentToken == TokenType::IdentifierToken) {
@@ -448,7 +446,7 @@ std::unique_ptr<ExprAst> parseBinOp(const int expPrec,
         }
 
         readNextToken(true); // read rhs
-        auto rhs = parseElement(true);
+        auto rhs = parseExpr(true);
         if (rhs == nullptr) {
             return nullptr;
         }
@@ -466,13 +464,13 @@ std::unique_ptr<ExprAst> parseBinOp(const int expPrec,
 }
 
 std::unique_ptr<ExprAst> parseExpression() {
-    if (auto expr = parseElement(true)) {
+    if (auto expr = parseExpr(true)) {
         return parseBinOp(0, std::move(expr));
     }
     return nullptr;
 }
 
-void print(const BaseAstItem *const itemAst) {
+void print(const BaseAstNode *const itemAst) {
     if (const auto *const llvmIR = itemAst->codegen()) {
         llvm::outs() << "IR: ";
         llvmIR->print(llvm::outs(), true);
@@ -512,6 +510,9 @@ std::unique_ptr<ProtoFunctionAst> parseProto() {
             break;
         }
         if (auto arg = parseIdentifier()) {
+            if (dynamic_cast<VariableAst *>(arg.get()) == nullptr) {
+                return nullptr;
+            }
             args.push_back(std::move(arg));
             if (lastChar == ',') {
                 readNextToken(); // eat next arg
@@ -527,7 +528,7 @@ std::unique_ptr<ProtoFunctionAst> parseProto() {
     return std::make_unique<ProtoFunctionAst>(name, std::move(args));
 }
 
-std::unique_ptr<FunctionAst> parseDefinition() {
+std::unique_ptr<FunctionAst> parseFunctionDefinition() {
     readNextToken(); // eat def
     auto proto = parseProto();
     if (lastChar != '{') {
@@ -546,8 +547,8 @@ void mainHandler() {
     do {
         readNextToken();
 
-        if (currentToken == TokenType::DefinitionToken) {
-            auto definition = parseDefinition();
+        if (currentToken == TokenType::FunctionDefinitionToken) {
+            auto definition = parseFunctionDefinition();
             if (definition != nullptr) {
                 print(definition.get());
             }
@@ -565,7 +566,7 @@ void testParseBinExpression();
 
 void testParseNumber();
 
-void testDefinition();
+void testFunctionDefinition();
 
 void testIdentifier();
 
@@ -578,7 +579,7 @@ int main() {
 
     testParseBinExpression();
     testParseNumber();
-    testDefinition();
+    testFunctionDefinition();
     testIdentifier();
     testVarDefinition();
     return 0;
@@ -606,13 +607,13 @@ void testVarDefinition() {
     }
 }
 
-void testDefinition() {
+void testFunctionDefinition() {
     stream = std::make_unique<std::istringstream>("def foo(id1, id2, id3) {varPtr=1+id1;}");
     readNextToken();
-    if (currentToken != TokenType::DefinitionToken) {
+    if (currentToken != TokenType::FunctionDefinitionToken) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
-    const auto func = parseDefinition();
+    const auto func = parseFunctionDefinition();
     if (func == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
@@ -631,7 +632,7 @@ void testParseNumber() {
     {
         stream = std::make_unique<std::istringstream>(" -123.123;");
         readNextToken();
-        const auto expr = parseElement();
+        const auto expr = parseExpr();
         if (expr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -735,7 +736,7 @@ void testParseBinExpression() {
 void testIdentifier() {
     stream = std::make_unique<std::istringstream>("foo(1, 12.1, id1, -1.2, (1+2));");
     readNextToken();
-    auto expr = parseElement(true);
+    const auto expr = parseExpr(true);
     if (expr == nullptr) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
     }
