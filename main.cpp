@@ -16,11 +16,31 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Passes/StandardInstrumentations.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Scalar/Reassociate.h"
+#include "llvm/Transforms/Scalar/SimplifyCFG.h"
+#include "llvm/Analysis/AssumptionCache.h"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
+#include "llvm/Analysis/MemoryDependenceAnalysis.h"
+#include "llvm/Analysis/MemorySSA.h"
+#include "llvm/Analysis/OptimizationRemarkEmitter.h"
+#include "llvm/Analysis/ProfileSummaryInfo.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 
 std::unique_ptr<llvm::LLVMContext> llvmContext;
 std::unique_ptr<llvm::Module> llvmModule;
 std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
 std::unordered_map<std::string, llvm::Value *> namedValues;
+llvm::BasicBlock *currentBB = nullptr;
+std::unique_ptr<llvm::FunctionPassManager> functionPassManager;
+std::unique_ptr<llvm::FunctionAnalysisManager> functionAnalysisManager;
+std::unique_ptr<llvm::ModuleAnalysisManager> moduleAnalysisManager;
+std::unique_ptr<llvm::PassInstrumentationCallbacks> passInstsCallbacks;
+std::unique_ptr<llvm::StandardInstrumentations> standardInsts;
 
 class BaseAstNode {
 public:
@@ -66,8 +86,7 @@ public:
     }
 
     [[nodiscard]] llvm::Value *codegen() const override {
-        //TODO: implement it
-        return nullptr;
+        return namedValues[name];
     }
 
     const std::string name;
@@ -136,11 +155,12 @@ public:
     }
 
     [[nodiscard]] llvm::Value *codegen() const override {
-        //TODO: implement it
-        llvmModule->getOrInsertGlobal(name, llvmIRBuilder->getDoubleTy());
-        auto *gVar = llvmModule->getNamedGlobal(name);
-        gVar->setLinkage(llvm::GlobalValue::CommonLinkage);
-        return gVar;
+        if (currentBB == nullptr) {
+            return nullptr;
+        }
+        auto *const variable = new llvm::AllocaInst(llvmIRBuilder->getDoubleTy(), 0, name, currentBB);
+        llvmIRBuilder->CreateStore(rvalue->codegen(), variable);
+        return variable;
     }
 
     const std::string name;
@@ -204,7 +224,8 @@ struct FunctionAst : public BaseAstNode {
         for (auto &arg: function->args()) {
             namedValues[std::string(arg.getName())] = &arg;
         }
-
+        auto *const prevBB = currentBB;
+        currentBB = basicBlock;
         if (auto *const retVal = body->codegen()) {
             // Finish off the function.
             llvmIRBuilder->CreateRet(retVal);
@@ -217,6 +238,7 @@ struct FunctionAst : public BaseAstNode {
 
         // Error reading body, remove function.
         function->eraseFromParent();
+        currentBB = prevBB;
         return nullptr;
     }
 
@@ -470,15 +492,14 @@ std::unique_ptr<ExprAst> parseExpression() {
     return nullptr;
 }
 
-void print(const BaseAstNode *const itemAst) {
-    if (const auto *const llvmIR = itemAst->codegen()) {
+void print(const BaseAstNode *const nodeAst) {
+    if (const auto *const llvmIR = nodeAst->codegen()) {
         llvm::outs() << "IR: ";
         llvmIR->print(llvm::outs(), true);
         llvm::outs() << '\n';
     }
     std::list<BinOpAst *> values;
-    std::cout << "rvalue: " << itemAst->toString() << std::endl;
-    auto *ptr = dynamic_cast<const BinOpAst *>(itemAst);
+    auto *ptr = dynamic_cast<const BinOpAst *>(nodeAst);
     do {
         if (!values.empty()) {
             ptr = values.front();
@@ -577,6 +598,40 @@ int main() {
     llvmModule = std::make_unique<llvm::Module>("my cool jit", *llvmContext);
     llvmIRBuilder = std::make_unique<llvm::IRBuilder<>>(*llvmContext);
 
+    // Create new pass and analysis managers.
+    functionPassManager = std::make_unique<llvm::FunctionPassManager>();
+    functionAnalysisManager = std::make_unique<llvm::FunctionAnalysisManager>();
+    moduleAnalysisManager = std::make_unique<llvm::ModuleAnalysisManager>();
+    passInstsCallbacks = std::make_unique<llvm::PassInstrumentationCallbacks>();
+    standardInsts = std::make_unique<llvm::StandardInstrumentations>(*llvmContext, /*DebugLogging*/ true);
+    standardInsts->registerCallbacks(*passInstsCallbacks, moduleAnalysisManager.get());
+
+    // Add transform passes.
+    // Do simple "peephole" optimizations and bit-twiddling optzns.
+    functionPassManager->addPass(llvm::InstCombinePass());
+    // Reassociate expressions.
+    functionPassManager->addPass(llvm::ReassociatePass());
+    // Eliminate Common SubExpressions.
+    functionPassManager->addPass(llvm::GVNPass());
+    // Simplify the control flow graph (deleting unreachable blocks, etc).
+    functionPassManager->addPass(llvm::SimplifyCFGPass());
+
+    // Register analysis passes used in these transform passes.
+    functionAnalysisManager->registerPass([] { return llvm::AAManager(); });
+    functionAnalysisManager->registerPass([] { return llvm::AssumptionAnalysis(); });
+    functionAnalysisManager->registerPass([] { return llvm::DominatorTreeAnalysis(); });
+    functionAnalysisManager->registerPass([] { return llvm::LoopAnalysis(); });
+    functionAnalysisManager->registerPass([] { return llvm::MemoryDependenceAnalysis(); });
+    functionAnalysisManager->registerPass([] { return llvm::MemorySSAAnalysis(); });
+    functionAnalysisManager->registerPass([] { return llvm::OptimizationRemarkEmitterAnalysis(); });
+    functionAnalysisManager->registerPass([] {
+        return llvm::OuterAnalysisManagerProxy<llvm::ModuleAnalysisManager, llvm::Function>(*moduleAnalysisManager);
+    });
+    functionAnalysisManager->registerPass([] { return llvm::PassInstrumentationAnalysis(passInstsCallbacks.get()); });
+    functionAnalysisManager->registerPass([] { return llvm::TargetIRAnalysis(); });
+    functionAnalysisManager->registerPass([] { return llvm::TargetLibraryAnalysis(); });
+    moduleAnalysisManager->registerPass([] { return llvm::ProfileSummaryAnalysis(); });
+
     testParseBinExpression();
     testParseNumber();
     testFunctionDefinition();
@@ -608,7 +663,7 @@ void testVarDefinition() {
 }
 
 void testFunctionDefinition() {
-    stream = std::make_unique<std::istringstream>("def foo(id1, id2, id3) {varPtr=1+id1;}");
+    stream = std::make_unique<std::istringstream>("def foo(id1, id2, id3) {varPtr=(1+2+id1) * (2+1+id2);}");
     readNextToken();
     if (currentToken != TokenType::FunctionDefinitionToken) {
         throw std::logic_error(makeTestFailMsg(__LINE__));
