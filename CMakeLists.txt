@@ -17,11 +17,25 @@ add_definitions(${LLVM_DEFINITIONS})
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(simple_ast_parser main.cpp)
+add_executable(simple_ast_parser
+        main.cpp
+        KaleidoscopeJIT.h)
 
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
-llvm_map_components_to_libnames(llvm_libs support core irreader orcjit native)
+llvm_map_components_to_libnames(llvm_libs
+        #        Analysis
+        Core
+        #        ExecutionEngine
+        #        InstCombine
+        #        Object
+        OrcJIT
+        #        Passes
+        #        RuntimeDyld
+        #        ScalarOpts
+        #        Support
+        native
+)
 
 # Link against LLVM libraries
 target_link_libraries(simple_ast_parser ${llvm_libs})
