@@ -39,7 +39,6 @@ namespace {
     std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
     std::unique_ptr<llvm::orc::KaleidoscopeJIT> llvmJit;
     std::unordered_map<std::string, llvm::Value *> namedValues;
-    llvm::BasicBlock *currentBB = nullptr;
     std::unique_ptr<llvm::FunctionPassManager> functionPassManager;
     std::unique_ptr<llvm::FunctionAnalysisManager> functionAnalysisManager;
     std::unique_ptr<llvm::ModuleAnalysisManager> moduleAnalysisManager;
@@ -214,10 +213,20 @@ namespace {
 
         [[nodiscard]] llvm::Value *codegen() const override {
             assert(llvmContext != nullptr);
-            if (currentBB == nullptr) {
-                return nullptr;
+            if (llvmIRBuilder->GetInsertBlock() == nullptr) {
+                auto *const variable = new llvm::GlobalVariable(
+                        *llvmModule,
+                        llvmIRBuilder->getDoubleTy(),
+                        false,
+                        llvm::GlobalValue::CommonLinkage,
+                        nullptr,
+                        name
+                );
+                variable->setInitializer(reinterpret_cast<llvm::ConstantFP *>(rvalue->codegen()));
+                return variable;
             }
-            auto *const variable = new llvm::AllocaInst(llvmIRBuilder->getDoubleTy(), 0, name, currentBB);
+            auto *const variable = new llvm::AllocaInst(llvmIRBuilder->getDoubleTy(), 0, name,
+                                                        llvmIRBuilder->GetInsertBlock());
             llvmIRBuilder->CreateStore(rvalue->codegen(), variable);
             return variable;
         }
@@ -306,8 +315,6 @@ namespace {
             for (auto &arg: function->args()) {
                 namedValues[std::string(arg.getName())] = &arg;
             }
-            auto *const prevBB = currentBB;
-            currentBB = basicBlock;
 
             for (auto it = body.begin(); it != body.end(); ++it) {
                 if (*it == body.back()) {
@@ -317,8 +324,6 @@ namespace {
 
                         // Validate the generated code, checking for consistency.
                         verifyFunction(*function);
-
-                        currentBB = prevBB;
                         return function;
                     }
                 } else {
@@ -330,7 +335,6 @@ namespace {
 
             // Error reading body, remove function.
             function->eraseFromParent();
-            currentBB = prevBB;
             return nullptr;
         }
 
@@ -407,8 +411,7 @@ namespace {
     void readNextChar() {
         do {
             lastChar = stream->get();
-//        std::cout << "read char:" << static_cast<char>(lastChar) << "\n";
-            if (!stream->eof()) {
+            if (lastChar == '\n' || !stream->eof()) {
                 break;
             }
         } while (*stream);
@@ -458,7 +461,7 @@ namespace {
         if (lastChar == ';') {
             do {
                 readNextChar();
-            } while (isspace(lastChar));
+            } while (isspace(lastChar) && lastChar != '\n');
         }
 
         if (lastChar == EOF) {
@@ -665,7 +668,6 @@ namespace {
         std::list<std::unique_ptr<ExprAst>> body;
         while (true) {
             if (auto expr = parseExpression()) {
-                print(expr.get());
                 body.push_back(std::move(expr));
             } else {
                 break;
@@ -714,6 +716,7 @@ namespace {
                     auto FP = ExprSymbol.getAddress().toPtr<FT>();
                     std::cout << "result=" << FP() << "\n";
                     ExitOnError(RT->remove());
+                    readNextToken();
                 }
             }
         } while (currentToken != TokenType::EosToken);
@@ -745,6 +748,7 @@ int main() {
     testVarDefinition();
 
     stream = std::make_unique<std::istringstream>("def foo(v){var=1; var+v}; foo(0);foo(1);foo(1.2);");
+//    stream->basic_ios::rdbuf(std::cin.rdbuf());
     mainHandler();
     return 0;
 }
