@@ -370,22 +370,25 @@ namespace {
         [[nodiscard]] llvm::Value *codegen() const override {
             assert(llvmContext != nullptr);
             // Look up the name in the global module table.
-            auto *CalleeF = getFunction(callee);
-            if (!CalleeF)
+            auto *calleeFunc = getFunction(callee);
+            if (calleeFunc == nullptr) {
                 return nullptr;
-
-            // If argument mismatch error.
-            if (CalleeF->arg_size() != args.size())
-                return nullptr;
-
-            std::vector<llvm::Value *> ArgsV;
-            for (const auto &arg: args) {
-                ArgsV.push_back(arg->codegen());
-                if (!ArgsV.back())
-                    return nullptr;
             }
 
-            return llvmIRBuilder->CreateCall(CalleeF, ArgsV, "calltmp");
+            // If argument mismatch error.
+            if (calleeFunc->arg_size() != args.size()) {
+                return nullptr;
+            }
+
+            std::vector<llvm::Value *> argsFunc;
+            for (const auto &arg: args) {
+                argsFunc.push_back(arg->codegen());
+                if (!argsFunc.back()) {
+                    return nullptr;
+                }
+            }
+
+            return llvmIRBuilder->CreateCall(calleeFunc, argsFunc, "calltmp");
         }
 
         const std::string callee;
@@ -400,7 +403,7 @@ namespace {
         OtherToken,
     };
 
-    std::unique_ptr<std::basic_istream<char>> stream;
+    std::unique_ptr<std::istream> stream;
     int lastChar = ' ';
     TokenType currentToken;
     std::string numberValue;
@@ -701,7 +704,7 @@ namespace {
                     print(definition.get());
                 }
                 ExitOnError(llvmJit->addModule(
-                        llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext))));
+                        llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
                 initLlvmModules();
                 readNextToken();
             } else {
@@ -798,7 +801,7 @@ namespace {
         FunctionProtos.clear();
         namedValues.clear();
         ExitOnError(llvmJit->addModule(
-                llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext))));
+                llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
         initLlvmModules();
     }
 
