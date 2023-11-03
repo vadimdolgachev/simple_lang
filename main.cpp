@@ -688,7 +688,7 @@ namespace {
             return nullptr;
         }
         print(expr.get());
-        auto proto = std::make_unique<ProtoFunctionAst>("__anon_expr",
+        auto proto = std::make_unique<ProtoFunctionAst>("__start",
                                                         std::vector<std::string>());
         std::list<std::unique_ptr<ExprAst>> body;
         body.push_back(std::move(expr));
@@ -708,19 +708,19 @@ namespace {
                 initLlvmModules();
                 readNextToken();
             } else {
-                auto topLevelExpr = parseTopLevelExpr();
-                if (topLevelExpr != nullptr && topLevelExpr->codegen()) {
-                    auto RT = llvmJit->getMainJITDylib().createResourceTracker();
-                    auto TSM = llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext));
-                    ExitOnError(llvmJit->addModule(std::move(TSM), RT));
+                if (const auto topLevelExpr = parseTopLevelExpr();
+                        topLevelExpr->codegen()) {
+                    auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
+                    auto threadSafeModule = llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext));
+                    ExitOnError(llvmJit->addModule(std::move(threadSafeModule), resourceTracker));
                     initLlvmModules();
-                    auto ExprSymbol = ExitOnError(llvmJit->lookup("__anon_expr"));
-                    using FT = double (*)();
-                    auto FP = ExprSymbol.getAddress().toPtr<FT>();
-                    std::cout << "result=" << FP() << "\n";
-                    ExitOnError(RT->remove());
-                    readNextToken();
+                    const auto startSymbol = ExitOnError(llvmJit->lookup("__start"));
+                    using FuncType = double (*)();
+                    auto *const startFunc = startSymbol.getAddress().toPtr<FuncType>();
+                    std::cout << "result=" << startFunc() << "\n";
+                    ExitOnError(resourceTracker->remove());
                 }
+                readNextToken();
             }
         } while (currentToken != TokenType::EosToken);
     }
