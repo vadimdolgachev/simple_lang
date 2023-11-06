@@ -428,40 +428,39 @@ namespace {
                 return nullptr;
             }
             auto *const function = insertBlock->getParent();
-            auto *thenBaseBlock = llvm::BasicBlock::Create(*llvmContext, "thenBaseBlock", function);
-            auto *elseBaseBlock = llvm::BasicBlock::Create(*llvmContext, "elseBaseBlock");
-            auto *const mergeBaseBlock = llvm::BasicBlock::Create(*llvmContext, "mergeBaseBlock");
+            auto *thenBasicBlock = llvm::BasicBlock::Create(*llvmContext, "thenBasicBlock", function);
+            auto *elseBasicBlock = llvm::BasicBlock::Create(*llvmContext, "elseBasicBlock");
+            auto *const mergeBasicBlock = llvm::BasicBlock::Create(*llvmContext, "mergeBasicBlock");
 
             // if condition
-            llvmIRBuilder->CreateCondBr(condValue, thenBaseBlock, elseBaseBlock);
+            llvmIRBuilder->CreateCondBr(condValue, thenBasicBlock, elseBasicBlock);
 
             // then base block
-            llvmIRBuilder->SetInsertPoint(thenBaseBlock);
+            llvmIRBuilder->SetInsertPoint(thenBasicBlock);
             auto *const thenValue = codegenExpressions(thenBranch);
             if (thenValue == nullptr) {
                 return nullptr;
             }
-            llvmIRBuilder->CreateBr(mergeBaseBlock);
-            thenBaseBlock = llvmIRBuilder->GetInsertBlock();
+            llvmIRBuilder->CreateBr(mergeBasicBlock);
+            thenBasicBlock = llvmIRBuilder->GetInsertBlock();
 
             // else base block
-            function->insert(function->end(), elseBaseBlock);
-            llvmIRBuilder->SetInsertPoint(elseBaseBlock);
+            function->insert(function->end(), elseBasicBlock);
+            llvmIRBuilder->SetInsertPoint(elseBasicBlock);
             auto *const elseValue = elseBranch.has_value() ? codegenExpressions(elseBranch.value()) : nullptr;
-            llvmIRBuilder->CreateBr(mergeBaseBlock);
-            elseBaseBlock = llvmIRBuilder->GetInsertBlock();
+            llvmIRBuilder->CreateBr(mergeBasicBlock);
+            elseBasicBlock = llvmIRBuilder->GetInsertBlock();
 
             // merge base block
-            function->insert(function->end(), mergeBaseBlock);
-            llvmIRBuilder->SetInsertPoint(mergeBaseBlock);
+            function->insert(function->end(), mergeBasicBlock);
+            llvmIRBuilder->SetInsertPoint(mergeBasicBlock);
 
             // phi node
             auto *const phiNode =
                     llvmIRBuilder->CreatePHI(llvm::Type::getDoubleTy(*llvmContext), 2, "if_tmp");
-            phiNode->addIncoming(thenValue, thenBaseBlock);
-            if (elseValue != nullptr) {
-                phiNode->addIncoming(elseValue, elseBaseBlock);
-            }
+            phiNode->addIncoming(thenValue, thenBasicBlock);
+            phiNode->addIncoming(elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(*llvmContext)),
+                                 elseBasicBlock);
             return phiNode;
         }
 
