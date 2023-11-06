@@ -3,6 +3,7 @@
 #include <list>
 #include <memory>
 #include <sstream>
+#include <utility>
 #include <vector>
 #include <unordered_map>
 
@@ -102,7 +103,7 @@ namespace {
         ~ExprAst() override = default;
     };
 
-    class NumberAst : public ExprAst {
+    class NumberAst final : public ExprAst {
     public:
         explicit NumberAst(double v) :
                 value(v) {
@@ -121,7 +122,7 @@ namespace {
         double value;
     };
 
-    class VariableAst : public ExprAst {
+    class VariableAst final : public ExprAst {
     public:
         explicit VariableAst(std::string name) :
                 name(std::move(name)) {
@@ -139,7 +140,7 @@ namespace {
         const std::string name;
     };
 
-    class BinOpAst : public ExprAst {
+    class BinOpAst final : public ExprAst {
     public:
         BinOpAst(const char binOp,
                  std::unique_ptr<ExprAst> lhs,
@@ -198,7 +199,7 @@ namespace {
         const std::unique_ptr<ExprAst> rhs;
     };
 
-    class VariableDefinitionAst : public ExprAst {
+    class VariableDefinitionAst final : public ExprAst {
     public:
         VariableDefinitionAst(std::string name,
                               std::unique_ptr<ExprAst> rvalue) :
@@ -235,7 +236,7 @@ namespace {
         const std::unique_ptr<ExprAst> rvalue;
     };
 
-    struct ProtoFunctionAst : public BaseAstNode {
+    struct ProtoFunctionAst final : public BaseAstNode {
         ProtoFunctionAst(std::string name, std::vector<std::string> args) :
                 name(std::move(name)),
                 args(std::move(args)) {
@@ -283,7 +284,22 @@ namespace {
         return nullptr;
     }
 
-    struct FunctionAst : public BaseAstNode {
+    llvm::Value *codegenExpressions(const std::list<std::unique_ptr<ExprAst>> &expressions) {
+        for (auto it = expressions.begin(); it != expressions.end(); ++it) {
+            if (*it == expressions.back()) {
+                if (auto *const value = (*it)->codegen()) {
+                    return value;
+                }
+            } else {
+                if (auto var = dynamic_cast<const VariableDefinitionAst *>(it->get())) {
+                    const auto *const value = var->codegen();
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    struct FunctionAst final : public BaseAstNode {
         FunctionAst(std::unique_ptr<ProtoFunctionAst> proto, std::list<std::unique_ptr<ExprAst>> body) :
                 proto(std::move(proto)),
                 body(std::move(body)) {
@@ -316,21 +332,10 @@ namespace {
                 namedValues[std::string(arg.getName())] = &arg;
             }
 
-            for (auto it = body.begin(); it != body.end(); ++it) {
-                if (*it == body.back()) {
-                    if (auto *const retVal = (*it)->codegen()) {
-                        // Finish off the function.
-                        llvmIRBuilder->CreateRet(retVal);
-
-                        // Validate the generated code, checking for consistency.
-                        verifyFunction(*function);
-                        return function;
-                    }
-                } else {
-                    if (auto var = dynamic_cast<VariableDefinitionAst *>(it->get())) {
-                        namedValues[var->name] = var->codegen();
-                    }
-                }
+            if (auto *const returnValue = ::codegenExpressions(body)) {
+                llvmIRBuilder->CreateRet(returnValue);
+                verifyFunction(*function);
+                return function;
             }
 
             // Error reading body, remove function.
@@ -342,7 +347,7 @@ namespace {
         const std::list<std::unique_ptr<ExprAst>> body;
     };
 
-    class CallFunctionExpr : public ExprAst {
+    class CallFunctionExpr final : public ExprAst {
     public:
         CallFunctionExpr(std::string callee, std::vector<std::unique_ptr<ExprAst>> args) :
                 callee(std::move(callee)),
@@ -395,11 +400,94 @@ namespace {
         const std::vector<std::unique_ptr<ExprAst>> args;
     };
 
-    enum class TokenType {
+    class IfExpr final : public ExprAst {
+    public:
+        IfExpr(std::unique_ptr<ExprAst> cond,
+               std::list<std::unique_ptr<ExprAst>> thenBranch,
+               std::optional<std::list<std::unique_ptr<ExprAst>>> elseBranch) :
+                cond(std::move(cond)),
+                thenBranch(std::move(thenBranch)),
+                elseBranch(std::move(elseBranch)) {
+        }
+
+        [[nodiscard]] std::string toString() const override {
+            return "if expr";
+        }
+
+        [[nodiscard]] llvm::Value *codegen() const override {
+            auto *condValue = cond->codegen();
+            if (condValue == nullptr) {
+                return nullptr;
+            }
+            condValue = llvmIRBuilder->CreateFCmpONE(condValue,
+                                                     llvm::ConstantFP::get(*llvmContext,
+                                                                           llvm::APFloat(0.0)),
+                                                     "if_cond");
+            auto *const insertBlock = llvmIRBuilder->GetInsertBlock();
+            if (insertBlock == nullptr) {
+                return nullptr;
+            }
+            auto *const function = insertBlock->getParent();
+            auto *thenBaseBlock = llvm::BasicBlock::Create(*llvmContext, "thenBaseBlock", function);
+            auto *elseBaseBlock = llvm::BasicBlock::Create(*llvmContext, "elseBaseBlock");
+            auto *const mergeBaseBlock = llvm::BasicBlock::Create(*llvmContext, "mergeBaseBlock");
+
+            // if condition
+            llvmIRBuilder->CreateCondBr(condValue, thenBaseBlock, elseBaseBlock);
+
+            // then base block
+            llvmIRBuilder->SetInsertPoint(thenBaseBlock);
+            auto *const thenValue = codegenExpressions(thenBranch);
+            if (thenValue == nullptr) {
+                return nullptr;
+            }
+            llvmIRBuilder->CreateBr(mergeBaseBlock);
+            thenBaseBlock = llvmIRBuilder->GetInsertBlock();
+
+            // else base block
+            function->insert(function->end(), elseBaseBlock);
+            llvmIRBuilder->SetInsertPoint(elseBaseBlock);
+            auto *const elseValue = elseBranch.has_value() ? codegenExpressions(elseBranch.value()) : nullptr;
+            llvmIRBuilder->CreateBr(mergeBaseBlock);
+            elseBaseBlock = llvmIRBuilder->GetInsertBlock();
+
+            // merge base block
+            function->insert(function->end(), mergeBaseBlock);
+            llvmIRBuilder->SetInsertPoint(mergeBaseBlock);
+
+            // phi node
+            auto *const phiNode =
+                    llvmIRBuilder->CreatePHI(llvm::Type::getDoubleTy(*llvmContext), 2, "if_tmp");
+            phiNode->addIncoming(thenValue, thenBaseBlock);
+            if (elseValue != nullptr) {
+                phiNode->addIncoming(elseValue, elseBaseBlock);
+            }
+            return phiNode;
+        }
+
+        const std::unique_ptr<ExprAst> cond;
+        const std::list<std::unique_ptr<ExprAst>> thenBranch;
+        const std::optional<std::list<std::unique_ptr<ExprAst>>> elseBranch;
+    };
+
+    class ForLoopExpr final : public ExprAst {
+    public:
+        [[nodiscard]] std::string toString() const override {
+            return "for loop";
+        }
+
+        [[nodiscard]] llvm::Value *codegen() const override {
+            return nullptr;
+        }
+    };
+
+    enum class TokenType : std::uint8_t {
         EosToken,
         NumberToken,
         FunctionDefinitionToken,
         IdentifierToken,
+        IfToken,
+        ElseToken,
         OtherToken,
     };
 
@@ -491,6 +579,10 @@ namespace {
                 }
                 if (identifier == "def") {
                     currentToken = TokenType::FunctionDefinitionToken;
+                } else if (identifier == "if") {
+                    currentToken = TokenType::IfToken;
+                } else if (identifier == "else") {
+                    currentToken = TokenType::ElseToken;
                 } else {
                     currentToken = TokenType::IdentifierToken;
                 }
@@ -551,11 +643,48 @@ namespace {
         return std::make_unique<CallFunctionExpr>(name, std::move(args));
     }
 
+    std::list<std::unique_ptr<ExprAst>> parseCurlyBrackets() {
+        std::list<std::unique_ptr<ExprAst>> expressions;
+        while (auto expr = parseExpression()) {
+            expressions.push_back(std::move(expr));
+            if (lastChar == '}') {
+                break;
+            }
+        }
+        return expressions;
+    }
+
+    std::unique_ptr<IfExpr> parseIfExpression() {
+        readNextToken();
+        if (lastChar != '(') {
+            return nullptr;
+        }
+        auto cond = parseParentheses();
+        if (lastChar != '{') {
+            return nullptr;
+        }
+        readNextToken();
+        std::list<std::unique_ptr<ExprAst>> thenBranch = parseCurlyBrackets();
+        readNextToken();
+        std::optional<std::list<std::unique_ptr<ExprAst>>> elseBranch;
+        if (currentToken == TokenType::ElseToken) {
+            readNextToken();
+            if (lastChar != '{') {
+                return nullptr;
+            }
+            readNextToken();
+            elseBranch = parseCurlyBrackets();
+        }
+        return std::make_unique<IfExpr>(std::move(cond), std::move(thenBranch), std::move(elseBranch));
+    }
+
     std::unique_ptr<ExprAst> parseExpr(const bool inExpression) {
         if (currentToken == TokenType::NumberToken) {
             return parseNumberExpr(inExpression);
         } else if (currentToken == TokenType::IdentifierToken) {
             return parseIdentifier(inExpression);
+        } else if (currentToken == TokenType::IfToken) {
+            return parseIfExpression();
         } else if (lastChar == '(') {
             return parseParentheses();
         }
@@ -606,11 +735,15 @@ namespace {
         return nullptr;
     }
 
+    void print(const llvm::Value *const llvmIR) {
+        llvm::outs() << "IR: ";
+        llvmIR->print(llvm::outs(), true);
+        llvm::outs() << '\n';
+    }
+
     void print(const BaseAstNode *const nodeAst) {
-        if (const auto *const llvmIR = nodeAst->codegen(); llvmIR != nullptr) {
-            llvm::outs() << "IR: ";
-            llvmIR->print(llvm::outs(), true);
-            llvm::outs() << '\n';
+        if (auto const *const llvmIR = nodeAst->codegen()) {
+            print(llvmIR);
         }
         std::list<BinOpAst *> values;
         auto *ptr = dynamic_cast<const BinOpAst *>(nodeAst);
@@ -668,27 +801,17 @@ namespace {
             return nullptr;
         }
         readNextToken();
-        std::list<std::unique_ptr<ExprAst>> body;
-        while (true) {
-            if (auto expr = parseExpression()) {
-                body.push_back(std::move(expr));
-            } else {
-                break;
-            }
-            if (lastChar == '}') {
-                break;
-            }
-        }
+        std::list<std::unique_ptr<ExprAst>> body = parseCurlyBrackets();
         return std::make_unique<FunctionAst>(std::move(proto), std::move(body));
     }
 
-    std::unique_ptr<FunctionAst> parseTopLevelExpr() {
+    std::unique_ptr<FunctionAst> parseTopLevelExpr(const char *const functionName) {
         auto expr = parseExpression();
         if (expr == nullptr) {
             return nullptr;
         }
         print(expr.get());
-        auto proto = std::make_unique<ProtoFunctionAst>("__start",
+        auto proto = std::make_unique<ProtoFunctionAst>(functionName,
                                                         std::vector<std::string>());
         std::list<std::unique_ptr<ExprAst>> body;
         body.push_back(std::move(expr));
@@ -708,17 +831,21 @@ namespace {
                 initLlvmModules();
                 readNextToken();
             } else {
-                if (const auto topLevelExpr = parseTopLevelExpr();
-                        topLevelExpr->codegen()) {
-                    auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
-                    auto threadSafeModule = llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext));
-                    ExitOnError(llvmJit->addModule(std::move(threadSafeModule), resourceTracker));
-                    initLlvmModules();
-                    const auto startSymbol = ExitOnError(llvmJit->lookup("__start"));
-                    using FuncType = double (*)();
-                    auto *const startFunc = startSymbol.getAddress().toPtr<FuncType>();
-                    std::cout << "result=" << startFunc() << "\n";
-                    ExitOnError(resourceTracker->remove());
+                if (const auto function = parseTopLevelExpr("_start")) {
+                    const auto *const llvmIR = function->codegen();
+                    if (llvmIR != nullptr) {
+                        print(llvmIR);
+                        auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
+                        auto threadSafeModule = llvm::orc::ThreadSafeModule(std::move(llvmModule),
+                                                                            std::move(llvmContext));
+                        ExitOnError(llvmJit->addModule(std::move(threadSafeModule), resourceTracker));
+                        initLlvmModules();
+                        const auto startSymbol = ExitOnError(llvmJit->lookup("_start"));
+                        using FuncType = double (*)();
+                        auto *const startFunc = startSymbol.getAddress().toPtr<FuncType>();
+                        std::cout << "result=" << startFunc() << "\n";
+                        ExitOnError(resourceTracker->remove());
+                    }
                 }
                 readNextToken();
             }
@@ -750,7 +877,7 @@ int main() {
     testIdentifier();
     testVarDefinition();
 
-    stream = std::make_unique<std::istringstream>("def foo(v){var=1; var+v}; foo(0);foo(1);foo(1.2);");
+    stream = std::make_unique<std::istringstream>("if (1) {10+1;} else {2+2;}");
 //    stream->basic_ios::rdbuf(std::cin.rdbuf());
     mainHandler();
     return 0;

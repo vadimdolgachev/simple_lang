@@ -21,6 +21,14 @@ add_executable(simple_ast_parser
         main.cpp
         KaleidoscopeJIT.h)
 
+target_compile_options(simple_ast_parser PRIVATE
+        -Wall
+        -Wpedantic
+#        -Wextra
+        -Werror=unused-result
+        -Werror=return-type
+)
+
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
 llvm_map_components_to_libnames(llvm_libs
