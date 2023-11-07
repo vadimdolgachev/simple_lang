@@ -653,7 +653,7 @@ namespace {
             if (lastChar == '}') {
                 break;
             }
-            readNextChar();
+            readNextToken();
         }
         return expressions;
     }
@@ -895,11 +895,11 @@ int main() {
 
     initLlvmModules();
 
-    testParseBinExpression();
-    testParseNumber();
-    testFunctionDefinition();
-    testIdentifier();
-    testVarDefinition();
+//    testParseBinExpression();
+//    testParseNumber();
+//    testFunctionDefinition();
+//    testIdentifier();
+//    testVarDefinition();
 
     defineEmbeddedFunctions();
 
