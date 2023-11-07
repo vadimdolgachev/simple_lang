@@ -267,18 +267,19 @@ namespace {
         std::vector<std::string> args;
     };
 
-    std::unordered_map<std::string, std::unique_ptr<ProtoFunctionAst>> FunctionProtos;
+    std::unordered_map<std::string, std::unique_ptr<ProtoFunctionAst>> functionProtos;
 
     llvm::Function *getFunction(const std::string &Name) {
         // First, see if the function has already been added to the current module.
-        if (auto *F = llvmModule->getFunction(Name))
-            return F;
+        if (auto *const function = llvmModule->getFunction(Name)) {
+            return function;
+        }
 
         // If not, check whether we can codegen the declaration from some existing
         // prototype.
-        auto FI = FunctionProtos.find(Name);
-        if (FI != FunctionProtos.end())
-            return reinterpret_cast<llvm::Function *>(FI->second->codegen());
+        if (auto iterator = functionProtos.find(Name); iterator != functionProtos.end()) {
+            return reinterpret_cast<llvm::Function *>(iterator->second->codegen());
+        }
 
         // If no existing prototype exists, return null.
         return nullptr;
@@ -287,12 +288,14 @@ namespace {
     llvm::Value *codegenExpressions(const std::list<std::unique_ptr<ExprAst>> &expressions) {
         for (auto it = expressions.begin(); it != expressions.end(); ++it) {
             if (*it == expressions.back()) {
-                if (auto *const value = (*it)->codegen()) {
+                auto *const value = (*it)->codegen();
+                if (value) {
                     return value;
                 }
             } else {
-                if (auto var = dynamic_cast<const VariableDefinitionAst *>(it->get())) {
-                    const auto *const value = var->codegen();
+                [[maybe_unused]] auto *val = (*it)->codegen();
+                if (auto *const var = dynamic_cast<VariableDefinitionAst *>(it->get()); var != nullptr) {
+                    namedValues[var->name] = val;
                 }
             }
         }
@@ -312,12 +315,12 @@ namespace {
 
         [[nodiscard]] llvm::Value *codegen() const override {
             assert(llvmContext != nullptr);
-            // Transfer ownership of the prototype to the FunctionProtos map, but keep a
+            // Transfer ownership of the prototype to the functionProtos map, but keep a
             // reference to it for use below.
-            auto &P = *proto;
-            FunctionProtos[proto->name] = std::make_unique<ProtoFunctionAst>(proto->name,
-                                                                             proto->args);
-            auto *const function = getFunction(P.name);
+            const auto &p = *proto;
+            functionProtos[p.name] = std::make_unique<ProtoFunctionAst>(proto->name,
+                                                                        proto->args);
+            auto *const function = getFunction(p.name);
             if (function == nullptr) {
                 return nullptr;
             }
@@ -459,8 +462,9 @@ namespace {
             auto *const phiNode =
                     llvmIRBuilder->CreatePHI(llvm::Type::getDoubleTy(*llvmContext), 2, "if_tmp");
             phiNode->addIncoming(thenValue, thenBasicBlock);
-            phiNode->addIncoming(elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(*llvmContext)),
-                                 elseBasicBlock);
+            phiNode->addIncoming(
+                    elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(*llvmContext)),
+                    elseBasicBlock);
             return phiNode;
         }
 
@@ -649,6 +653,7 @@ namespace {
             if (lastChar == '}') {
                 break;
             }
+            readNextChar();
         }
         return expressions;
     }
@@ -817,6 +822,11 @@ namespace {
         return std::make_unique<FunctionAst>(std::move(proto), std::move(body));
     }
 
+    double print(const double param) {
+        printf("print: %f\n", param);
+        return param;
+    }
+
     void mainHandler() {
         readNextToken();
         do {
@@ -851,6 +861,21 @@ namespace {
         } while (currentToken != TokenType::EosToken);
     }
 
+    void defineEmbeddedFunctions() {
+        llvm::orc::MangleAndInterner mangle(llvmJit->getMainJITDylib().getExecutionSession(),
+                                            llvmJit->getDataLayout());
+        llvm::orc::SymbolMap symbols;
+
+        constexpr const char *const name = "print";
+        auto printProto = std::make_unique<ProtoFunctionAst>(name, std::vector<std::string>{"param"});
+        functionProtos[name] = std::move(printProto);
+        symbols[mangle(name)] = {
+                llvm::orc::ExecutorAddr(
+                        llvm::pointerToJITTargetAddress<double(double)>(&print)),
+                llvm::JITSymbolFlags()};
+        ExitOnError(llvmJit->getMainJITDylib().define(llvm::orc::absoluteSymbols(symbols)));
+    }
+
     void testParseBinExpression();
 
     void testParseNumber();
@@ -860,7 +885,7 @@ namespace {
     void testIdentifier();
 
     void testVarDefinition();
-}
+}  // namespace
 
 int main() {
     llvm::InitializeNativeTarget();
@@ -876,7 +901,15 @@ int main() {
     testIdentifier();
     testVarDefinition();
 
-    stream = std::make_unique<std::istringstream>("if (1) {10+1;} else {2+2;}");
+    defineEmbeddedFunctions();
+
+    stream = std::make_unique<std::istringstream>(R"(
+    if (1) {
+        print(1);
+    } else {
+        print(0);
+    }
+)");
 //    stream->basic_ios::rdbuf(std::cin.rdbuf());
     mainHandler();
     return 0;
@@ -924,7 +957,7 @@ namespace {
         if (varPtr == nullptr || varPtr->name != "varPtr" || varPtr->rvalue == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        FunctionProtos.clear();
+        functionProtos.clear();
         namedValues.clear();
         ExitOnError(llvmJit->addModule(
                 llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
