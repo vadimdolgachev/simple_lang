@@ -892,6 +892,8 @@ namespace {
     void testIdentifier();
 
     void testVarDefinition();
+
+    void testIfExpression();
 }  // namespace
 
 int main() {
@@ -907,6 +909,7 @@ int main() {
     testFunctionDefinition();
     testIdentifier();
     testVarDefinition();
+    testIfExpression();
 
     defineEmbeddedFunctions();
 
@@ -1129,4 +1132,48 @@ namespace {
             }
         }
     }
-}
+
+    void testIfExpression() {
+        stream = std::make_unique<std::istringstream>(R"(
+            if (1) {
+                print(1);
+            } else {
+                print(0);
+            }
+        )");
+        readNextToken();
+        const auto ifExpr = parseExpression();
+        if (ifExpr == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        const auto *const ifExprPtr = dynamic_cast<IfExpr *>(ifExpr.get());
+        if (ifExprPtr == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        if (ifExprPtr->cond == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        const auto *const numberAstPtr = dynamic_cast<NumberAst *>(ifExprPtr->cond.get());
+        if (numberAstPtr == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+
+        if (ifExprPtr->thenBranch.empty()) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        const auto *const thenFuncAstPtr = dynamic_cast<CallFunctionExpr *>(ifExprPtr->thenBranch.back().get());
+        if (thenFuncAstPtr == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+
+        if (ifExprPtr->elseBranch) {
+            if (ifExprPtr->elseBranch.value().empty()) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            const auto *const elseFuncAstPtr = dynamic_cast<CallFunctionExpr *>(ifExprPtr->elseBranch.value().back().get());
+            if (elseFuncAstPtr == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+        }
+    }
+}  // namespace
