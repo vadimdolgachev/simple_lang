@@ -870,9 +870,10 @@ namespace {
         auto printProto = std::make_unique<ProtoFunctionAst>(name, std::vector<std::string>{"param"});
         functionProtos[name] = std::move(printProto);
         symbols[mangle(name)] = {
-                llvm::orc::ExecutorAddr(
-                        llvm::pointerToJITTargetAddress<double(double)>(&print)),
-                llvm::JITSymbolFlags()};
+                llvm::orc::ExecutorAddr::fromPtr<double(double)>(&print),
+                llvm::JITSymbolFlags()
+        };
+
         ExitOnError(llvmJit->getMainJITDylib().define(llvm::orc::absoluteSymbols(symbols)));
     }
 
@@ -895,11 +896,11 @@ int main() {
 
     initLlvmModules();
 
-//    testParseBinExpression();
-//    testParseNumber();
-//    testFunctionDefinition();
-//    testIdentifier();
-//    testVarDefinition();
+    testParseBinExpression();
+    testParseNumber();
+    testFunctionDefinition();
+    testIdentifier();
+    testVarDefinition();
 
     defineEmbeddedFunctions();
 
