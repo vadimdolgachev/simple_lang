@@ -98,6 +98,11 @@ namespace {
         [[nodiscard]] virtual std::string toString() const = 0;
     };
 
+    class StatementAst : public BaseAstNode {
+    public:
+        ~StatementAst() override = default;
+    };
+
     class ExprAst : public BaseAstNode {
     public:
         ~ExprAst() override = default;
@@ -122,9 +127,9 @@ namespace {
         double value;
     };
 
-    class VariableAst final : public ExprAst {
+    class VariableAccessAst final : public ExprAst {
     public:
-        explicit VariableAst(std::string name) :
+        explicit VariableAccessAst(std::string name) :
                 name(std::move(name)) {
 
         }
@@ -199,6 +204,7 @@ namespace {
         const std::unique_ptr<ExprAst> rhs;
     };
 
+    // TODO: replace ExprAst on StatementAst
     class VariableDefinitionAst final : public ExprAst {
     public:
         VariableDefinitionAst(std::string name,
@@ -622,7 +628,7 @@ namespace {
             auto expr = parseExpression();
             return std::make_unique<VariableDefinitionAst>(name, std::move(expr));
         } else if (lastChar != '(') {
-            return std::make_unique<VariableAst>(name);
+            return std::make_unique<VariableAccessAst>(name);
         }
 
         std::vector<std::unique_ptr<ExprAst>> args;
@@ -782,7 +788,7 @@ namespace {
                 break;
             }
             if (auto arg = parseIdentifier()) {
-                const auto var = dynamic_cast<const VariableAst *>(arg.get());
+                const auto var = dynamic_cast<const VariableAccessAst *>(arg.get());
                 args.push_back(var->name);
                 if (lastChar == ',') {
                     readNextToken(); // eat next arg
@@ -1082,7 +1088,7 @@ namespace {
             if (binOp == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const lhs = dynamic_cast<VariableAst *>(binOp->lhs.get());
+            const auto *const lhs = dynamic_cast<VariableAccessAst *>(binOp->lhs.get());
             if (lhs == nullptr || lhs->name != "v") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -1112,7 +1118,7 @@ namespace {
             if (auto *const number = dynamic_cast<NumberAst *>(callFunc->args[1].get()); number->value != 12.1) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            if (auto *const var = dynamic_cast<VariableAst *>(callFunc->args[2].get()); var->name != "id1") {
+            if (auto *const var = dynamic_cast<VariableAccessAst *>(callFunc->args[2].get()); var->name != "id1") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             if (auto *const number = dynamic_cast<NumberAst *>(callFunc->args[3].get()); number->value != -1.2) {
