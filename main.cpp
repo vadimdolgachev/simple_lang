@@ -204,8 +204,7 @@ namespace {
         const std::unique_ptr<ExprAst> rhs;
     };
 
-    // TODO: replace ExprAst on StatementAst
-    class VariableDefinitionAst final : public ExprAst {
+    class VariableDefinitionAst final : public StatementAst {
     public:
         VariableDefinitionAst(std::string name,
                               std::unique_ptr<ExprAst> rvalue) :
@@ -242,7 +241,7 @@ namespace {
         const std::unique_ptr<ExprAst> rvalue;
     };
 
-    struct ProtoFunctionAst final : public BaseAstNode {
+    struct ProtoFunctionAst final : public StatementAst {
         ProtoFunctionAst(std::string name, std::vector<std::string> args) :
                 name(std::move(name)),
                 args(std::move(args)) {
@@ -291,7 +290,7 @@ namespace {
         return nullptr;
     }
 
-    llvm::Value *codegenExpressions(const std::list<std::unique_ptr<ExprAst>> &expressions) {
+    llvm::Value *codegenExpressions(const std::list<std::unique_ptr<BaseAstNode>> &expressions) {
         for (auto it = expressions.begin(); it != expressions.end(); ++it) {
             if (*it == expressions.back()) {
                 auto *const value = (*it)->codegen();
@@ -308,8 +307,8 @@ namespace {
         return nullptr;
     }
 
-    struct FunctionAst final : public BaseAstNode {
-        FunctionAst(std::unique_ptr<ProtoFunctionAst> proto, std::list<std::unique_ptr<ExprAst>> body) :
+    struct FunctionAst final : public StatementAst {
+        FunctionAst(std::unique_ptr<ProtoFunctionAst> proto, std::list<std::unique_ptr<BaseAstNode>> body) :
                 proto(std::move(proto)),
                 body(std::move(body)) {
 
@@ -353,7 +352,7 @@ namespace {
         }
 
         mutable std::unique_ptr<ProtoFunctionAst> proto;
-        const std::list<std::unique_ptr<ExprAst>> body;
+        const std::list<std::unique_ptr<BaseAstNode>> body;
     };
 
     class CallFunctionExpr final : public ExprAst {
@@ -409,11 +408,11 @@ namespace {
         const std::vector<std::unique_ptr<ExprAst>> args;
     };
 
-    class IfExpr final : public ExprAst {
+    class IfStatement final : public StatementAst {
     public:
-        IfExpr(std::unique_ptr<ExprAst> cond,
-               std::list<std::unique_ptr<ExprAst>> thenBranch,
-               std::optional<std::list<std::unique_ptr<ExprAst>>> elseBranch) :
+        IfStatement(std::unique_ptr<ExprAst> cond,
+               std::list<std::unique_ptr<BaseAstNode>> thenBranch,
+               std::optional<std::list<std::unique_ptr<BaseAstNode>>> elseBranch) :
                 cond(std::move(cond)),
                 thenBranch(std::move(thenBranch)),
                 elseBranch(std::move(elseBranch)) {
@@ -475,12 +474,21 @@ namespace {
         }
 
         const std::unique_ptr<ExprAst> cond;
-        const std::list<std::unique_ptr<ExprAst>> thenBranch;
-        const std::optional<std::list<std::unique_ptr<ExprAst>>> elseBranch;
+        const std::list<std::unique_ptr<BaseAstNode>> thenBranch;
+        const std::optional<std::list<std::unique_ptr<BaseAstNode>>> elseBranch;
     };
 
-    class ForLoopExpr final : public ExprAst {
+    class ForLoopStatement final : public StatementAst {
     public:
+        ForLoopStatement(std::unique_ptr<ExprAst> initExpr,
+                    std::unique_ptr<ExprAst> nextExpr,
+                    std::unique_ptr<ExprAst> endExpr) :
+                initExpr(std::move(initExpr)),
+                nextExpr(std::move(nextExpr)),
+                endExpr(std::move(endExpr)) {
+
+        }
+
         [[nodiscard]] std::string toString() const override {
             return "for loop";
         }
@@ -488,6 +496,10 @@ namespace {
         [[nodiscard]] llvm::Value *codegen() const override {
             return nullptr;
         }
+
+        const std::unique_ptr<ExprAst> initExpr;
+        const std::unique_ptr<ExprAst> nextExpr;
+        const std::unique_ptr<ExprAst> endExpr;
     };
 
     enum class TokenType : std::uint8_t {
@@ -497,6 +509,9 @@ namespace {
         IdentifierToken,
         IfToken,
         ElseToken,
+        ForLoopToken,
+        IncrementOperatorToken,
+        DecrementOperatorToken,
         OtherToken,
     };
 
@@ -506,7 +521,7 @@ namespace {
     std::string numberValue;
     std::string identifier;
 
-    std::unique_ptr<ExprAst> parseExpression();
+    std::unique_ptr<BaseAstNode> parseAstNodeItem();
 
     void readNextChar() {
         do {
@@ -558,7 +573,7 @@ namespace {
             readNextChar();
         } while (isspace(lastChar));
 
-        if (lastChar == ';') {
+        if (lastChar == ';' && !inExpression) {
             do {
                 readNextChar();
             } while (isspace(lastChar) && lastChar != '\n');
@@ -574,6 +589,18 @@ namespace {
         if ((isSignOfNumber(lastChar) && !inExpression) || isCharOfNumber(lastChar)) {
             currentToken = TokenType::NumberToken;
             parseNumber();
+        } else if (isSignOfNumber(lastChar)) {
+            const int peek = getPeekChar();
+            if (peek == lastChar) {
+                while (!isalnum(getPeekChar())) {
+                    readNextChar();
+                }
+                if (lastChar == '+') {
+                    currentToken = TokenType::IncrementOperatorToken;
+                } else {
+                    currentToken = TokenType::DecrementOperatorToken;
+                }
+            }
         } else {
             // parse identifiers
             if (isalpha(lastChar)) {
@@ -592,11 +619,22 @@ namespace {
                     currentToken = TokenType::IfToken;
                 } else if (identifier == "else") {
                     currentToken = TokenType::ElseToken;
+                } else if (identifier == "for") {
+                    currentToken = TokenType::ForLoopToken;
                 } else {
                     currentToken = TokenType::IdentifierToken;
                 }
             }
         }
+    }
+
+    std::unique_ptr<ExprAst> toExpr(std::unique_ptr<BaseAstNode> node) {
+        auto *const ptr = dynamic_cast<ExprAst *>(node.get());
+        if (ptr != nullptr) {
+            [[maybe_unused]] auto *const p = node.release();
+            return std::unique_ptr<ExprAst>(ptr);
+        }
+        return nullptr;
     }
 
     std::unique_ptr<ExprAst> parseNumberExpr(const bool inExpression = false) {
@@ -610,24 +648,25 @@ namespace {
             return nullptr;
         }
         readNextToken(); // eat (
-        auto expr = parseExpression();
+        auto expr = parseAstNodeItem();
         if (lastChar != ')') {
             return nullptr;
         }
         readNextToken(); // eat )
-        return expr;
+        return toExpr(std::move(expr));
     }
 
-    std::unique_ptr<ExprAst> parseExpr(bool inExpression = false);
+    std::unique_ptr<BaseAstNode> parseExpr(bool inExpression = false);
 
-    std::unique_ptr<ExprAst> parseIdentifier(const bool inExpression = false) {
+    std::unique_ptr<BaseAstNode> parseIdentifier(const bool inExpression = false) {
         const std::string name = identifier;
         readNextToken(inExpression); // eat identifier
         if (lastChar == '=') {
             readNextToken(); // eat =
-            auto expr = parseExpression();
-            return std::make_unique<VariableDefinitionAst>(name, std::move(expr));
-        } else if (lastChar != '(') {
+            auto expr = parseAstNodeItem();
+            return std::make_unique<VariableDefinitionAst>(name, toExpr(std::move(expr)));
+        }
+        if (lastChar != '(') {
             return std::make_unique<VariableAccessAst>(name);
         }
 
@@ -635,7 +674,7 @@ namespace {
         readNextToken(); // eat '('
         while (true) {
             if (auto arg = parseExpr()) {
-                args.push_back(std::move(arg));
+                args.push_back(toExpr(std::move(arg)));
                 if (lastChar == ',') {
                     readNextToken(); // eat ','
                 } else {
@@ -652,10 +691,10 @@ namespace {
         return std::make_unique<CallFunctionExpr>(name, std::move(args));
     }
 
-    std::list<std::unique_ptr<ExprAst>> parseCurlyBrackets() {
-        std::list<std::unique_ptr<ExprAst>> expressions;
-        while (auto expr = parseExpression()) {
-            expressions.push_back(std::move(expr));
+    std::list<std::unique_ptr<BaseAstNode>> parseCurlyBrackets() {
+        std::list<std::unique_ptr<BaseAstNode>> expressions;
+        while (auto node = parseAstNodeItem()) {
+            expressions.push_back(std::move(node));
             if (lastChar == '}') {
                 break;
             }
@@ -664,7 +703,7 @@ namespace {
         return expressions;
     }
 
-    std::unique_ptr<IfExpr> parseIfExpression() {
+    std::unique_ptr<StatementAst> parseIfExpression() {
         readNextToken();
         if (lastChar != '(') {
             return nullptr;
@@ -674,9 +713,9 @@ namespace {
             return nullptr;
         }
         readNextToken();
-        std::list<std::unique_ptr<ExprAst>> thenBranch = parseCurlyBrackets();
+        std::list<std::unique_ptr<BaseAstNode>> thenBranch = parseCurlyBrackets();
         readNextToken();
-        std::optional<std::list<std::unique_ptr<ExprAst>>> elseBranch;
+        std::optional<std::list<std::unique_ptr<BaseAstNode>>> elseBranch;
         if (currentToken == TokenType::ElseToken) {
             readNextToken();
             if (lastChar != '{') {
@@ -685,17 +724,84 @@ namespace {
             readNextToken();
             elseBranch = parseCurlyBrackets();
         }
-        return std::make_unique<IfExpr>(std::move(cond), std::move(thenBranch), std::move(elseBranch));
+        return std::make_unique<IfStatement>(std::move(cond), std::move(thenBranch), std::move(elseBranch));
     }
 
-    std::unique_ptr<ExprAst> parseExpr(const bool inExpression) {
+    std::unique_ptr<StatementAst> parseForLoopExpression() {
+        readNextToken();
+        if (lastChar != '(') {
+            return nullptr;
+        }
+        readNextToken();
+        auto loopInit = parseIdentifier();
+        if (loopInit == nullptr) {
+            return nullptr;
+        }
+        readNextToken(true);
+        auto loopFinish = parseAstNodeItem();
+        if (loopFinish == nullptr) {
+            return nullptr;
+        }
+        readNextToken(true);
+        auto loopNext = parseAstNodeItem();
+        if (loopNext == nullptr) {
+            return nullptr;
+        }
+        auto forLoopExpr = std::make_unique<ForLoopStatement>(toExpr(std::move(loopInit)),
+                                             toExpr(std::move(loopNext)),
+                                             toExpr(std::move(loopFinish)));
+        return forLoopExpr;
+    }
+
+    class UnaryOpAst final : public ExprAst {
+    public:
+        UnaryOpAst(const TokenType operatorType, std::unique_ptr<ExprAst> expr) :
+                operatorType(operatorType),
+                expr(std::move(expr)) {
+
+        }
+
+        [[nodiscard]] std::string toString() const override {
+            return "unary operator";
+        }
+
+        [[nodiscard]] llvm::Value *codegen() const override {
+            return nullptr;
+        }
+
+        const TokenType operatorType;
+        const std::unique_ptr<ExprAst> expr;
+    };
+
+    std::unique_ptr<ExprAst> parseUnaryExpression() {
+        const auto operatorType = currentToken;
+        readNextToken(true);
+        auto expr = parseExpr(true);
+        return std::make_unique<UnaryOpAst>(operatorType, toExpr(std::move(expr)));
+    }
+
+    std::unique_ptr<StatementAst> parseStatement() {
+        if (currentToken == TokenType::IfToken) {
+                return parseIfExpression();
+            }
+        if (currentToken == TokenType::ForLoopToken) {
+            return parseForLoopExpression();
+        }
+        return nullptr;
+    }
+
+    std::unique_ptr<BaseAstNode> parseExpr(const bool inExpression) {
         if (currentToken == TokenType::NumberToken) {
             return parseNumberExpr(inExpression);
-        } else if (currentToken == TokenType::IdentifierToken) {
+        }
+        if (currentToken == TokenType::IdentifierToken) {
             return parseIdentifier(inExpression);
-        } else if (currentToken == TokenType::IfToken) {
-            return parseIfExpression();
-        } else if (lastChar == '(') {
+        }
+        if (currentToken == TokenType::IncrementOperatorToken
+            || currentToken == TokenType::DecrementOperatorToken) {
+            return parseUnaryExpression();
+        }
+        if (lastChar == '(') {
             return parseParentheses();
         }
         return nullptr;
@@ -707,6 +813,8 @@ namespace {
             binOpPrec = 1;
         } else if (binOp == '/' || binOp == '*') {
             binOpPrec = 2;
+        } else if (binOp == '<' || binOp == '>') {
+            binOpPrec = 0;
         }
         return binOpPrec;
     }
@@ -727,20 +835,25 @@ namespace {
             }
 
             const char nextBinOp = static_cast<char>(lastChar);
-            const int nextBinOpPrec = getBinOpPrecedence(nextBinOp);
-            if (curBinOpPrec < nextBinOpPrec) {
-                if (rhs = parseBinOp(curBinOpPrec, std::move(rhs)); rhs == nullptr) {
+            if (const int nextBinOpPrec = getBinOpPrecedence(nextBinOp); curBinOpPrec < nextBinOpPrec) {
+                if (rhs = parseBinOp(curBinOpPrec, toExpr(std::move(rhs))); rhs == nullptr) {
                     return nullptr;
                 }
             }
 
-            lhs = std::make_unique<BinOpAst>(binOp, std::move(lhs), std::move(rhs));
+            lhs = std::make_unique<BinOpAst>(binOp, std::move(lhs), toExpr(std::move(rhs)));
         }
     }
 
-    std::unique_ptr<ExprAst> parseExpression() {
+    std::unique_ptr<BaseAstNode> parseAstNodeItem() {
         if (auto expr = parseExpr(true)) {
-            return parseBinOp(0, std::move(expr));
+            if (dynamic_cast<ExprAst *>(expr.get()) != nullptr) {
+                return parseBinOp(0, toExpr(std::move(expr)));
+            }
+            return expr;
+        }
+        if (auto statement = parseStatement()) {
+            return statement;
         }
         return nullptr;
     }
@@ -811,19 +924,19 @@ namespace {
             return nullptr;
         }
         readNextToken();
-        std::list<std::unique_ptr<ExprAst>> body = parseCurlyBrackets();
+        std::list<std::unique_ptr<BaseAstNode>> body = parseCurlyBrackets();
         return std::make_unique<FunctionAst>(std::move(proto), std::move(body));
     }
 
     std::unique_ptr<FunctionAst> parseTopLevelExpr(const char *const functionName) {
-        auto expr = parseExpression();
+        auto expr = parseAstNodeItem();
         if (expr == nullptr) {
             return nullptr;
         }
         print(expr.get());
         auto proto = std::make_unique<ProtoFunctionAst>(functionName,
                                                         std::vector<std::string>());
-        std::list<std::unique_ptr<ExprAst>> body;
+        std::list<std::unique_ptr<BaseAstNode>> body;
         body.push_back(std::move(expr));
         return std::make_unique<FunctionAst>(std::move(proto), std::move(body));
     }
@@ -880,7 +993,7 @@ namespace {
                 llvm::JITSymbolFlags()
         };
 
-        ExitOnError(llvmJit->getMainJITDylib().define(llvm::orc::absoluteSymbols(symbols)));
+        ExitOnError(llvmJit->getMainJITDylib().define(absoluteSymbols(symbols)));
     }
 
     void testParseBinExpression();
@@ -914,10 +1027,8 @@ int main() {
     defineEmbeddedFunctions();
 
     stream = std::make_unique<std::istringstream>(R"(
-    if (1) {
-        print(1);
-    } else {
-        print(0);
+    for (i=0; i < 10; ++i) {
+        print(i);
     }
 )");
 //    stream->basic_ios::rdbuf(std::cin.rdbuf());
@@ -997,11 +1108,14 @@ namespace {
             if (currentToken != TokenType::NumberToken) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto expr = parseExpression();
+            const auto expr = parseAstNodeItem();
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
+            if (binOp == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
             if (binOp->binOp != '-') {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -1019,7 +1133,7 @@ namespace {
         {
             stream = std::make_unique<std::istringstream>("(2*(1+2));");
             readNextToken();
-            const auto expr = parseExpression();
+            const auto expr = parseAstNodeItem();
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -1050,7 +1164,7 @@ namespace {
         {
             stream = std::make_unique<std::istringstream>("+1 *  (   2    +3.0);");
             readNextToken();
-            const auto expr = parseExpression();
+            const auto expr = parseAstNodeItem();
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -1083,7 +1197,7 @@ namespace {
         {
             stream = std::make_unique<std::istringstream>("v+1;");
             readNextToken();
-            const auto expr = parseExpression();
+            const auto expr = parseAstNodeItem();
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -1142,11 +1256,11 @@ namespace {
             }
         )");
         readNextToken();
-        const auto ifExpr = parseExpression();
-        if (ifExpr == nullptr) {
+        const auto ifStatement = parseAstNodeItem();
+        if (ifStatement == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const ifExprPtr = dynamic_cast<IfExpr *>(ifExpr.get());
+        const auto *const ifExprPtr = dynamic_cast<IfStatement *>(ifStatement.get());
         if (ifExprPtr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
