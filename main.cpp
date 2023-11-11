@@ -620,13 +620,11 @@ namespace {
         }
     }
 
-    std::unique_ptr<ExprAst> toExpr(std::unique_ptr<BaseAstNode> node) {
-        auto *const ptr = dynamic_cast<ExprAst *>(node.get());
-        if (ptr != nullptr) {
-            [[maybe_unused]] auto *const p = node.release();
-            return std::unique_ptr<ExprAst>(ptr);
+    std::tuple<std::unique_ptr<ExprAst>, std::unique_ptr<BaseAstNode>> toExpr(std::unique_ptr<BaseAstNode> node) {
+        if (dynamic_cast<ExprAst *>(node.get()) != nullptr) {
+            return {std::unique_ptr<ExprAst>(dynamic_cast<ExprAst *>(node.release())), nullptr};
         }
-        return nullptr;
+        return {nullptr, std::move(node)};
     }
 
     std::unique_ptr<ExprAst> parseNumberExpr(const bool inExpression = false) {
@@ -645,7 +643,7 @@ namespace {
             return nullptr;
         }
         readNextToken(); // eat )
-        return toExpr(std::move(expr));
+        return std::get<0>(toExpr(std::move(expr)));
     }
 
     std::unique_ptr<BaseAstNode> parseExpr(bool inExpression = false);
@@ -656,7 +654,7 @@ namespace {
         if (lastChar == '=') {
             readNextToken(); // eat =
             auto expr = parseAstNodeItem();
-            return std::make_unique<VariableDefinitionAst>(name, toExpr(std::move(expr)));
+            return std::make_unique<VariableDefinitionAst>(name, std::get<0>(toExpr(std::move(expr))));
         }
         if (lastChar != '(') {
             return std::make_unique<VariableAccessAst>(name);
@@ -666,7 +664,7 @@ namespace {
         readNextToken(); // eat '('
         while (true) {
             if (auto arg = parseExpr()) {
-                args.push_back(toExpr(std::move(arg)));
+                args.push_back(std::get<0>(toExpr(std::move(arg))));
                 if (lastChar == ',') {
                     readNextToken(); // eat ','
                 } else {
@@ -739,9 +737,9 @@ namespace {
         if (loopNext == nullptr) {
             return nullptr;
         }
-        auto forLoopExpr = std::make_unique<ForLoopStatement>(toExpr(std::move(loopInit)),
-                                                              toExpr(std::move(loopNext)),
-                                                              toExpr(std::move(loopFinish)));
+        auto forLoopExpr = std::make_unique<ForLoopStatement>(std::get<0>(toExpr(std::move(loopInit))),
+                                                              std::get<0>(toExpr(std::move(loopNext))),
+                                                              std::get<0>(toExpr(std::move(loopFinish))));
         return forLoopExpr;
     }
 
@@ -768,7 +766,7 @@ namespace {
         const auto operatorType = currentToken;
         readNextToken(true);
         auto expr = parseExpr(true);
-        return std::make_unique<UnaryOpAst>(operatorType, toExpr(std::move(expr)));
+        return std::make_unique<UnaryOpAst>(operatorType, std::get<0>(toExpr(std::move(expr))));
     }
 
     std::unique_ptr<StatementAst> parseStatement() {
@@ -827,21 +825,22 @@ namespace {
 
             const char nextBinOp = static_cast<char>(lastChar);
             if (const int nextBinOpPrec = getBinOpPrecedence(nextBinOp); curBinOpPrec < nextBinOpPrec) {
-                if (rhs = parseBinOp(curBinOpPrec, toExpr(std::move(rhs))); rhs == nullptr) {
+                if (rhs = parseBinOp(curBinOpPrec, std::get<0>(toExpr(std::move(rhs)))); rhs == nullptr) {
                     return nullptr;
                 }
             }
 
-            lhs = std::make_unique<BinOpAst>(binOp, std::move(lhs), toExpr(std::move(rhs)));
+            lhs = std::make_unique<BinOpAst>(binOp, std::move(lhs), std::get<0>(toExpr(std::move(rhs))));
         }
     }
 
     std::unique_ptr<BaseAstNode> parseAstNodeItem() {
-        if (auto expr = parseExpr(true)) {
-            if (dynamic_cast<ExprAst *>(expr.get()) != nullptr) {
-                return parseBinOp(0, toExpr(std::move(expr)));
+        if (auto node = parseExpr(true)) {
+            auto [expr, srcNode] = toExpr(std::move(node));
+            if (expr) {
+                return parseBinOp(0, std::move(expr));
             }
-            return expr;
+            return std::move(srcNode);
         }
         if (auto statement = parseStatement()) {
             return statement;
