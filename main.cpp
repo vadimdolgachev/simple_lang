@@ -345,7 +345,7 @@ namespace {
             return nullptr;
         }
 
-        mutable std::unique_ptr<ProtoFunctionAst> proto;
+        const std::unique_ptr<ProtoFunctionAst> proto;
         const std::list<std::unique_ptr<BaseAstNode>> body;
     };
 
