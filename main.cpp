@@ -292,9 +292,9 @@ namespace {
                     return value;
                 }
             } else {
-                [[maybe_unused]] auto *val = (*it)->codegen();
+                auto *ir = (*it)->codegen();
                 if (auto *const var = dynamic_cast<VariableDefinitionAst *>(it->get()); var != nullptr) {
-                    namedValues[var->name] = val;
+                    namedValues[var->name] = ir;
                 }
             }
         }
@@ -431,7 +431,7 @@ namespace {
             auto *const function = insertBlock->getParent();
             auto *thenBasicBlock = llvm::BasicBlock::Create(*llvmContext, "thenBasicBlock", function);
             auto *elseBasicBlock = llvm::BasicBlock::Create(*llvmContext, "elseBasicBlock");
-            auto *const mergeBasicBlock = llvm::BasicBlock::Create(*llvmContext, "mergeBasicBlock");
+            auto *const finishBasicBlock = llvm::BasicBlock::Create(*llvmContext, "finishBasicBlock");
 
             // if condition
             llvmIRBuilder->CreateCondBr(condValue, thenBasicBlock, elseBasicBlock);
@@ -442,19 +442,19 @@ namespace {
             if (thenValue == nullptr) {
                 return nullptr;
             }
-            llvmIRBuilder->CreateBr(mergeBasicBlock);
+            llvmIRBuilder->CreateBr(finishBasicBlock);
             thenBasicBlock = llvmIRBuilder->GetInsertBlock();
 
             // else base block
             function->insert(function->end(), elseBasicBlock);
             llvmIRBuilder->SetInsertPoint(elseBasicBlock);
             auto *const elseValue = elseBranch.has_value() ? codegenExpressions(elseBranch.value()) : nullptr;
-            llvmIRBuilder->CreateBr(mergeBasicBlock);
+            llvmIRBuilder->CreateBr(finishBasicBlock);
             elseBasicBlock = llvmIRBuilder->GetInsertBlock();
 
             // merge base block
-            function->insert(function->end(), mergeBasicBlock);
-            llvmIRBuilder->SetInsertPoint(mergeBasicBlock);
+            function->insert(function->end(), finishBasicBlock);
+            llvmIRBuilder->SetInsertPoint(finishBasicBlock);
 
             // phi node
             auto *const phiNode =
@@ -859,7 +859,7 @@ namespace {
             print(llvmIR);
         }
         std::list<BinOpAst *> values;
-        auto *ptr = dynamic_cast<const BinOpAst *>(nodeAst);
+        const auto *ptr = dynamic_cast<const BinOpAst *>(nodeAst);
         do {
             if (!values.empty()) {
                 ptr = values.front();
@@ -891,7 +891,7 @@ namespace {
                 break;
             }
             if (auto arg = parseIdentifier()) {
-                const auto var = dynamic_cast<const VariableAccessAst *>(arg.get());
+                const auto *const var = dynamic_cast<const VariableAccessAst *>(arg.get());
                 args.push_back(var->name);
                 if (lastChar == ',') {
                     readNextToken(); // eat next arg
@@ -1020,7 +1020,7 @@ int main() {
     for (i=0; i < 10; ++i) {
         print(i);
     }
-)");
+    )");
     //    stream->basic_ios::rdbuf(std::cin.rdbuf());
     mainHandler();
     return 0;
