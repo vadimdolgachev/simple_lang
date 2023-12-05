@@ -1,4 +1,3 @@
-#include <fstream>
 #include <iostream>
 #include <list>
 #include <memory>
@@ -111,7 +110,7 @@ namespace {
     class NumberAst final : public ExprAst {
     public:
         explicit NumberAst(const double v) :
-            value(v) {
+                value(v) {
         }
 
         [[nodiscard]] std::string toString() const override {
@@ -180,17 +179,17 @@ namespace {
 
             switch (binOp) {
             case '+':
-                return llvmIRBuilder->CreateFAdd(lhsValue, rhsValue, "addtmp");
+                return llvmIRBuilder->CreateFAdd(lhsValue, rhsValue, "add_tmp");
             case '-':
-                return llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "subtmp");
+                return llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "sub_tmp");
             case '*':
-                return llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "multmp");
+                return llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "mul_tmp");
             case '/':
-                return llvmIRBuilder->CreateFDiv(lhsValue, rhsValue, "divtmp");
+                return llvmIRBuilder->CreateFDiv(lhsValue, rhsValue, "div_tmp");
             case '<':
-                lhsValue = llvmIRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmptmp");
+                lhsValue = llvmIRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmp_tmp");
             // Convert bool 0/1 to double 0.0 or 1.0
-                return llvmIRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*llvmContext), "booltmp");
+                return llvmIRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*llvmContext), "bool_tmp");
             }
             return nullptr;
         }
@@ -473,12 +472,14 @@ namespace {
 
     class ForLoopStatement final : public StatementAst {
     public:
-        ForLoopStatement(std::unique_ptr<ExprAst> initExpr,
+        ForLoopStatement(std::unique_ptr<StatementAst> initExpr,
                          std::unique_ptr<ExprAst> nextExpr,
-                         std::unique_ptr<ExprAst> endExpr) :
-            initExpr(std::move(initExpr)),
-            nextExpr(std::move(nextExpr)),
-            endExpr(std::move(endExpr)) {
+                         std::unique_ptr<ExprAst> endExpr,
+                         std::list<std::unique_ptr<BaseAstNode>> body) :
+                init(std::move(initExpr)),
+                next(std::move(nextExpr)),
+                conditional(std::move(endExpr)),
+                body(std::move(body)) {
         }
 
         [[nodiscard]] std::string toString() const override {
@@ -486,12 +487,74 @@ namespace {
         }
 
         [[nodiscard]] llvm::Value *codegen() const override {
-            return nullptr;
+            assert(llvmIRBuilder->GetInsertBlock());
+            auto *const currFunction = llvmIRBuilder->GetInsertBlock()->getParent();
+            auto *const beforeLoopBB = llvmIRBuilder->GetInsertBlock();
+            auto *const loopBB = llvm::BasicBlock::Create(*llvmContext,
+                                                          "for_loop",
+                                                          currFunction);
+            llvmIRBuilder->CreateBr(loopBB);
+            llvmIRBuilder->SetInsertPoint(loopBB);
+
+            const auto *const initVarAst = dynamic_cast<const VariableDefinitionAst *>(init.get());
+            if (initVarAst == nullptr) {
+                return nullptr;
+            }
+            auto *const loopVarValue = llvmIRBuilder->CreatePHI(llvm::Type::getDoubleTy(*llvmContext),
+                                                                2,
+                                                                initVarAst->name);
+            auto *const OldVar = namedValues[initVarAst->name];
+            namedValues[initVarAst->name] = loopVarValue;
+            auto *const initValue = initVarAst->rvalue->codegen();
+            if (initValue == nullptr) {
+                return nullptr;
+            }
+            loopVarValue->addIncoming(initValue, beforeLoopBB);
+            if (codegenExpressions(body) == nullptr) {
+                return nullptr;
+            }
+
+            llvm::Value *nextValue;
+            if (next) {
+                nextValue = next->codegen();
+                if (nextValue == nullptr) {
+                    return nullptr;
+                }
+            } else {
+                nextValue = llvmIRBuilder->CreateFAdd(loopVarValue,
+                                                      llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)),
+                                                      "next_var");
+            }
+
+            auto *condExprValue = conditional->codegen();
+            if (condExprValue == nullptr) {
+                return nullptr;
+            }
+            condExprValue = llvmIRBuilder->CreateFCmpONE(
+                    condExprValue, llvm::ConstantFP::get(*llvmContext, llvm::APFloat(0.0)),
+                    "loop_cond");
+
+            auto *const loopEndBB = llvmIRBuilder->GetInsertBlock();
+            loopVarValue->addIncoming(nextValue, loopEndBB);
+
+            auto *const afterLoopBB = llvm::BasicBlock::Create(*llvmContext,
+                                                                     "after_loop",
+                                                                     currFunction);
+            llvmIRBuilder->CreateCondBr(condExprValue, loopBB, afterLoopBB);
+            llvmIRBuilder->SetInsertPoint(afterLoopBB);
+
+            if (OldVar != nullptr) {
+                namedValues[initVarAst->name] = OldVar;
+            } else {
+                namedValues.erase(initVarAst->name);
+            }
+            return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*llvmContext));
         }
 
-        const std::unique_ptr<ExprAst> initExpr;
-        const std::unique_ptr<ExprAst> nextExpr;
-        const std::unique_ptr<ExprAst> endExpr;
+        const std::unique_ptr<BaseAstNode> init;
+        const std::unique_ptr<ExprAst> next;
+        const std::unique_ptr<ExprAst> conditional;
+        const std::list<std::unique_ptr<BaseAstNode>> body;
     };
 
     enum class TokenType : std::uint8_t {
@@ -627,6 +690,14 @@ namespace {
         return {nullptr, std::move(node)};
     }
 
+    std::tuple<std::unique_ptr<StatementAst>, std::unique_ptr<BaseAstNode>>
+    toStatement(std::unique_ptr<BaseAstNode> node) {
+        if (dynamic_cast<StatementAst *>(node.get()) != nullptr) {
+            return {std::unique_ptr<StatementAst>(dynamic_cast<StatementAst *>(node.release())), nullptr};
+        }
+        return {nullptr, std::move(node)};
+    }
+
     std::unique_ptr<ExprAst> parseNumberExpr(const bool inExpression = false) {
         auto number = std::make_unique<NumberAst>(strtod(numberValue.c_str(), nullptr));
         readNextToken(inExpression);
@@ -737,9 +808,17 @@ namespace {
         if (loopNext == nullptr) {
             return nullptr;
         }
-        auto forLoopExpr = std::make_unique<ForLoopStatement>(std::get<0>(toExpr(std::move(loopInit))),
+        readNextToken();
+        if (lastChar != '{') {
+            return nullptr;
+        }
+        readNextToken();
+        auto loopBody = parseCurlyBrackets();
+
+        auto forLoopExpr = std::make_unique<ForLoopStatement>(std::get<0>(toStatement(std::move(loopInit))),
                                                               std::get<0>(toExpr(std::move(loopNext))),
-                                                              std::get<0>(toExpr(std::move(loopFinish))));
+                                                              std::get<0>(toExpr(std::move(loopFinish))),
+                                                              std::move(loopBody));
         return forLoopExpr;
     }
 
@@ -755,6 +834,11 @@ namespace {
         }
 
         [[nodiscard]] llvm::Value *codegen() const override {
+            if (operatorType == TokenType::IncrementOperatorToken) {
+                return llvmIRBuilder->CreateFAdd(expr->codegen(),
+                                                 llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)),
+                                                 "increment");
+            }
             return nullptr;
         }
 
@@ -923,7 +1007,6 @@ namespace {
         if (expr == nullptr) {
             return nullptr;
         }
-        print(expr.get());
         auto proto = std::make_unique<ProtoFunctionAst>(functionName,
                                                         std::vector<std::string>());
         std::list<std::unique_ptr<BaseAstNode>> body;
@@ -1007,12 +1090,12 @@ int main() {
 
     initLlvmModules();
 
-    testParseBinExpression();
-    testParseNumber();
-    testFunctionDefinition();
-    testIdentifier();
-    testVarDefinition();
-    testIfExpression();
+//    testParseBinExpression();
+//    testParseNumber();
+//    testFunctionDefinition();
+//    testIdentifier();
+//    testVarDefinition();
+//    testIfExpression();
 
     defineEmbeddedFunctions();
 
