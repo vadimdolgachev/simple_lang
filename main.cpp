@@ -82,7 +82,7 @@ namespace {
             return llvm::OuterAnalysisManagerProxy<llvm::ModuleAnalysisManager, llvm::Function>(*moduleAnalysisManager);
         });
         functionAnalysisManager->registerPass(
-            [&] { return llvm::PassInstrumentationAnalysis(passInstsCallbacks.get()); });
+                [&] { return llvm::PassInstrumentationAnalysis(passInstsCallbacks.get()); });
         functionAnalysisManager->registerPass([&] { return llvm::TargetIRAnalysis(); });
         functionAnalysisManager->registerPass([&] { return llvm::TargetLibraryAnalysis(); });
         moduleAnalysisManager->registerPass([&] { return llvm::ProfileSummaryAnalysis(); });
@@ -146,21 +146,21 @@ namespace {
         BinOpAst(const char binOp,
                  std::unique_ptr<ExprAst> lhs,
                  std::unique_ptr<ExprAst> rhs) :
-            binOp(binOp),
-            lhs(std::move(lhs)),
-            rhs(std::move(rhs)) {
+                binOp(binOp),
+                lhs(std::move(lhs)),
+                rhs(std::move(rhs)) {
         }
 
         [[nodiscard]] std::string toString() const override {
             const bool isLhsBinOp = dynamic_cast<BinOpAst *>(lhs.get()) != nullptr;
             const bool isRhsBinOp = dynamic_cast<BinOpAst *>(rhs.get()) != nullptr;
             return std::string("op=").append(1, binOp).append(", lhs=")
-                                     .append(isLhsBinOp ? "(" : "")
-                                     .append(lhs->toString())
-                                     .append(isLhsBinOp ? ")" : "")
-                                     .append(", rhs=")
-                                     .append(isRhsBinOp ? "(" : "")
-                                     .append(rhs->toString()).append(isRhsBinOp ? ")" : "");
+                    .append(isLhsBinOp ? "(" : "")
+                    .append(lhs->toString())
+                    .append(isLhsBinOp ? ")" : "")
+                    .append(", rhs=")
+                    .append(isRhsBinOp ? "(" : "")
+                    .append(rhs->toString()).append(isRhsBinOp ? ")" : "");
         }
 
         [[nodiscard]] llvm::Value *codegen() const override {
@@ -178,18 +178,18 @@ namespace {
             }
 
             switch (binOp) {
-            case '+':
-                return llvmIRBuilder->CreateFAdd(lhsValue, rhsValue, "add_tmp");
-            case '-':
-                return llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "sub_tmp");
-            case '*':
-                return llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "mul_tmp");
-            case '/':
-                return llvmIRBuilder->CreateFDiv(lhsValue, rhsValue, "div_tmp");
-            case '<':
-                lhsValue = llvmIRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmp_tmp");
-            // Convert bool 0/1 to double 0.0 or 1.0
-                return llvmIRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*llvmContext), "bool_tmp");
+                case '+':
+                    return llvmIRBuilder->CreateFAdd(lhsValue, rhsValue, "add_tmp");
+                case '-':
+                    return llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "sub_tmp");
+                case '*':
+                    return llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "mul_tmp");
+                case '/':
+                    return llvmIRBuilder->CreateFDiv(lhsValue, rhsValue, "div_tmp");
+                case '<':
+                    lhsValue = llvmIRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmp_tmp");
+                    // Convert bool 0/1 to double 0.0 or 1.0
+                    return llvmIRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*llvmContext), "bool_tmp");
             }
             return nullptr;
         }
@@ -203,8 +203,8 @@ namespace {
     public:
         VariableDefinitionAst(std::string name,
                               std::unique_ptr<ExprAst> rvalue) :
-            name(std::move(name)),
-            rvalue(std::move(rvalue)) {
+                name(std::move(name)),
+                rvalue(std::move(rvalue)) {
         }
 
         [[nodiscard]] std::string toString() const override {
@@ -215,12 +215,12 @@ namespace {
             assert(llvmContext != nullptr);
             if (llvmIRBuilder->GetInsertBlock() == nullptr) {
                 auto *const variable = new llvm::GlobalVariable(
-                    *llvmModule,
-                    llvmIRBuilder->getDoubleTy(),
-                    false,
-                    llvm::GlobalValue::CommonLinkage,
-                    nullptr,
-                    name
+                        *llvmModule,
+                        llvmIRBuilder->getDoubleTy(),
+                        false,
+                        llvm::GlobalValue::CommonLinkage,
+                        nullptr,
+                        name
                 );
                 variable->setInitializer(reinterpret_cast<llvm::ConstantFP *>(rvalue->codegen()));
                 return variable;
@@ -237,8 +237,8 @@ namespace {
 
     struct ProtoFunctionAst final : public StatementAst {
         ProtoFunctionAst(std::string name, std::vector<std::string> args) :
-            name(std::move(name)),
-            args(std::move(args)) {
+                name(std::move(name)),
+                args(std::move(args)) {
         }
 
         [[nodiscard]] std::string toString() const override {
@@ -254,7 +254,7 @@ namespace {
                                                           llvm::Function::ExternalLinkage,
                                                           name,
                                                           llvmModule.get());
-            for (auto it = function->arg_begin(); it != function->arg_end(); ++it) {
+            for (auto *it = function->arg_begin(); it != function->arg_end(); ++it) {
                 const auto index = std::distance(function->arg_begin(), it);
                 it->setName(args[index]);
             }
@@ -285,16 +285,12 @@ namespace {
 
     llvm::Value *codegenExpressions(const std::list<std::unique_ptr<BaseAstNode>> &expressions) {
         for (auto it = expressions.begin(); it != expressions.end(); ++it) {
-            if (*it == expressions.back()) {
-                auto *const value = (*it)->codegen();
-                if (value) {
-                    return value;
-                }
-            } else {
-                auto *ir = (*it)->codegen();
-                if (auto *const var = dynamic_cast<VariableDefinitionAst *>(it->get()); var != nullptr) {
-                    namedValues[var->name] = ir;
-                }
+            auto *const ir = (*it)->codegen();
+            if (auto *const var = dynamic_cast<VariableDefinitionAst *>(it->get()); var != nullptr) {
+                namedValues[var->name] = ir;
+            }
+            if (*it == expressions.back() && ir != nullptr) {
+                return ir;
             }
         }
         return nullptr;
@@ -303,8 +299,8 @@ namespace {
     struct FunctionAst final : public StatementAst {
         FunctionAst(std::unique_ptr<ProtoFunctionAst> proto,
                     std::list<std::unique_ptr<BaseAstNode>> body) :
-            proto(std::move(proto)),
-            body(std::move(body)) {
+                proto(std::move(proto)),
+                body(std::move(body)) {
         }
 
         [[nodiscard]] std::string toString() const override {
@@ -351,8 +347,8 @@ namespace {
     class CallFunctionExpr final : public ExprAst {
     public:
         CallFunctionExpr(std::string callee, std::vector<std::unique_ptr<ExprAst>> args) :
-            callee(std::move(callee)),
-            args(std::move(args)) {
+                callee(std::move(callee)),
+                args(std::move(args)) {
         }
 
         [[nodiscard]] std::string toString() const override {
@@ -405,9 +401,9 @@ namespace {
         IfStatement(std::unique_ptr<ExprAst> cond,
                     std::list<std::unique_ptr<BaseAstNode>> thenBranch,
                     std::optional<std::list<std::unique_ptr<BaseAstNode>>> elseBranch) :
-            cond(std::move(cond)),
-            thenBranch(std::move(thenBranch)),
-            elseBranch(std::move(elseBranch)) {
+                cond(std::move(cond)),
+                thenBranch(std::move(thenBranch)),
+                elseBranch(std::move(elseBranch)) {
         }
 
         [[nodiscard]] std::string toString() const override {
@@ -457,11 +453,11 @@ namespace {
 
             // phi node
             auto *const phiNode =
-                llvmIRBuilder->CreatePHI(llvm::Type::getDoubleTy(*llvmContext), 2, "if_tmp");
+                    llvmIRBuilder->CreatePHI(llvm::Type::getDoubleTy(*llvmContext), 2, "if_tmp");
             phiNode->addIncoming(thenValue, thenBasicBlock);
             phiNode->addIncoming(
-                elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(*llvmContext)),
-                elseBasicBlock);
+                    elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(*llvmContext)),
+                    elseBasicBlock);
             return phiNode;
         }
 
@@ -538,8 +534,8 @@ namespace {
             loopVarValue->addIncoming(nextValue, loopEndBB);
 
             auto *const afterLoopBB = llvm::BasicBlock::Create(*llvmContext,
-                                                                     "after_loop",
-                                                                     currFunction);
+                                                               "after_loop",
+                                                               currFunction);
             llvmIRBuilder->CreateCondBr(condExprValue, loopBB, afterLoopBB);
             llvmIRBuilder->SetInsertPoint(afterLoopBB);
 
@@ -734,7 +730,7 @@ namespace {
         std::vector<std::unique_ptr<ExprAst>> args;
         readNextToken(); // eat '('
         while (true) {
-            if (auto arg = parseExpr()) {
+            if (auto arg = parseAstNodeItem()) {
                 args.push_back(std::get<0>(toExpr(std::move(arg))));
                 if (lastChar == ',') {
                     readNextToken(); // eat ','
@@ -825,8 +821,8 @@ namespace {
     class UnaryOpAst final : public ExprAst {
     public:
         UnaryOpAst(const TokenType operatorType, std::unique_ptr<ExprAst> expr) :
-            operatorType(operatorType),
-            expr(std::move(expr)) {
+                operatorType(operatorType),
+                expr(std::move(expr)) {
         }
 
         [[nodiscard]] std::string toString() const override {
@@ -1003,14 +999,16 @@ namespace {
     }
 
     std::unique_ptr<FunctionAst> parseTopLevelExpr(const char *const functionName) {
-        auto expr = parseAstNodeItem();
-        if (expr == nullptr) {
-            return nullptr;
+        std::list<std::unique_ptr<BaseAstNode>> body;
+        while (auto expr = parseAstNodeItem()) {
+            if (expr == nullptr) {
+                break;
+            }
+            body.push_back(std::move(expr));
+            readNextToken();
         }
         auto proto = std::make_unique<ProtoFunctionAst>(functionName,
                                                         std::vector<std::string>());
-        std::list<std::unique_ptr<BaseAstNode>> body;
-        body.push_back(std::move(expr));
         return std::make_unique<FunctionAst>(std::move(proto), std::move(body));
     }
 
@@ -1028,7 +1026,7 @@ namespace {
                     print(definition.get());
                 }
                 ExitOnError(llvmJit->addModule(
-                    llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
+                        llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
                 initLlvmModules();
                 readNextToken();
             } else {
@@ -1062,8 +1060,8 @@ namespace {
         auto printProto = std::make_unique<ProtoFunctionAst>(name, std::vector<std::string>{"param"});
         functionProtos[name] = std::move(printProto);
         symbols[mangle(name)] = {
-            llvm::orc::ExecutorAddr::fromPtr<double(double)>(&print),
-            llvm::JITSymbolFlags()
+                llvm::orc::ExecutorAddr::fromPtr<double(double)>(&print),
+                llvm::JITSymbolFlags()
         };
 
         ExitOnError(llvmJit->getMainJITDylib().define(absoluteSymbols(symbols)));
@@ -1090,12 +1088,12 @@ int main() {
 
     initLlvmModules();
 
-//    testParseBinExpression();
-//    testParseNumber();
-//    testFunctionDefinition();
-//    testIdentifier();
-//    testVarDefinition();
-//    testIfExpression();
+    testParseBinExpression();
+    testParseNumber();
+    testFunctionDefinition();
+    testIdentifier();
+    testVarDefinition();
+    testIfExpression();
 
     defineEmbeddedFunctions();
 
@@ -1154,7 +1152,7 @@ namespace {
         functionProtos.clear();
         namedValues.clear();
         ExitOnError(llvmJit->addModule(
-            llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
+                llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
         initLlvmModules();
     }
 
@@ -1356,7 +1354,7 @@ namespace {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             const auto *const elseFuncAstPtr = dynamic_cast<CallFunctionExpr *>(
-                ifExprPtr->elseBranch.value().back().get());
+                    ifExprPtr->elseBranch.value().back().get());
             if (elseFuncAstPtr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
