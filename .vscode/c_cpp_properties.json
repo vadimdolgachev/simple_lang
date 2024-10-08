@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "compilerPath": "${default}",
+            "includePath": [
+               "${default}",
+               "/usr/include/**"
+            ],
+            "intelliSenseMode": "${default}",
+            "cStandard": "${default}",
+            "cppStandard": "${default}",
+            "configurationProvider": "${default}",
+            "compileCommands": "${default}",
+            "mergeConfigurations": true,
+            
+        }
+    ],
+    "version": 4,
+    "enableConfigurationSquiggles": true
+}

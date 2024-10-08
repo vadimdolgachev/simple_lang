@@ -19,7 +19,32 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_executable(simple_ast_parser
         main.cpp
-        KaleidoscopeJIT.h)
+        KaleidoscopeJIT.h
+        ast/BaseNode.h
+        ast/NumberNode.h
+        ast/NumberNode.cpp
+        ast/VariableAccessNode.h
+        ast/VariableAccessNode.cpp
+        ast/BinOpNode.h
+        ast/BinOpNode.cpp
+        ir/IRCodegen.cpp
+        ir/IRCodegen.h
+        ast/FunctionNode.h
+        ast/FunctionNode.cpp
+        ast/ProtoFunctionStatement.h
+        ast/ProtoFunctionStatement.cpp
+        ast/VariableDefinitionStatement.h
+        ast/VariableDefinitionStatement.cpp
+        ast/CallFunctionNode.h
+        ast/CallFunctionNode.cpp
+        ast/IfStatementStatement.h
+        ast/IfStatementStatement.cpp
+        ast/ForLoopNode.h
+        ast/ForLoopNode.cpp
+        ast/UnaryOpNode.h
+        ast/UnaryOpNode.cpp)
+
+target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_compile_options(simple_ast_parser PRIVATE
         -Wall

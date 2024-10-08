@@ -32,11 +32,22 @@
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 
 #include "KaleidoscopeJIT.h"
+#include "ast/BinOpNode.h"
+#include "ast/CallFunctionNode.h"
+#include "ast/ForLoopNode.h"
+#include "ast/FunctionNode.h"
+#include "ast/IfStatementStatement.h"
+#include "ast/NumberNode.h"
+#include "ast/ProtoFunctionStatement.h"
+#include "ast/UnaryOpNode.h"
+#include "ast/VariableAccessNode.h"
+#include "ast/VariableDefinitionStatement.h"
+#include "ir/IRCodegen.h"
 
 namespace {
     std::unique_ptr<llvm::LLVMContext> llvmContext;
     std::unique_ptr<llvm::Module> llvmModule;
-    std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
+    std::unique_ptr<llvm::IRBuilder<> > llvmIRBuilder;
     std::unique_ptr<llvm::orc::KaleidoscopeJIT> llvmJit;
     std::unordered_map<std::string, llvm::Value *> namedValues;
     std::unique_ptr<llvm::FunctionPassManager> functionPassManager;
@@ -51,7 +62,7 @@ namespace {
         llvmModule = std::make_unique<llvm::Module>("my cool jit", *llvmContext);
         llvmModule->setDataLayout(llvmJit->getDataLayout());
 
-        llvmIRBuilder = std::make_unique<llvm::IRBuilder<>>(*llvmContext);
+        llvmIRBuilder = std::make_unique<llvm::IRBuilder<> >(*llvmContext);
 
         functionPassManager = std::make_unique<llvm::FunctionPassManager>();
         functionAnalysisManager = std::make_unique<llvm::FunctionAnalysisManager>();
@@ -82,476 +93,13 @@ namespace {
             return llvm::OuterAnalysisManagerProxy<llvm::ModuleAnalysisManager, llvm::Function>(*moduleAnalysisManager);
         });
         functionAnalysisManager->registerPass(
-                [&] { return llvm::PassInstrumentationAnalysis(passInstsCallbacks.get()); });
+            [&] { return llvm::PassInstrumentationAnalysis(passInstsCallbacks.get()); });
         functionAnalysisManager->registerPass([&] { return llvm::TargetIRAnalysis(); });
         functionAnalysisManager->registerPass([&] { return llvm::TargetLibraryAnalysis(); });
         moduleAnalysisManager->registerPass([&] { return llvm::ProfileSummaryAnalysis(); });
     }
 
-    class BaseAstNode {
-    public:
-        virtual ~BaseAstNode() = default;
-
-        [[nodiscard]] virtual llvm::Value *codegen() const = 0;
-
-        [[nodiscard]] virtual std::string toString() const = 0;
-    };
-
-    class StatementAst : public BaseAstNode {
-    public:
-        ~StatementAst() override = default;
-    };
-
-    class ExprAst : public BaseAstNode {
-    public:
-        ~ExprAst() override = default;
-    };
-
-    class NumberAst final : public ExprAst {
-    public:
-        explicit NumberAst(const double v) :
-                value(v) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            return "number=" + std::to_string(value);
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            assert(llvmContext != nullptr);
-            return llvm::ConstantFP::get(*llvmContext, llvm::APFloat(value));
-        }
-
-        double value;
-    };
-
-    class VariableAccessAst final : public ExprAst {
-    public:
-        explicit VariableAccessAst(std::string name) : name(std::move(name)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            return "var=" + name;
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            return namedValues[name];
-        }
-
-        const std::string name;
-    };
-
-    class BinOpAst final : public ExprAst {
-    public:
-        BinOpAst(const char binOp,
-                 std::unique_ptr<ExprAst> lhs,
-                 std::unique_ptr<ExprAst> rhs) :
-                binOp(binOp),
-                lhs(std::move(lhs)),
-                rhs(std::move(rhs)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            const bool isLhsBinOp = dynamic_cast<BinOpAst *>(lhs.get()) != nullptr;
-            const bool isRhsBinOp = dynamic_cast<BinOpAst *>(rhs.get()) != nullptr;
-            return std::string("op=").append(1, binOp).append(", lhs=")
-                    .append(isLhsBinOp ? "(" : "")
-                    .append(lhs->toString())
-                    .append(isLhsBinOp ? ")" : "")
-                    .append(", rhs=")
-                    .append(isRhsBinOp ? "(" : "")
-                    .append(rhs->toString()).append(isRhsBinOp ? ")" : "");
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            assert(llvmContext != nullptr);
-            auto *lhsValue = lhs->codegen();
-            auto *rhsValue = rhs->codegen();
-            if (lhsValue == nullptr || rhsValue == nullptr) {
-                return nullptr;
-            }
-            if (lhsValue->getType()->isPointerTy()) {
-                lhsValue = llvmIRBuilder->CreateLoad(llvm::Type::getDoubleTy(*llvmContext), lhsValue);
-            }
-            if (rhsValue->getType()->isPointerTy()) {
-                rhsValue = llvmIRBuilder->CreateLoad(llvm::Type::getDoubleTy(*llvmContext), rhsValue);
-            }
-
-            switch (binOp) {
-                case '+':
-                    return llvmIRBuilder->CreateFAdd(lhsValue, rhsValue, "add_tmp");
-                case '-':
-                    return llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "sub_tmp");
-                case '*':
-                    return llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "mul_tmp");
-                case '/':
-                    return llvmIRBuilder->CreateFDiv(lhsValue, rhsValue, "div_tmp");
-                case '<':
-                    lhsValue = llvmIRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmp_tmp");
-                    // Convert bool 0/1 to double 0.0 or 1.0
-                    return llvmIRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*llvmContext), "bool_tmp");
-            }
-            return nullptr;
-        }
-
-        const char binOp;
-        const std::unique_ptr<ExprAst> lhs;
-        const std::unique_ptr<ExprAst> rhs;
-    };
-
-    class VariableDefinitionAst final : public StatementAst {
-    public:
-        VariableDefinitionAst(std::string name,
-                              std::unique_ptr<ExprAst> rvalue) :
-                name(std::move(name)),
-                rvalue(std::move(rvalue)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            return "var definition name=" + name + ", rvalue=" + rvalue->toString();
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            assert(llvmContext != nullptr);
-            if (llvmIRBuilder->GetInsertBlock() == nullptr) {
-                auto *const variable = new llvm::GlobalVariable(
-                        *llvmModule,
-                        llvmIRBuilder->getDoubleTy(),
-                        false,
-                        llvm::GlobalValue::CommonLinkage,
-                        nullptr,
-                        name
-                );
-                variable->setInitializer(reinterpret_cast<llvm::ConstantFP *>(rvalue->codegen()));
-                return variable;
-            }
-            auto *const variable = new llvm::AllocaInst(llvmIRBuilder->getDoubleTy(), 0, name,
-                                                        llvmIRBuilder->GetInsertBlock());
-            llvmIRBuilder->CreateStore(rvalue->codegen(), variable);
-            return variable;
-        }
-
-        const std::string name;
-        const std::unique_ptr<ExprAst> rvalue;
-    };
-
-    struct ProtoFunctionAst final : public StatementAst {
-        ProtoFunctionAst(std::string name, std::vector<std::string> args) :
-                name(std::move(name)),
-                args(std::move(args)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            return "proto func:" + name;
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            assert(llvmContext != nullptr);
-            std::vector<llvm::Type *> functionParams(args.size(), llvm::Type::getDoubleTy(*llvmContext));
-            auto *const functionType = llvm::FunctionType::get(llvm::Type::getDoubleTy(*llvmContext), functionParams,
-                                                               false);
-            auto *const function = llvm::Function::Create(functionType,
-                                                          llvm::Function::ExternalLinkage,
-                                                          name,
-                                                          llvmModule.get());
-            for (auto *it = function->arg_begin(); it != function->arg_end(); ++it) {
-                const auto index = std::distance(function->arg_begin(), it);
-                it->setName(args[index]);
-            }
-            return function;
-        }
-
-        std::string name;
-        std::vector<std::string> args;
-    };
-
-    std::unordered_map<std::string, std::unique_ptr<ProtoFunctionAst>> functionProtos;
-
-    llvm::Function *getFunction(const std::string &Name) {
-        // First, see if the function has already been added to the current module.
-        if (auto *const function = llvmModule->getFunction(Name)) {
-            return function;
-        }
-
-        // If not, check whether we can codegen the declaration from some existing
-        // prototype.
-        if (auto iterator = functionProtos.find(Name); iterator != functionProtos.end()) {
-            return reinterpret_cast<llvm::Function *>(iterator->second->codegen());
-        }
-
-        // If no existing prototype exists, return null.
-        return nullptr;
-    }
-
-    llvm::Value *codegenExpressions(const std::list<std::unique_ptr<BaseAstNode>> &expressions) {
-        for (auto it = expressions.begin(); it != expressions.end(); ++it) {
-            auto *const ir = (*it)->codegen();
-            if (auto *const var = dynamic_cast<VariableDefinitionAst *>(it->get()); var != nullptr) {
-                namedValues[var->name] = ir;
-            }
-            if (*it == expressions.back() && ir != nullptr) {
-                return ir;
-            }
-        }
-        return nullptr;
-    }
-
-    struct FunctionAst final : public StatementAst {
-        FunctionAst(std::unique_ptr<ProtoFunctionAst> proto,
-                    std::list<std::unique_ptr<BaseAstNode>> body) :
-                proto(std::move(proto)),
-                body(std::move(body)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            return proto->toString();
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            assert(llvmContext != nullptr);
-            // Transfer ownership of the prototype to the functionProtos map, but keep a
-            // reference to it for use below.
-            const auto &p = *proto;
-            functionProtos[p.name] = std::make_unique<ProtoFunctionAst>(proto->name,
-                                                                        proto->args);
-            auto *const function = getFunction(p.name);
-            if (function == nullptr) {
-                return nullptr;
-            }
-
-            // Create a new basic block to start insertion into.
-            auto *const basicBlock = llvm::BasicBlock::Create(*llvmContext, "entry", function);
-            llvmIRBuilder->SetInsertPoint(basicBlock);
-
-            // Record the function arguments in the namedValues map.
-            namedValues.clear();
-            for (auto &arg: function->args()) {
-                namedValues[std::string(arg.getName())] = &arg;
-            }
-
-            if (auto *const returnValue = ::codegenExpressions(body)) {
-                llvmIRBuilder->CreateRet(returnValue);
-                verifyFunction(*function);
-                return function;
-            }
-
-            // Error reading body, remove function.
-            function->eraseFromParent();
-            return nullptr;
-        }
-
-        const std::unique_ptr<ProtoFunctionAst> proto;
-        const std::list<std::unique_ptr<BaseAstNode>> body;
-    };
-
-    class CallFunctionExpr final : public ExprAst {
-    public:
-        CallFunctionExpr(std::string callee, std::vector<std::unique_ptr<ExprAst>> args) :
-                callee(std::move(callee)),
-                args(std::move(args)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            std::stringstream ss;
-            ss << "call func: " << callee << "(";
-            for (const auto &arg: args) {
-                const bool isBinOp = dynamic_cast<BinOpAst *>(arg.get()) != nullptr;
-                if (isBinOp) {
-                    ss << "(";
-                }
-                ss << arg->toString() << ",";
-                if (isBinOp) {
-                    ss << ")";
-                }
-            }
-            ss << ")";
-            return ss.str();
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            assert(llvmContext != nullptr);
-            // Look up the name in the global module table.
-            auto *calleeFunc = getFunction(callee);
-            if (calleeFunc == nullptr) {
-                return nullptr;
-            }
-
-            // If argument mismatch error.
-            if (calleeFunc->arg_size() != args.size()) {
-                return nullptr;
-            }
-
-            std::vector<llvm::Value *> argsFunc;
-            for (const auto &arg: args) {
-                argsFunc.push_back(arg->codegen());
-                if (!argsFunc.back()) {
-                    return nullptr;
-                }
-            }
-
-            return llvmIRBuilder->CreateCall(calleeFunc, argsFunc, "calltmp");
-        }
-
-        const std::string callee;
-        const std::vector<std::unique_ptr<ExprAst>> args;
-    };
-
-    class IfStatement final : public StatementAst {
-    public:
-        IfStatement(std::unique_ptr<ExprAst> cond,
-                    std::list<std::unique_ptr<BaseAstNode>> thenBranch,
-                    std::optional<std::list<std::unique_ptr<BaseAstNode>>> elseBranch) :
-                cond(std::move(cond)),
-                thenBranch(std::move(thenBranch)),
-                elseBranch(std::move(elseBranch)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            return "if expr";
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            auto *condValue = cond->codegen();
-            if (condValue == nullptr) {
-                return nullptr;
-            }
-            condValue = llvmIRBuilder->CreateFCmpONE(condValue,
-                                                     llvm::ConstantFP::get(*llvmContext,
-                                                                           llvm::APFloat(0.0)),
-                                                     "if_cond");
-            auto *const insertBlock = llvmIRBuilder->GetInsertBlock();
-            if (insertBlock == nullptr) {
-                return nullptr;
-            }
-            auto *const function = insertBlock->getParent();
-            auto *thenBasicBlock = llvm::BasicBlock::Create(*llvmContext, "thenBasicBlock", function);
-            auto *elseBasicBlock = llvm::BasicBlock::Create(*llvmContext, "elseBasicBlock");
-            auto *const finishBasicBlock = llvm::BasicBlock::Create(*llvmContext, "finishBasicBlock");
-
-            // if condition
-            llvmIRBuilder->CreateCondBr(condValue, thenBasicBlock, elseBasicBlock);
-
-            // then base block
-            llvmIRBuilder->SetInsertPoint(thenBasicBlock);
-            auto *const thenValue = codegenExpressions(thenBranch);
-            if (thenValue == nullptr) {
-                return nullptr;
-            }
-            llvmIRBuilder->CreateBr(finishBasicBlock);
-            thenBasicBlock = llvmIRBuilder->GetInsertBlock();
-
-            // else base block
-            function->insert(function->end(), elseBasicBlock);
-            llvmIRBuilder->SetInsertPoint(elseBasicBlock);
-            auto *const elseValue = elseBranch.has_value() ? codegenExpressions(elseBranch.value()) : nullptr;
-            llvmIRBuilder->CreateBr(finishBasicBlock);
-            elseBasicBlock = llvmIRBuilder->GetInsertBlock();
-
-            // merge base block
-            function->insert(function->end(), finishBasicBlock);
-            llvmIRBuilder->SetInsertPoint(finishBasicBlock);
-
-            // phi node
-            auto *const phiNode =
-                    llvmIRBuilder->CreatePHI(llvm::Type::getDoubleTy(*llvmContext), 2, "if_tmp");
-            phiNode->addIncoming(thenValue, thenBasicBlock);
-            phiNode->addIncoming(
-                    elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(*llvmContext)),
-                    elseBasicBlock);
-            return phiNode;
-        }
-
-        const std::unique_ptr<ExprAst> cond;
-        const std::list<std::unique_ptr<BaseAstNode>> thenBranch;
-        const std::optional<std::list<std::unique_ptr<BaseAstNode>>> elseBranch;
-    };
-
-    class ForLoopStatement final : public StatementAst {
-    public:
-        ForLoopStatement(std::unique_ptr<StatementAst> initExpr,
-                         std::unique_ptr<ExprAst> nextExpr,
-                         std::unique_ptr<ExprAst> endExpr,
-                         std::list<std::unique_ptr<BaseAstNode>> body) :
-                init(std::move(initExpr)),
-                next(std::move(nextExpr)),
-                conditional(std::move(endExpr)),
-                body(std::move(body)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            return "for loop";
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            assert(llvmIRBuilder->GetInsertBlock());
-            auto *const currFunction = llvmIRBuilder->GetInsertBlock()->getParent();
-            auto *const beforeLoopBB = llvmIRBuilder->GetInsertBlock();
-            auto *const loopBB = llvm::BasicBlock::Create(*llvmContext,
-                                                          "for_loop",
-                                                          currFunction);
-            llvmIRBuilder->CreateBr(loopBB);
-            llvmIRBuilder->SetInsertPoint(loopBB);
-
-            const auto *const initVarAst = dynamic_cast<const VariableDefinitionAst *>(init.get());
-            if (initVarAst == nullptr) {
-                return nullptr;
-            }
-            auto *const loopVarValue = llvmIRBuilder->CreatePHI(llvm::Type::getDoubleTy(*llvmContext),
-                                                                2,
-                                                                initVarAst->name);
-            auto *const OldVar = namedValues[initVarAst->name];
-            namedValues[initVarAst->name] = loopVarValue;
-            auto *const initValue = initVarAst->rvalue->codegen();
-            if (initValue == nullptr) {
-                return nullptr;
-            }
-            loopVarValue->addIncoming(initValue, beforeLoopBB);
-            if (codegenExpressions(body) == nullptr) {
-                return nullptr;
-            }
-
-            llvm::Value *nextValue;
-            if (next) {
-                nextValue = next->codegen();
-                if (nextValue == nullptr) {
-                    return nullptr;
-                }
-            } else {
-                nextValue = llvmIRBuilder->CreateFAdd(loopVarValue,
-                                                      llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)),
-                                                      "next_var");
-            }
-
-            auto *condExprValue = conditional->codegen();
-            if (condExprValue == nullptr) {
-                return nullptr;
-            }
-            condExprValue = llvmIRBuilder->CreateFCmpONE(
-                    condExprValue, llvm::ConstantFP::get(*llvmContext, llvm::APFloat(0.0)),
-                    "loop_cond");
-
-            auto *const loopEndBB = llvmIRBuilder->GetInsertBlock();
-            loopVarValue->addIncoming(nextValue, loopEndBB);
-
-            auto *const afterLoopBB = llvm::BasicBlock::Create(*llvmContext,
-                                                               "after_loop",
-                                                               currFunction);
-            llvmIRBuilder->CreateCondBr(condExprValue, loopBB, afterLoopBB);
-            llvmIRBuilder->SetInsertPoint(afterLoopBB);
-
-            if (OldVar != nullptr) {
-                namedValues[initVarAst->name] = OldVar;
-            } else {
-                namedValues.erase(initVarAst->name);
-            }
-            return llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*llvmContext));
-        }
-
-        const std::unique_ptr<BaseAstNode> init;
-        const std::unique_ptr<ExprAst> next;
-        const std::unique_ptr<ExprAst> conditional;
-        const std::list<std::unique_ptr<BaseAstNode>> body;
-    };
+    std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement> > functionProtos;
 
     enum class TokenType : std::uint8_t {
         EosToken,
@@ -572,7 +120,7 @@ namespace {
     std::string numberValue;
     std::string identifier;
 
-    std::unique_ptr<BaseAstNode> parseAstNodeItem();
+    std::unique_ptr<BaseNode> parseAstNodeItem();
 
     void readNextChar() {
         do {
@@ -679,28 +227,28 @@ namespace {
         }
     }
 
-    std::tuple<std::unique_ptr<ExprAst>, std::unique_ptr<BaseAstNode>> toExpr(std::unique_ptr<BaseAstNode> node) {
-        if (dynamic_cast<ExprAst *>(node.get()) != nullptr) {
-            return {std::unique_ptr<ExprAst>(dynamic_cast<ExprAst *>(node.release())), nullptr};
+    std::tuple<std::unique_ptr<ExpressionNode>, std::unique_ptr<BaseNode> > toExpr(std::unique_ptr<BaseNode> node) {
+        if (dynamic_cast<ExpressionNode *>(node.get()) != nullptr) {
+            return {std::unique_ptr<ExpressionNode>(dynamic_cast<ExpressionNode *>(node.release())), nullptr};
         }
         return {nullptr, std::move(node)};
     }
 
-    std::tuple<std::unique_ptr<StatementAst>, std::unique_ptr<BaseAstNode>>
-    toStatement(std::unique_ptr<BaseAstNode> node) {
-        if (dynamic_cast<StatementAst *>(node.get()) != nullptr) {
-            return {std::unique_ptr<StatementAst>(dynamic_cast<StatementAst *>(node.release())), nullptr};
+    std::tuple<std::unique_ptr<StatementNode>, std::unique_ptr<BaseNode> >
+    toStatement(std::unique_ptr<BaseNode> node) {
+        if (dynamic_cast<StatementNode *>(node.get()) != nullptr) {
+            return {std::unique_ptr<StatementNode>(dynamic_cast<StatementNode *>(node.release())), nullptr};
         }
         return {nullptr, std::move(node)};
     }
 
-    std::unique_ptr<ExprAst> parseNumberExpr(const bool inExpression = false) {
-        auto number = std::make_unique<NumberAst>(strtod(numberValue.c_str(), nullptr));
+    std::unique_ptr<ExpressionNode> parseNumberExpr(const bool inExpression = false) {
+        auto number = std::make_unique<NumberNode>(strtod(numberValue.c_str(), nullptr));
         readNextToken(inExpression);
         return number;
     }
 
-    std::unique_ptr<ExprAst> parseParentheses() {
+    std::unique_ptr<ExpressionNode> parseParentheses() {
         if (lastChar != '(') {
             return nullptr;
         }
@@ -713,21 +261,21 @@ namespace {
         return std::get<0>(toExpr(std::move(expr)));
     }
 
-    std::unique_ptr<BaseAstNode> parseExpr(bool inExpression = false);
+    std::unique_ptr<BaseNode> parseExpr(bool inExpression = false);
 
-    std::unique_ptr<BaseAstNode> parseIdentifier(const bool inExpression = false) {
+    std::unique_ptr<BaseNode> parseIdentifier(const bool inExpression = false) {
         const std::string name = identifier;
         readNextToken(inExpression); // eat identifier
         if (lastChar == '=') {
             readNextToken(); // eat =
             auto expr = parseAstNodeItem();
-            return std::make_unique<VariableDefinitionAst>(name, std::get<0>(toExpr(std::move(expr))));
+            return std::make_unique<VariableDefinitionStatement>(name, std::get<0>(toExpr(std::move(expr))));
         }
         if (lastChar != '(') {
-            return std::make_unique<VariableAccessAst>(name);
+            return std::make_unique<VariableAccessNode>(name);
         }
 
-        std::vector<std::unique_ptr<ExprAst>> args;
+        std::vector<std::unique_ptr<ExpressionNode> > args;
         readNextToken(); // eat '('
         while (true) {
             if (auto arg = parseAstNodeItem()) {
@@ -745,11 +293,11 @@ namespace {
             return nullptr;
         }
         readNextToken(); // eat ')'
-        return std::make_unique<CallFunctionExpr>(name, std::move(args));
+        return std::make_unique<CallFunctionNode>(name, std::move(args));
     }
 
-    std::list<std::unique_ptr<BaseAstNode>> parseCurlyBrackets() {
-        std::list<std::unique_ptr<BaseAstNode>> expressions;
+    std::list<std::unique_ptr<BaseNode> > parseCurlyBrackets() {
+        std::list<std::unique_ptr<BaseNode> > expressions;
         while (auto node = parseAstNodeItem()) {
             expressions.push_back(std::move(node));
             if (lastChar == '}') {
@@ -760,7 +308,7 @@ namespace {
         return expressions;
     }
 
-    std::unique_ptr<StatementAst> parseIfExpression() {
+    std::unique_ptr<StatementNode> parseIfExpression() {
         readNextToken();
         if (lastChar != '(') {
             return nullptr;
@@ -770,9 +318,9 @@ namespace {
             return nullptr;
         }
         readNextToken();
-        std::list<std::unique_ptr<BaseAstNode>> thenBranch = parseCurlyBrackets();
+        std::list<std::unique_ptr<BaseNode> > thenBranch = parseCurlyBrackets();
         readNextToken();
-        std::optional<std::list<std::unique_ptr<BaseAstNode>>> elseBranch;
+        std::optional<std::list<std::unique_ptr<BaseNode> > > elseBranch;
         if (currentToken == TokenType::ElseToken) {
             readNextToken();
             if (lastChar != '{') {
@@ -781,10 +329,10 @@ namespace {
             readNextToken();
             elseBranch = parseCurlyBrackets();
         }
-        return std::make_unique<IfStatement>(std::move(cond), std::move(thenBranch), std::move(elseBranch));
+        return std::make_unique<IfStatementStatement>(std::move(cond), std::move(thenBranch), std::move(elseBranch));
     }
 
-    std::unique_ptr<StatementAst> parseForLoopExpression() {
+    std::unique_ptr<StatementNode> parseForLoopExpression() {
         readNextToken();
         if (lastChar != '(') {
             return nullptr;
@@ -811,45 +359,34 @@ namespace {
         readNextToken();
         auto loopBody = parseCurlyBrackets();
 
-        auto forLoopExpr = std::make_unique<ForLoopStatement>(std::get<0>(toStatement(std::move(loopInit))),
-                                                              std::get<0>(toExpr(std::move(loopNext))),
-                                                              std::get<0>(toExpr(std::move(loopFinish))),
-                                                              std::move(loopBody));
+        auto forLoopExpr = std::make_unique<ForLoopNode>(std::get<0>(toStatement(std::move(loopInit))),
+                                                         std::get<0>(toExpr(std::move(loopNext))),
+                                                         std::get<0>(toExpr(std::move(loopFinish))),
+                                                         std::move(loopBody));
         return forLoopExpr;
     }
 
-    class UnaryOpAst final : public ExprAst {
-    public:
-        UnaryOpAst(const TokenType operatorType, std::unique_ptr<ExprAst> expr) :
-                operatorType(operatorType),
-                expr(std::move(expr)) {
-        }
-
-        [[nodiscard]] std::string toString() const override {
-            return "unary operator";
-        }
-
-        [[nodiscard]] llvm::Value *codegen() const override {
-            if (operatorType == TokenType::IncrementOperatorToken) {
-                return llvmIRBuilder->CreateFAdd(expr->codegen(),
-                                                 llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)),
-                                                 "increment");
-            }
-            return nullptr;
-        }
-
-        const TokenType operatorType;
-        const std::unique_ptr<ExprAst> expr;
-    };
-
-    std::unique_ptr<ExprAst> parseUnaryExpression() {
+    std::unique_ptr<ExpressionNode> parseUnaryExpression() {
         const auto operatorType = currentToken;
         readNextToken(true);
         auto expr = parseExpr(true);
-        return std::make_unique<UnaryOpAst>(operatorType, std::get<0>(toExpr(std::move(expr))));
+
+        auto nodeOpType = OperatorType::UndefinedOperator;
+        switch (operatorType) {
+            case TokenType::DecrementOperatorToken:
+                nodeOpType = OperatorType::DecrementOperator;
+                break;
+            case TokenType::IncrementOperatorToken:
+                nodeOpType = OperatorType::IncrementOperator;
+                break;
+            default:
+                return nullptr;
+        }
+        return std::make_unique<UnaryOpNode>(nodeOpType,
+                                             std::get<0>(toExpr(std::move(expr))));
     }
 
-    std::unique_ptr<StatementAst> parseStatement() {
+    std::unique_ptr<StatementNode> parseStatement() {
         if (currentToken == TokenType::IfToken) {
             return parseIfExpression();
         }
@@ -859,7 +396,7 @@ namespace {
         return nullptr;
     }
 
-    std::unique_ptr<BaseAstNode> parseExpr(const bool inExpression) {
+    std::unique_ptr<BaseNode> parseExpr(const bool inExpression) {
         if (currentToken == TokenType::NumberToken) {
             return parseNumberExpr(inExpression);
         }
@@ -888,8 +425,8 @@ namespace {
         return binOpPrec;
     }
 
-    std::unique_ptr<ExprAst> parseBinOp(const int expPrec,
-                                        std::unique_ptr<ExprAst> lhs) {
+    std::unique_ptr<ExpressionNode> parseBinOp(const int expPrec,
+                                               std::unique_ptr<ExpressionNode> lhs) {
         while (true) {
             const char binOp = static_cast<char>(lastChar);
             const int curBinOpPrec = getBinOpPrecedence(binOp);
@@ -910,11 +447,11 @@ namespace {
                 }
             }
 
-            lhs = std::make_unique<BinOpAst>(binOp, std::move(lhs), std::get<0>(toExpr(std::move(rhs))));
+            lhs = std::make_unique<BinOpNode>(binOp, std::move(lhs), std::get<0>(toExpr(std::move(rhs))));
         }
     }
 
-    std::unique_ptr<BaseAstNode> parseAstNodeItem() {
+    std::unique_ptr<BaseNode> parseAstNodeItem() {
         if (auto node = parseExpr(true)) {
             auto [expr, srcNode] = toExpr(std::move(node));
             if (expr) {
@@ -934,12 +471,12 @@ namespace {
         llvm::outs() << '\n';
     }
 
-    void print(const BaseAstNode *const nodeAst) {
-        if (auto const *const llvmIR = nodeAst->codegen()) {
-            print(llvmIR);
-        }
-        std::list<BinOpAst *> values;
-        const auto *ptr = dynamic_cast<const BinOpAst *>(nodeAst);
+    void print(const BaseNode *const nodeAst) {
+        // if (auto const *const llvmIR = nodeAst->codegen()) {
+        //     print(llvmIR);
+        // }
+        std::list<BinOpNode *> values;
+        const auto *ptr = dynamic_cast<const BinOpNode *>(nodeAst);
         do {
             if (!values.empty()) {
                 ptr = values.front();
@@ -948,17 +485,17 @@ namespace {
             if (ptr == nullptr) {
                 continue;
             }
-            if (auto *const rhs = dynamic_cast<BinOpAst *>(ptr->rhs.get())) {
+            if (auto *const rhs = dynamic_cast<BinOpNode *>(ptr->rhs.get())) {
                 values.push_back(rhs);
             }
-            if (auto *const lhs = dynamic_cast<BinOpAst *>(ptr->lhs.get())) {
+            if (auto *const lhs = dynamic_cast<BinOpNode *>(ptr->lhs.get())) {
                 values.push_back(lhs);
             }
             std::cout << ">" << ptr->toString() << "\n";
         } while (!values.empty());
     }
 
-    std::unique_ptr<ProtoFunctionAst> parseProto() {
+    std::unique_ptr<ProtoFunctionStatement> parseProto() {
         const std::string name = identifier;
         readNextToken(); // eat callee
         if (lastChar != '(') {
@@ -971,7 +508,7 @@ namespace {
                 break;
             }
             if (auto arg = parseIdentifier()) {
-                const auto *const var = dynamic_cast<const VariableAccessAst *>(arg.get());
+                const auto *const var = dynamic_cast<const VariableAccessNode *>(arg.get());
                 args.push_back(var->name);
                 if (lastChar == ',') {
                     readNextToken(); // eat next arg
@@ -984,22 +521,22 @@ namespace {
             return nullptr;
         }
         readNextToken(); // eat )
-        return std::make_unique<ProtoFunctionAst>(name, args);
+        return std::make_unique<ProtoFunctionStatement>(name, args);
     }
 
-    std::unique_ptr<FunctionAst> parseFunctionDefinition() {
+    std::unique_ptr<FunctionNode> parseFunctionDefinition() {
         readNextToken(); // eat def
         auto proto = parseProto();
         if (lastChar != '{') {
             return nullptr;
         }
         readNextToken();
-        std::list<std::unique_ptr<BaseAstNode>> body = parseCurlyBrackets();
-        return std::make_unique<FunctionAst>(std::move(proto), std::move(body));
+        std::list<std::unique_ptr<BaseNode> > body = parseCurlyBrackets();
+        return std::make_unique<FunctionNode>(std::move(proto), std::move(body));
     }
 
-    std::unique_ptr<FunctionAst> parseTopLevelExpr(const char *const functionName) {
-        std::list<std::unique_ptr<BaseAstNode>> body;
+    std::unique_ptr<FunctionNode> parseTopLevelExpr(const char *const functionName) {
+        std::list<std::unique_ptr<BaseNode> > body;
         while (auto expr = parseAstNodeItem()) {
             if (expr == nullptr) {
                 break;
@@ -1007,9 +544,9 @@ namespace {
             body.push_back(std::move(expr));
             readNextToken();
         }
-        auto proto = std::make_unique<ProtoFunctionAst>(functionName,
-                                                        std::vector<std::string>());
-        return std::make_unique<FunctionAst>(std::move(proto), std::move(body));
+        auto proto = std::make_unique<ProtoFunctionStatement>(functionName,
+                                                              std::vector<std::string>());
+        return std::make_unique<FunctionNode>(std::move(proto), std::move(body));
     }
 
     double print(const double param) {
@@ -1026,15 +563,20 @@ namespace {
                     print(definition.get());
                 }
                 ExitOnError(llvmJit->addModule(
-                        llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
+                    llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
                 initLlvmModules();
                 readNextToken();
             } else {
                 if (const auto function = parseTopLevelExpr("_start")) {
-                    const auto *const llvmIR = function->codegen();
+                    const auto *const llvmIR = generateIR(function.get(),
+                                                          llvmContext,
+                                                          llvmIRBuilder,
+                                                          llvmModule,
+                                                          functionProtos,
+                                                          namedValues);
                     if (llvmIR != nullptr) {
                         print(llvmIR);
-                        auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
+                        const auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
                         auto threadSafeModule = llvm::orc::ThreadSafeModule(std::move(llvmModule),
                                                                             std::move(llvmContext));
                         ExitOnError(llvmJit->addModule(std::move(threadSafeModule), resourceTracker));
@@ -1057,14 +599,14 @@ namespace {
         llvm::orc::SymbolMap symbols;
 
         constexpr const char *const name = "print";
-        auto printProto = std::make_unique<ProtoFunctionAst>(name, std::vector<std::string>{"param"});
+        auto printProto = std::make_unique<ProtoFunctionStatement>(name, std::vector<std::string>{"param"});
         functionProtos[name] = std::move(printProto);
         symbols[mangle(name)] = {
-                llvm::orc::ExecutorAddr::fromPtr<double(double)>(&print),
-                llvm::JITSymbolFlags()
+            llvm::orc::ExecutorAddr::fromPtr<double(double)>(&print),
+            llvm::JITSymbolFlags()
         };
 
-        ExitOnError(llvmJit->getMainJITDylib().define(absoluteSymbols(symbols)));
+        ExitOnError(llvmJit->getMainJITDylib().define(absoluteSymbols(std::move(symbols))));
     }
 
     void testParseBinExpression();
@@ -1098,9 +640,9 @@ int main() {
     defineEmbeddedFunctions();
 
     stream = std::make_unique<std::istringstream>(R"(
-    for (i=0; i < 10; ++i) {
-        print(i);
-    }
+        i1 = 1;
+        i2 = 2;
+        print(i1+i2);
     )");
     //    stream->basic_ios::rdbuf(std::cin.rdbuf());
     mainHandler();
@@ -1108,7 +650,7 @@ int main() {
 }
 
 namespace {
-    inline std::string makeTestFailMsg(const std::uint32_t line) {
+    std::string makeTestFailMsg(const std::uint32_t line) {
         return std::string("test failed, line=").append(std::to_string(line));
     }
 
@@ -1119,12 +661,12 @@ namespace {
         if (varExprAst == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const var = dynamic_cast<VariableDefinitionAst *>(varExprAst.get());
+        const auto *const var = dynamic_cast<VariableDefinitionStatement *>(varExprAst.get());
         if (var->name != "varName") {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
         print(varExprAst.get());
-        const auto *const binOp = dynamic_cast<BinOpAst *>(var->rvalue.get());
+        const auto *const binOp = dynamic_cast<BinOpNode *>(var->rvalue.get());
         if (binOp == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -1141,18 +683,17 @@ namespace {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
         print(func.get());
-        const auto *const funcPtr = dynamic_cast<FunctionAst *>(func.get());
-        if (func == nullptr || funcPtr->proto->name != "test" || funcPtr->proto->args.size() != 3) {
+        if (func == nullptr || func->proto->name != "test" || func->proto->args.size() != 3) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const varPtr = dynamic_cast<VariableDefinitionAst *>(funcPtr->body.front().get());
+        const auto *const varPtr = dynamic_cast<VariableDefinitionStatement *>(func->body.front().get());
         if (varPtr == nullptr || varPtr->name != "varPtr" || varPtr->rvalue == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
         functionProtos.clear();
         namedValues.clear();
         ExitOnError(llvmJit->addModule(
-                llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
+            llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
         initLlvmModules();
     }
 
@@ -1164,7 +705,7 @@ namespace {
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const numberAst = dynamic_cast<const NumberAst *>(expr.get());
+            const auto *const numberAst = dynamic_cast<const NumberNode *>(expr.get());
             if (numberAst->value != -123.123) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -1172,8 +713,7 @@ namespace {
         }
     }
 
-    void testParseBinExpression() {
-        {
+    void testParseBinExpression() { {
             stream = std::make_unique<std::istringstream>("-1-21.2;");
             readNextToken();
             if (currentToken != TokenType::NumberToken) {
@@ -1183,77 +723,71 @@ namespace {
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
+            const auto *const binOp = dynamic_cast<BinOpNode *>(expr.get());
             if (binOp == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             if (binOp->binOp != '-') {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
+            const auto *const lhsNumber = dynamic_cast<NumberNode *>(binOp->lhs.get());
             if (lhsNumber == nullptr || lhsNumber->value != -1) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const rhsNumber = dynamic_cast<NumberAst *>(binOp->rhs.get());
+            const auto *const rhsNumber = dynamic_cast<NumberNode *>(binOp->rhs.get());
             if (rhsNumber == nullptr || rhsNumber->value != 21.2) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             print(expr.get());
-        }
-        {
+        } {
             stream = std::make_unique<std::istringstream>("(2*(1+2));");
             readNextToken();
             const auto expr = parseAstNodeItem();
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
-            {
-                const auto *const lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
+            const auto *const binOp = dynamic_cast<BinOpNode *>(expr.get()); {
+                const auto *const lhsNumber = dynamic_cast<NumberNode *>(binOp->lhs.get());
                 if (lhsNumber == nullptr || lhsNumber->value != 2) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
-            }
-            {
-                const auto *const binOpRhs = dynamic_cast<BinOpAst *>(binOp->rhs.get());
+            } {
+                const auto *const binOpRhs = dynamic_cast<BinOpNode *>(binOp->rhs.get());
                 if (binOpRhs == nullptr) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
-                const auto *const lhs = dynamic_cast<NumberAst *>(binOpRhs->lhs.get());
+                const auto *const lhs = dynamic_cast<NumberNode *>(binOpRhs->lhs.get());
                 if (lhs == nullptr || lhs->value != 1) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
-                const auto *const rhs = dynamic_cast<NumberAst *>(binOpRhs->rhs.get());
+                const auto *const rhs = dynamic_cast<NumberNode *>(binOpRhs->rhs.get());
                 if (rhs == nullptr || rhs->value != 2) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
             }
             print(expr.get());
-        }
-        {
+        } {
             stream = std::make_unique<std::istringstream>("+1 *  (   2    +3.0);");
             readNextToken();
             const auto expr = parseAstNodeItem();
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
-            {
-                const auto *const lhsNumber = dynamic_cast<NumberAst *>(binOp->lhs.get());
+            const auto *const binOp = dynamic_cast<BinOpNode *>(expr.get()); {
+                const auto *const lhsNumber = dynamic_cast<NumberNode *>(binOp->lhs.get());
                 if (lhsNumber == nullptr || lhsNumber->value != 1) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
-            }
-            {
-                const auto *const binOpRhs = dynamic_cast<BinOpAst *>(binOp->rhs.get());
+            } {
+                const auto *const binOpRhs = dynamic_cast<BinOpNode *>(binOp->rhs.get());
                 if (binOpRhs == nullptr) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
-                const auto *const lhs = dynamic_cast<NumberAst *>(binOpRhs->lhs.get());
+                const auto *const lhs = dynamic_cast<NumberNode *>(binOpRhs->lhs.get());
                 if (lhs == nullptr || lhs->value != 2) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
-                const auto *const rhs = dynamic_cast<NumberAst *>(binOpRhs->rhs.get());
+                const auto *const rhs = dynamic_cast<NumberNode *>(binOpRhs->rhs.get());
                 if (rhs == nullptr || rhs->value != 3.0) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
@@ -1262,28 +796,26 @@ namespace {
         }
     }
 
-    void testIdentifier() {
-        {
+    void testIdentifier() { {
             stream = std::make_unique<std::istringstream>("v+1;");
             readNextToken();
             const auto expr = parseAstNodeItem();
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const binOp = dynamic_cast<BinOpAst *>(expr.get());
+            const auto *const binOp = dynamic_cast<BinOpNode *>(expr.get());
             if (binOp == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const lhs = dynamic_cast<VariableAccessAst *>(binOp->lhs.get());
+            const auto *const lhs = dynamic_cast<VariableAccessNode *>(binOp->lhs.get());
             if (lhs == nullptr || lhs->name != "v") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const rhs = dynamic_cast<NumberAst *>(binOp->rhs.get());
+            const auto *const rhs = dynamic_cast<NumberNode *>(binOp->rhs.get());
             if (rhs == nullptr || rhs->value != 1.0) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-        }
-        {
+        } {
             stream = std::make_unique<std::istringstream>("foo(1, 12.1, id1, -1.2, (1+2));");
             readNextToken();
             const auto expr = parseExpr(true);
@@ -1291,26 +823,26 @@ namespace {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             print(expr.get());
-            const auto *const callFunc = dynamic_cast<CallFunctionExpr *>(expr.get());
+            const auto *const callFunc = dynamic_cast<CallFunctionNode *>(expr.get());
             if (callFunc->callee != "foo") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             if (callFunc->args.size() != 5) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            if (auto *const number = dynamic_cast<NumberAst *>(callFunc->args[0].get()); number->value != 1) {
+            if (auto *const number = dynamic_cast<NumberNode *>(callFunc->args[0].get()); number->value != 1) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            if (auto *const number = dynamic_cast<NumberAst *>(callFunc->args[1].get()); number->value != 12.1) {
+            if (auto *const number = dynamic_cast<NumberNode *>(callFunc->args[1].get()); number->value != 12.1) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            if (auto *const var = dynamic_cast<VariableAccessAst *>(callFunc->args[2].get()); var->name != "id1") {
+            if (auto *const var = dynamic_cast<VariableAccessNode *>(callFunc->args[2].get()); var->name != "id1") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            if (auto *const number = dynamic_cast<NumberAst *>(callFunc->args[3].get()); number->value != -1.2) {
+            if (auto *const number = dynamic_cast<NumberNode *>(callFunc->args[3].get()); number->value != -1.2) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            if (auto *const binOp = dynamic_cast<BinOpAst *>(callFunc->args[4].get()); binOp == nullptr) {
+            if (auto *const binOp = dynamic_cast<BinOpNode *>(callFunc->args[4].get()); binOp == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
         }
@@ -1329,14 +861,14 @@ namespace {
         if (ifStatement == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const ifExprPtr = dynamic_cast<IfStatement *>(ifStatement.get());
+        const auto *const ifExprPtr = dynamic_cast<IfStatementStatement *>(ifStatement.get());
         if (ifExprPtr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
         if (ifExprPtr->cond == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const numberAstPtr = dynamic_cast<NumberAst *>(ifExprPtr->cond.get());
+        const auto *const numberAstPtr = dynamic_cast<NumberNode *>(ifExprPtr->cond.get());
         if (numberAstPtr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -1344,7 +876,7 @@ namespace {
         if (ifExprPtr->thenBranch.empty()) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const thenFuncAstPtr = dynamic_cast<CallFunctionExpr *>(ifExprPtr->thenBranch.back().get());
+        const auto *const thenFuncAstPtr = dynamic_cast<CallFunctionNode *>(ifExprPtr->thenBranch.back().get());
         if (thenFuncAstPtr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -1353,8 +885,8 @@ namespace {
             if (ifExprPtr->elseBranch.value().empty()) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const elseFuncAstPtr = dynamic_cast<CallFunctionExpr *>(
-                    ifExprPtr->elseBranch.value().back().get());
+            const auto *const elseFuncAstPtr = dynamic_cast<CallFunctionNode *>(
+                ifExprPtr->elseBranch.value().back().get());
             if (elseFuncAstPtr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
