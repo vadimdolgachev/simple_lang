@@ -371,7 +371,7 @@ namespace {
         readNextToken(true);
         auto expr = parseExpr(true);
 
-        auto nodeOpType = OperatorType::UndefinedOperator;
+        auto nodeOpType = OperatorType::UnknownOperator;
         switch (operatorType) {
             case TokenType::DecrementOperatorToken:
                 nodeOpType = OperatorType::DecrementOperator;

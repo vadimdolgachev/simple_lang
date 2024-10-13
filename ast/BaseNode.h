@@ -7,6 +7,7 @@
 #define BASEASTNODE_H
 
 #include <string>
+#include <cstdint>
 
 class UnaryOpNode;
 class ForLoopNode;
@@ -47,7 +48,7 @@ public:
 enum class OperatorType : std::uint8_t {
     IncrementOperator,
     DecrementOperator,
-    UndefinedOperator,
+    UnknownOperator,
 };
 
 class BaseNode {
