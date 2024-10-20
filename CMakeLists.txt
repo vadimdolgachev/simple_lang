@@ -42,7 +42,9 @@ add_executable(simple_ast_parser
         ast/ForLoopNode.h
         ast/ForLoopNode.cpp
         ast/UnaryOpNode.h
-        ast/UnaryOpNode.cpp)
+        ast/UnaryOpNode.cpp
+        Lexer.cpp
+        Lexer.h)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

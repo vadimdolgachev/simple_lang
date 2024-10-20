@@ -46,9 +46,7 @@ public:
 
     void visit(const UnaryOpNode *node) override;
 
-    [[nodiscard]] llvm::Value *value() const {
-        return value_;
-    }
+    [[nodiscard]] llvm::Value *value() const;
 
 private:
     llvm::Value * value_ = nullptr;

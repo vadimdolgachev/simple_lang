@@ -32,6 +32,7 @@
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 
 #include "KaleidoscopeJIT.h"
+#include "Lexer.h"
 #include "ast/BinOpNode.h"
 #include "ast/CallFunctionNode.h"
 #include "ast/ForLoopNode.h"
@@ -101,131 +102,9 @@ namespace {
 
     std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement> > functionProtos;
 
-    enum class TokenType : std::uint8_t {
-        EosToken,
-        NumberToken,
-        FunctionDefinitionToken,
-        IdentifierToken,
-        IfToken,
-        ElseToken,
-        ForLoopToken,
-        IncrementOperatorToken,
-        DecrementOperatorToken,
-        OtherToken,
-    };
+    std::unique_ptr<BaseNode> parseAstNodeItem(const std::unique_ptr<Lexer> &lexer);
 
-    std::unique_ptr<std::istream> stream;
-    int lastChar = ' ';
-    TokenType currentToken;
-    std::string numberValue;
-    std::string identifier;
-
-    std::unique_ptr<BaseNode> parseAstNodeItem();
-
-    void readNextChar() {
-        do {
-            lastChar = stream->get();
-            if (lastChar == '\n' || !stream->eof()) {
-                break;
-            }
-        } while (*stream);
-    }
-
-    int getPeekChar() {
-        return stream->peek();
-    }
-
-    bool isSignOfNumber(const int ch) {
-        return ch == '+' || ch == '-';
-    }
-
-    bool isCharOfNumber(const int ch) {
-        return isdigit(ch) || ch == '.';
-    }
-
-    void parseNumber() {
-        numberValue.clear();
-        do {
-            if (isspace(lastChar)) {
-                if (ispunct(getPeekChar())) {
-                    break;
-                }
-                readNextChar();
-                continue;
-            }
-
-            if ((isSignOfNumber(lastChar) && numberValue.empty()) || isCharOfNumber(lastChar)) {
-                numberValue.push_back(static_cast<char>(lastChar));
-                // last symbol of number
-                if (ispunct(getPeekChar()) && getPeekChar() != '.') {
-                    break;
-                }
-                readNextChar();
-            } else {
-                break;
-            }
-        } while (*stream);
-    }
-
-    void readNextToken(const bool inExpression = false) {
-        do {
-            readNextChar();
-        } while (isspace(lastChar));
-
-        if (lastChar == ';' && !inExpression) {
-            do {
-                readNextChar();
-            } while (isspace(lastChar) && lastChar != '\n');
-        }
-
-        if (lastChar == EOF) {
-            currentToken = TokenType::EosToken;
-            return;
-        }
-
-        currentToken = TokenType::OtherToken;
-        // parse number
-        if ((isSignOfNumber(lastChar) && !inExpression) || isCharOfNumber(lastChar)) {
-            currentToken = TokenType::NumberToken;
-            parseNumber();
-        } else if (isSignOfNumber(lastChar)) {
-            const int peek = getPeekChar();
-            if (peek == lastChar) {
-                while (!isalnum(getPeekChar())) {
-                    readNextChar();
-                }
-                if (lastChar == '+') {
-                    currentToken = TokenType::IncrementOperatorToken;
-                } else {
-                    currentToken = TokenType::DecrementOperatorToken;
-                }
-            }
-        } else {
-            // parse identifiers
-            if (isalpha(lastChar)) {
-                identifier.clear();
-                while (isalnum(lastChar)) {
-                    identifier.push_back(lastChar);
-                    const char p = getPeekChar();
-                    if (!isalnum(p)) {
-                        break;
-                    }
-                    readNextChar();
-                }
-                if (identifier == "def") {
-                    currentToken = TokenType::FunctionDefinitionToken;
-                } else if (identifier == "if") {
-                    currentToken = TokenType::IfToken;
-                } else if (identifier == "else") {
-                    currentToken = TokenType::ElseToken;
-                } else if (identifier == "for") {
-                    currentToken = TokenType::ForLoopToken;
-                } else {
-                    currentToken = TokenType::IdentifierToken;
-                }
-            }
-        }
-    }
+    std::unique_ptr<BaseNode> parseExpr(const std::unique_ptr<Lexer> &lexer, bool inExpression = false);
 
     std::tuple<std::unique_ptr<ExpressionNode>, std::unique_ptr<BaseNode> > toExpr(std::unique_ptr<BaseNode> node) {
         if (dynamic_cast<ExpressionNode *>(node.get()) != nullptr) {
@@ -242,46 +121,45 @@ namespace {
         return {nullptr, std::move(node)};
     }
 
-    std::unique_ptr<ExpressionNode> parseNumberExpr(const bool inExpression = false) {
-        auto number = std::make_unique<NumberNode>(strtod(numberValue.c_str(), nullptr));
-        readNextToken(inExpression);
+    std::unique_ptr<ExpressionNode> parseNumberExpr(const std::unique_ptr<Lexer> &lexer,
+                                                    const bool inExpression = false) {
+        auto number = std::make_unique<NumberNode>(strtod(lexer->getNumberValue().c_str(), nullptr));
+        lexer->readNextToken(inExpression);
         return number;
     }
 
-    std::unique_ptr<ExpressionNode> parseParentheses() {
-        if (lastChar != '(') {
+    std::unique_ptr<ExpressionNode> parseParentheses(const std::unique_ptr<Lexer> &lexer) {
+        if (lexer->getCurrentToken() != TokenType::LeftParenthesisToken) {
             return nullptr;
         }
-        readNextToken(); // eat (
-        auto expr = parseAstNodeItem();
-        if (lastChar != ')') {
+        lexer->readNextToken(); // eat TokenType::LeftParenthesis
+        auto expr = parseAstNodeItem(lexer);
+        if (lexer->getCurrentToken() != TokenType::RightParenthesisToken) {
             return nullptr;
         }
-        readNextToken(); // eat )
+        lexer->readNextToken(); // eat TokenType::RightParenthesis
         return std::get<0>(toExpr(std::move(expr)));
     }
 
-    std::unique_ptr<BaseNode> parseExpr(bool inExpression = false);
-
-    std::unique_ptr<BaseNode> parseIdentifier(const bool inExpression = false) {
-        const std::string name = identifier;
-        readNextToken(inExpression); // eat identifier
-        if (lastChar == '=') {
-            readNextToken(); // eat =
-            auto expr = parseAstNodeItem();
+    std::unique_ptr<BaseNode> parseIdentifier(const std::unique_ptr<Lexer> &lexer, const bool inExpression = false) {
+        const std::string name = lexer->getIdentifier();
+        lexer->readNextToken(inExpression); // eat identifier
+        if (lexer->getCurrentToken() == TokenType::EqualsToken) {
+            lexer->readNextToken(); // eat =
+            auto expr = parseAstNodeItem(lexer);
             return std::make_unique<VariableDefinitionStatement>(name, std::get<0>(toExpr(std::move(expr))));
         }
-        if (lastChar != '(') {
+        if (lexer->getCurrentToken() != TokenType::LeftParenthesisToken) {
             return std::make_unique<VariableAccessNode>(name);
         }
 
         std::vector<std::unique_ptr<ExpressionNode> > args;
-        readNextToken(); // eat '('
+        lexer->readNextToken(); // eat TokenType::LeftParenthesis
         while (true) {
-            if (auto arg = parseAstNodeItem()) {
+            if (auto arg = parseAstNodeItem(lexer)) {
                 args.push_back(std::get<0>(toExpr(std::move(arg))));
-                if (lastChar == ',') {
-                    readNextToken(); // eat ','
+                if (lexer->getCurrentToken() == TokenType::CommaToken) {
+                    lexer->readNextToken(); // eat ','
                 } else {
                     break;
                 }
@@ -289,75 +167,75 @@ namespace {
                 break;
             }
         }
-        if (lastChar != ')') {
+        if (lexer->getCurrentToken() != TokenType::RightParenthesisToken) {
             return nullptr;
         }
-        readNextToken(); // eat ')'
+        lexer->readNextToken(); // eat TokenType::RightParenthesis
         return std::make_unique<CallFunctionNode>(name, std::move(args));
     }
 
-    std::list<std::unique_ptr<BaseNode> > parseCurlyBrackets() {
+    std::list<std::unique_ptr<BaseNode> > parseCurlyBrackets(const std::unique_ptr<Lexer> &lexer) {
         std::list<std::unique_ptr<BaseNode> > expressions;
-        while (auto node = parseAstNodeItem()) {
+        while (auto node = parseAstNodeItem(lexer)) {
             expressions.push_back(std::move(node));
-            if (lastChar == '}') {
+            if (lexer->getCurrentToken() != TokenType::RightCurlyBracketToken) {
                 break;
             }
-            readNextToken();
+            lexer->readNextToken();
         }
         return expressions;
     }
 
-    std::unique_ptr<StatementNode> parseIfExpression() {
-        readNextToken();
-        if (lastChar != '(') {
+    std::unique_ptr<StatementNode> parseIfExpression(const std::unique_ptr<Lexer> &lexer) {
+        lexer->readNextToken();
+        if (lexer->getCurrentToken() != TokenType::LeftParenthesisToken) {
             return nullptr;
         }
-        auto cond = parseParentheses();
-        if (lastChar != '{') {
+        auto cond = parseParentheses(lexer);
+        if (lexer->getCurrentToken() != TokenType::LeftCurlyBracketToken) {
             return nullptr;
         }
-        readNextToken();
-        std::list<std::unique_ptr<BaseNode> > thenBranch = parseCurlyBrackets();
-        readNextToken();
+        lexer->readNextToken();
+        std::list<std::unique_ptr<BaseNode> > thenBranch = parseCurlyBrackets(lexer);
+        lexer->readNextToken();
         std::optional<std::list<std::unique_ptr<BaseNode> > > elseBranch;
-        if (currentToken == TokenType::ElseToken) {
-            readNextToken();
-            if (lastChar != '{') {
+        if (lexer->getCurrentToken() == TokenType::ElseToken) {
+            lexer->readNextToken();
+            if (lexer->getCurrentToken() != TokenType::LeftCurlyBracketToken) {
                 return nullptr;
             }
-            readNextToken();
-            elseBranch = parseCurlyBrackets();
+            lexer->readNextToken();
+            elseBranch = parseCurlyBrackets(lexer);
         }
         return std::make_unique<IfStatementStatement>(std::move(cond), std::move(thenBranch), std::move(elseBranch));
     }
 
-    std::unique_ptr<StatementNode> parseForLoopExpression() {
-        readNextToken();
-        if (lastChar != '(') {
+    std::unique_ptr<StatementNode> parseForLoopExpression(const std::unique_ptr<Lexer> &lexer) {
+        lexer->readNextToken();
+        if (lexer->getCurrentToken() != TokenType::LeftParenthesisToken) {
             return nullptr;
         }
-        readNextToken();
-        auto loopInit = parseIdentifier();
+        lexer->readNextToken();
+        auto loopInit = parseIdentifier(lexer);
         if (loopInit == nullptr) {
             return nullptr;
         }
-        readNextToken(true);
-        auto loopFinish = parseAstNodeItem();
+        lexer->readNextToken(true);
+        auto loopFinish = parseAstNodeItem(lexer);
         if (loopFinish == nullptr) {
             return nullptr;
         }
-        readNextToken(true);
-        auto loopNext = parseAstNodeItem();
+        lexer->readNextToken(true);
+        auto loopNext = parseAstNodeItem(lexer);
         if (loopNext == nullptr) {
             return nullptr;
         }
-        readNextToken();
-        if (lastChar != '{') {
+        lexer->readNextToken();
+        if (lexer->getCurrentToken() != TokenType::LeftCurlyBracketToken) {
             return nullptr;
         }
-        readNextToken();
-        auto loopBody = parseCurlyBrackets();
+        lexer->readNextToken();
+        auto loopBody = parseCurlyBrackets(lexer);
 
         auto forLoopExpr = std::make_unique<ForLoopNode>(std::get<0>(toStatement(std::move(loopInit))),
                                                          std::get<0>(toExpr(std::move(loopNext))),
@@ -366,10 +244,10 @@ namespace {
         return forLoopExpr;
     }
 
-    std::unique_ptr<ExpressionNode> parseUnaryExpression() {
-        const auto operatorType = currentToken;
-        readNextToken(true);
-        auto expr = parseExpr(true);
+    std::unique_ptr<ExpressionNode> parseUnaryExpression(const std::unique_ptr<Lexer> &lexer) {
+        const auto operatorType = lexer->getCurrentToken();
+        lexer->readNextToken(true);
+        auto expr = parseExpr(lexer, true);
 
         auto nodeOpType = OperatorType::UnknownOperator;
         switch (operatorType) {
@@ -386,63 +264,64 @@ namespace {
                                              std::get<0>(toExpr(std::move(expr))));
     }
 
-    std::unique_ptr<StatementNode> parseStatement() {
-        if (currentToken == TokenType::IfToken) {
-            return parseIfExpression();
+    std::unique_ptr<StatementNode> parseStatement(const std::unique_ptr<Lexer> &lexer) {
+        if (lexer->getCurrentToken() == TokenType::IfToken) {
+            return parseIfExpression(lexer);
         }
-        if (currentToken == TokenType::ForLoopToken) {
-            return parseForLoopExpression();
-        }
-        return nullptr;
-    }
-
-    std::unique_ptr<BaseNode> parseExpr(const bool inExpression) {
-        if (currentToken == TokenType::NumberToken) {
-            return parseNumberExpr(inExpression);
-        }
-        if (currentToken == TokenType::IdentifierToken) {
-            return parseIdentifier(inExpression);
-        }
-        if (currentToken == TokenType::IncrementOperatorToken
-            || currentToken == TokenType::DecrementOperatorToken) {
-            return parseUnaryExpression();
-        }
-        if (lastChar == '(') {
-            return parseParentheses();
+        if (lexer->getCurrentToken() == TokenType::ForLoopToken) {
+            return parseForLoopExpression(lexer);
         }
         return nullptr;
     }
 
-    int getBinOpPrecedence(const char binOp) {
+    std::unique_ptr<BaseNode> parseExpr(const std::unique_ptr<Lexer> &lexer, const bool inExpression) {
+        if (lexer->getCurrentToken() == TokenType::NumberToken) {
+            return parseNumberExpr(lexer, inExpression);
+        }
+        if (lexer->getCurrentToken() == TokenType::IdentifierToken) {
+            return parseIdentifier(lexer, inExpression);
+        }
+        if (lexer->getCurrentToken() == TokenType::IncrementOperatorToken
+            || lexer->getCurrentToken() == TokenType::DecrementOperatorToken) {
+            return parseUnaryExpression(lexer);
+        }
+        if (lexer->getCurrentToken() == TokenType::LeftParenthesisToken) {
+            return parseParentheses(lexer);
+        }
+        return nullptr;
+    }
+
+    int getBinOpPrecedence(const TokenType binOp) {
         int binOpPrec = -1;
-        if (binOp == '+' || binOp == '-') {
+        if (binOp == TokenType::PlusToken || binOp == TokenType::MinusToken) {
             binOpPrec = 1;
-        } else if (binOp == '/' || binOp == '*') {
+        } else if (binOp == TokenType::DivideToken || binOp == TokenType::MultiplyToken) {
             binOpPrec = 2;
-        } else if (binOp == '<' || binOp == '>') {
+        } else if (binOp == TokenType::LeftAngleBracketToken || binOp == TokenType::RightAngleBracketToken) {
             binOpPrec = 0;
         }
         return binOpPrec;
     }
 
-    std::unique_ptr<ExpressionNode> parseBinOp(const int expPrec,
+    std::unique_ptr<ExpressionNode> parseBinOp(const std::unique_ptr<Lexer> &lexer,
+                                               const int expPrec,
                                                std::unique_ptr<ExpressionNode> lhs) {
         while (true) {
-            const char binOp = static_cast<char>(lastChar);
+            const auto binOp = lexer->getCurrentToken();
             const int curBinOpPrec = getBinOpPrecedence(binOp);
             if (curBinOpPrec < expPrec) {
                 return lhs;
             }
 
-            readNextToken(true); // read rhs
-            auto rhs = parseExpr(true);
+            lexer->readNextToken(true); // read rhs
+            auto rhs = parseExpr(lexer, true);
             if (rhs == nullptr) {
                 return nullptr;
             }
 
-            const char nextBinOp = static_cast<char>(lastChar);
+            const auto nextBinOp = lexer->getCurrentToken();
             if (const int nextBinOpPrec = getBinOpPrecedence(nextBinOp); curBinOpPrec < nextBinOpPrec) {
-                if (rhs = parseBinOp(curBinOpPrec, std::get<0>(toExpr(std::move(rhs)))); rhs == nullptr) {
+                if (rhs = parseBinOp(lexer, curBinOpPrec, std::get<0>(toExpr(std::move(rhs)))); rhs == nullptr) {
                     return nullptr;
                 }
             }
@@ -451,15 +330,15 @@ namespace {
         }
     }
 
-    std::unique_ptr<BaseNode> parseAstNodeItem() {
-        if (auto node = parseExpr(true)) {
+    std::unique_ptr<BaseNode> parseAstNodeItem(const std::unique_ptr<Lexer> &lexer) {
+        if (auto node = parseExpr(lexer, true)) {
             auto [expr, srcNode] = toExpr(std::move(node));
             if (expr) {
-                return parseBinOp(0, std::move(expr));
+                return parseBinOp(lexer, 0, std::move(expr));
             }
             return std::move(srcNode);
         }
-        if (auto statement = parseStatement()) {
+        if (auto statement = parseStatement(lexer)) {
             return statement;
         }
         return nullptr;
@@ -472,9 +351,6 @@ namespace {
     }
 
     void print(const BaseNode *const nodeAst) {
-        // if (auto const *const llvmIR = nodeAst->codegen()) {
-        //     print(llvmIR);
-        // }
         std::list<BinOpNode *> values;
         const auto *ptr = dynamic_cast<const BinOpNode *>(nodeAst);
         do {
@@ -495,57 +371,58 @@ namespace {
         } while (!values.empty());
     }
 
-    std::unique_ptr<ProtoFunctionStatement> parseProto() {
-        const std::string name = identifier;
-        readNextToken(); // eat callee
-        if (lastChar != '(') {
+    std::unique_ptr<ProtoFunctionStatement> parseProto(const std::unique_ptr<Lexer> &lexer) {
+        const std::string name = lexer->getIdentifier();
+        lexer->readNextToken(); // eat callee
+        if (lexer->getCurrentToken() != TokenType::LeftParenthesisToken) {
             return nullptr;
         }
-        readNextToken(); // eat (
+        lexer->readNextToken(); // eat TokenType::LeftParenthesis
         std::vector<std::string> args;
-        while (*stream) {
-            if (currentToken != TokenType::IdentifierToken) {
+        while (lexer->hasNextToken()) {
+            if (lexer->getCurrentToken() != TokenType::IdentifierToken) {
                 break;
             }
-            if (auto arg = parseIdentifier()) {
+            if (auto arg = parseIdentifier(lexer)) {
                 const auto *const var = dynamic_cast<const VariableAccessNode *>(arg.get());
                 args.push_back(var->name);
-                if (lastChar == ',') {
-                    readNextToken(); // eat next arg
+                if (lexer->getCurrentToken() == TokenType::CommaToken) {
+                    lexer->readNextToken(); // eat next arg
                 }
             } else {
                 break;
             }
         }
-        if (lastChar != ')') {
+        if (lexer->getCurrentToken() != TokenType::RightParenthesisToken) {
             return nullptr;
         }
-        readNextToken(); // eat )
+        lexer->readNextToken(); // eat TokenType::RightParenthesis
         return std::make_unique<ProtoFunctionStatement>(name, args);
     }
 
-    std::unique_ptr<FunctionNode> parseFunctionDefinition() {
-        readNextToken(); // eat def
-        auto proto = parseProto();
-        if (lastChar != '{') {
+    std::unique_ptr<FunctionNode> parseFunctionDefinition(const std::unique_ptr<Lexer> &lexer) {
+        lexer->readNextToken(); // eat def
+        auto proto = parseProto(lexer);
+        if (lexer->getCurrentToken() != TokenType::LeftCurlyBracketToken) {
             return nullptr;
         }
-        readNextToken();
-        std::list<std::unique_ptr<BaseNode> > body = parseCurlyBrackets();
+        lexer->readNextToken();
+        std::list<std::unique_ptr<BaseNode> > body = parseCurlyBrackets(lexer);
         return std::make_unique<FunctionNode>(std::move(proto), std::move(body));
     }
 
-    std::unique_ptr<FunctionNode> parseTopLevelExpr(const char *const functionName) {
+    std::unique_ptr<FunctionNode> parseTopLevelExpr(const std::unique_ptr<Lexer> &lexer,
+                                                    const char *const functionName) {
         std::list<std::unique_ptr<BaseNode> > body;
-        while (auto expr = parseAstNodeItem()) {
+        while (auto expr = parseAstNodeItem(lexer)) {
             if (expr == nullptr) {
                 break;
             }
             body.push_back(std::move(expr));
-            readNextToken();
+            lexer->readNextToken();
         }
-        auto proto = std::make_unique<ProtoFunctionStatement>(functionName,
-                                                              std::vector<std::string>());
+        auto proto = std::make_unique<ProtoFunctionStatement>(
+            functionName, std::vector<std::string>());
         return std::make_unique<FunctionNode>(std::move(proto), std::move(body));
     }
 
@@ -554,20 +431,20 @@ namespace {
         return param;
     }
 
-    void mainHandler() {
-        readNextToken();
+    void mainHandler(const std::unique_ptr<Lexer> &lexer) {
+        lexer->readNextToken();
         do {
-            if (currentToken == TokenType::FunctionDefinitionToken) {
-                auto definition = parseFunctionDefinition();
+            if (lexer->getCurrentToken() == TokenType::FunctionDefinitionToken) {
+                auto definition = parseFunctionDefinition(lexer);
                 if (definition != nullptr) {
                     print(definition.get());
                 }
                 ExitOnError(llvmJit->addModule(
                     llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
                 initLlvmModules();
-                readNextToken();
+                lexer->readNextToken();
             } else {
-                if (const auto function = parseTopLevelExpr("_start")) {
+                if (const auto function = parseTopLevelExpr(lexer, "_start")) {
                     const auto *const llvmIR = generateIR(function.get(),
                                                           llvmContext,
                                                           llvmIRBuilder,
@@ -588,9 +465,9 @@ namespace {
                         ExitOnError(resourceTracker->remove());
                     }
                 }
-                readNextToken();
+                lexer->readNextToken();
             }
-        } while (currentToken != TokenType::EosToken);
+        } while (lexer->getCurrentToken() != TokenType::EosToken);
     }
 
     void defineEmbeddedFunctions() {
@@ -623,13 +500,6 @@ namespace {
 } // namespace
 
 int main() {
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
-    llvmJit = ExitOnError(llvm::orc::KaleidoscopeJIT::Create());
-
-    initLlvmModules();
-
     testParseBinExpression();
     testParseNumber();
     testFunctionDefinition();
@@ -637,15 +507,26 @@ int main() {
     testVarDefinition();
     testIfExpression();
 
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+    llvmJit = ExitOnError(llvm::orc::KaleidoscopeJIT::Create());
+
+    initLlvmModules();
+
     defineEmbeddedFunctions();
 
-    stream = std::make_unique<std::istringstream>(R"(
+    const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
         i1 = 1;
         i2 = 2;
         print(i1+i2);
-    )");
-    //    stream->basic_ios::rdbuf(std::cin.rdbuf());
-    mainHandler();
+    )"));
+
+    // auto stream = std::make_unique<std::istringstream>();
+    // stream->basic_ios::rdbuf(std::cin.rdbuf());
+    // const auto lexer = std::make_unique<Lexer>(std::move(stream));
+
+    mainHandler(lexer);
     return 0;
 }
 
@@ -655,9 +536,10 @@ namespace {
     }
 
     void testVarDefinition() {
-        stream = std::make_unique<std::istringstream>("varName=2*(1-2);");
-        readNextToken();
-        const auto varExprAst = parseIdentifier();
+        auto lexer = std::make_unique<Lexer>(
+            std::make_unique<std::istringstream>("varName=2*(1-2);"));
+        lexer->readNextToken();
+        const auto varExprAst = parseIdentifier(lexer);
         if (varExprAst == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -673,12 +555,13 @@ namespace {
     }
 
     void testFunctionDefinition() {
-        stream = std::make_unique<std::istringstream>("def test(id1, id2, id3) {varPtr=(1+2+id1) * (2+1+id2);}");
-        readNextToken();
-        if (currentToken != TokenType::FunctionDefinitionToken) {
+        const auto lexer = std::make_unique<Lexer>(
+            std::make_unique<std::istringstream>("def test(id1, id2, id3) {varPtr=(1+2+id1) * (2+1+id2);}"));
+        lexer->readNextToken();
+        if (lexer->getCurrentToken() != TokenType::FunctionDefinitionToken) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto func = parseFunctionDefinition();
+        const auto func = parseFunctionDefinition(lexer);
         if (func == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -692,34 +575,29 @@ namespace {
         }
         functionProtos.clear();
         namedValues.clear();
-        ExitOnError(llvmJit->addModule(
-            llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)), nullptr));
-        initLlvmModules();
     }
 
     void testParseNumber() {
-        {
-            stream = std::make_unique<std::istringstream>(" -123.123;");
-            readNextToken();
-            const auto expr = parseExpr();
-            if (expr == nullptr) {
-                throw std::logic_error(makeTestFailMsg(__LINE__));
-            }
-            const auto *const numberAst = dynamic_cast<const NumberNode *>(expr.get());
-            if (numberAst->value != -123.123) {
-                throw std::logic_error(makeTestFailMsg(__LINE__));
-            }
-            print(expr.get());
+        const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>(" -123.123;"));
+        lexer->readNextToken();
+        const auto expr = parseExpr(lexer);
+        if (expr == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
         }
+        const auto *const numberAst = dynamic_cast<const NumberNode *>(expr.get());
+        if (numberAst->value != -123.123) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        print(expr.get());
     }
 
     void testParseBinExpression() { {
-            stream = std::make_unique<std::istringstream>("-1-21.2;");
-            readNextToken();
-            if (currentToken != TokenType::NumberToken) {
+            const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>("-1-21.2;"));
+            lexer->readNextToken();
+            if (lexer->getCurrentToken() != TokenType::NumberToken) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto expr = parseAstNodeItem();
+            const auto expr = parseAstNodeItem(lexer);
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -727,7 +605,7 @@ namespace {
             if (binOp == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            if (binOp->binOp != '-') {
+            if (binOp->binOp != TokenType::MinusToken) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             const auto *const lhsNumber = dynamic_cast<NumberNode *>(binOp->lhs.get());
@@ -740,9 +618,9 @@ namespace {
             }
             print(expr.get());
         } {
-            stream = std::make_unique<std::istringstream>("(2*(1+2));");
-            readNextToken();
-            const auto expr = parseAstNodeItem();
+            const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>("(2*(1+2));"));
+            lexer->readNextToken();
+            const auto expr = parseAstNodeItem(lexer);
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -767,9 +645,9 @@ namespace {
             }
             print(expr.get());
         } {
-            stream = std::make_unique<std::istringstream>("+1 *  (   2    +3.0);");
-            readNextToken();
-            const auto expr = parseAstNodeItem();
+            const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>("+1 *  (   2    +3.0);"));
+            lexer->readNextToken();
+            const auto expr = parseAstNodeItem(lexer);
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -797,9 +675,9 @@ namespace {
     }
 
     void testIdentifier() { {
-            stream = std::make_unique<std::istringstream>("v+1;");
-            readNextToken();
-            const auto expr = parseAstNodeItem();
+            const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>("v+1;"));
+            lexer->readNextToken();
+            const auto expr = parseAstNodeItem(lexer);
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -816,9 +694,10 @@ namespace {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
         } {
-            stream = std::make_unique<std::istringstream>("foo(1, 12.1, id1, -1.2, (1+2));");
-            readNextToken();
-            const auto expr = parseExpr(true);
+            const auto lexer = std::make_unique<Lexer>(
+                std::make_unique<std::istringstream>("foo(1, 12.1, id1, -1.2, (1+2));"));
+            lexer->readNextToken();
+            const auto expr = parseExpr(lexer, true);
             if (expr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -849,15 +728,15 @@ namespace {
     }
 
     void testIfExpression() {
-        stream = std::make_unique<std::istringstream>(R"(
+        const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
             if (1) {
                 print(1);
             } else {
                 print(0);
             }
-        )");
-        readNextToken();
-        const auto ifStatement = parseAstNodeItem();
+        )"));
+        lexer->readNextToken();
+        const auto ifStatement = parseAstNodeItem(lexer);
         if (ifStatement == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }

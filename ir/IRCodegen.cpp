@@ -142,22 +142,24 @@ void IRCodegen::visit(const BinOpNode *node) {
     }
 
     switch (node->binOp) {
-        case '+':
+        case TokenType::PlusToken:
             value_ = llvmIRBuilder->CreateFAdd(lhsValue, rhsValue, "add_tmp");
             return;
-        case '-':
+        case TokenType::MinusToken:
             value_ = llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "sub_tmp");
             return;
-        case '*':
+        case TokenType::MultiplyToken:
             value_ = llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "mul_tmp");
             return;
-        case '/':
+        case TokenType::DivideToken:
             value_ = llvmIRBuilder->CreateFDiv(lhsValue, rhsValue, "div_tmp");
             return;
-        case '<':
+        case TokenType::LeftAngleBracketToken:
             lhsValue = llvmIRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmp_tmp");
         // Convert bool 0/1 to double 0.0 or 1.0
             value_ = llvmIRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*llvmContext), "bool_tmp");
+        default:
+            break;
     }
 }
 
@@ -375,4 +377,8 @@ void IRCodegen::visit(const UnaryOpNode *node) {
             generateIR(node->expr.get(), llvmContext, llvmIRBuilder, llvmModule, functionProtos, namedValues),
             llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)), "decrement");
     }
+}
+
+llvm::Value *IRCodegen::value() const {
+    return value_;
 }
