@@ -8,10 +8,11 @@
 #include <memory>
 
 #include "BaseNode.h"
+#include "Lexer.h"
 
 class UnaryOpNode final : public ExpressionNode {
 public:
-  UnaryOpNode(OperatorType operatorType,
+  UnaryOpNode(TokenType operatorType,
               std::unique_ptr<ExpressionNode> expr);
 
   [[nodiscard]] std::string toString() const override;
@@ -19,7 +20,7 @@ public:
   void visit(NodeVisitor *visitor) const override;
 
   const std::unique_ptr<ExpressionNode> expr;
-  const OperatorType operatorType;
+  const TokenType operatorType;
 };
 
 #endif //UNARYOPAST_H

@@ -40,7 +40,7 @@ public:
 
     void visit(const CallFunctionNode *node) override;
 
-    void visit(const IfStatementStatement *node) override;
+    void visit(const IfStatement *node) override;
 
     void visit(const ForLoopNode *node) override;
 

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <istream>
+#include <optional>
 
 enum class TokenType : std::uint8_t {
     EosToken,
@@ -48,6 +49,8 @@ public:
 
     [[nodiscard]] std::string getNumberValue() const;
 
+    [[nodiscard]] static bool isArithmeticOp(TokenType token);
+
 private:
     void readNextChar();
 
@@ -58,6 +61,8 @@ private:
     static bool isCharOfNumber(int ch);
 
     void parseNumber();
+
+    std::optional<TokenType> maybeParseUnaryToken();
 
     std::unique_ptr<std::istream> stream;
     int lastChar;

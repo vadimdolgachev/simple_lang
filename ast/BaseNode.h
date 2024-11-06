@@ -11,7 +11,7 @@
 
 class UnaryOpNode;
 class ForLoopNode;
-class IfStatementStatement;
+class IfStatement;
 class CallFunctionNode;
 class VariableDefinitionStatement;
 class ProtoFunctionStatement;
@@ -38,17 +38,11 @@ public:
 
     virtual void visit(const CallFunctionNode *node) = 0;
 
-    virtual void visit(const IfStatementStatement *node) = 0;
+    virtual void visit(const IfStatement *node) = 0;
 
     virtual void visit(const ForLoopNode *node) = 0;
 
     virtual void visit(const UnaryOpNode *node) = 0;
-};
-
-enum class OperatorType : std::uint8_t {
-    IncrementOperator,
-    DecrementOperator,
-    UnknownOperator,
 };
 
 class BaseNode {

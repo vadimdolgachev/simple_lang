@@ -1,6 +1,6 @@
 #include "UnaryOpNode.h"
 
-UnaryOpNode::UnaryOpNode(const OperatorType operatorType,
+UnaryOpNode::UnaryOpNode(const TokenType operatorType,
                          std::unique_ptr<ExpressionNode> expr)
     : expr(std::move(expr)),
       operatorType(operatorType) {

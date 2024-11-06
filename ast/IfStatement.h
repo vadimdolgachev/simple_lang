@@ -11,9 +11,9 @@
 
 #include "BaseNode.h"
 
-class IfStatementStatement final : public StatementNode {
+class IfStatement final : public StatementNode {
 public:
-  IfStatementStatement(
+  IfStatement(
       std::unique_ptr<ExpressionNode> cond,
       std::list<std::unique_ptr<BaseNode>> thenBranch,
       std::optional<std::list<std::unique_ptr<BaseNode>>> elseBranch);

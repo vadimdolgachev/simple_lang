@@ -37,14 +37,18 @@ add_executable(simple_ast_parser
         ast/VariableDefinitionStatement.cpp
         ast/CallFunctionNode.h
         ast/CallFunctionNode.cpp
-        ast/IfStatementStatement.h
-        ast/IfStatementStatement.cpp
+        ast/IfStatement.h
+        ast/IfStatement.cpp
         ast/ForLoopNode.h
         ast/ForLoopNode.cpp
         ast/UnaryOpNode.h
         ast/UnaryOpNode.cpp
         Lexer.cpp
-        Lexer.h)
+        Lexer.h
+        Parser.h
+        Parser.cpp
+        NodePrinter.h
+        NodePrinter.cpp)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

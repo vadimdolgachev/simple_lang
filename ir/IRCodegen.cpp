@@ -16,7 +16,7 @@
 #include "ast/BinOpNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/ForLoopNode.h"
-#include "ast/IfStatementStatement.h"
+#include "ast/IfStatement.h"
 
 #include "IRCodegen.h"
 
@@ -242,7 +242,7 @@ void IRCodegen::visit(const CallFunctionNode *const node) {
     value_ = llvmIRBuilder->CreateCall(calleeFunc, argsFunc, "calltmp");
 }
 
-void IRCodegen::visit(const IfStatementStatement *node) {
+void IRCodegen::visit(const IfStatement *node) {
     auto *condValue = generateIR(node->cond.get(), llvmContext, llvmIRBuilder, llvmModule, functionProtos, namedValues);
     if (condValue == nullptr) {
         return;
@@ -367,12 +367,12 @@ void IRCodegen::visit(const ForLoopNode *node) {
 }
 
 void IRCodegen::visit(const UnaryOpNode *node) {
-    if (node->operatorType == OperatorType::IncrementOperator) {
+    if (node->operatorType == TokenType::IncrementOperatorToken) {
         value_ = llvmIRBuilder->CreateFAdd(generateIR(node->expr.get(),
                                                       llvmContext, llvmIRBuilder, llvmModule, functionProtos,
                                                       namedValues),
                                            llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)), "increment");
-    } else if (node->operatorType == OperatorType::DecrementOperator) {
+    } else if (node->operatorType == TokenType::DecrementOperatorToken) {
         value_ = llvmIRBuilder->CreateFSub(
             generateIR(node->expr.get(), llvmContext, llvmIRBuilder, llvmModule, functionProtos, namedValues),
             llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)), "decrement");

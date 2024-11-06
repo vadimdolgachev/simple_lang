@@ -14,7 +14,6 @@
 #include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -33,17 +32,20 @@
 
 #include "KaleidoscopeJIT.h"
 #include "Lexer.h"
+#include "NodePrinter.h"
 #include "ast/BinOpNode.h"
 #include "ast/CallFunctionNode.h"
 #include "ast/ForLoopNode.h"
 #include "ast/FunctionNode.h"
-#include "ast/IfStatementStatement.h"
+#include "ast/IfStatement.h"
 #include "ast/NumberNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/VariableAccessNode.h"
 #include "ast/VariableDefinitionStatement.h"
 #include "ir/IRCodegen.h"
+
+#include "Parser.h"
 
 namespace {
     std::unique_ptr<llvm::LLVMContext> llvmContext;
@@ -207,7 +209,7 @@ namespace {
             lexer->readNextToken();
             elseBranch = parseCurlyBrackets(lexer);
         }
-        return std::make_unique<IfStatementStatement>(std::move(cond), std::move(thenBranch), std::move(elseBranch));
+        return std::make_unique<IfStatement>(std::move(cond), std::move(thenBranch), std::move(elseBranch));
     }
 
     std::unique_ptr<StatementNode> parseForLoopExpression(const std::unique_ptr<Lexer> &lexer) {
@@ -248,19 +250,7 @@ namespace {
         const auto operatorType = lexer->getCurrentToken();
         lexer->readNextToken(true);
         auto expr = parseExpr(lexer, true);
-
-        auto nodeOpType = OperatorType::UnknownOperator;
-        switch (operatorType) {
-            case TokenType::DecrementOperatorToken:
-                nodeOpType = OperatorType::DecrementOperator;
-                break;
-            case TokenType::IncrementOperatorToken:
-                nodeOpType = OperatorType::IncrementOperator;
-                break;
-            default:
-                return nullptr;
-        }
-        return std::make_unique<UnaryOpNode>(nodeOpType,
+        return std::make_unique<UnaryOpNode>(operatorType,
                                              std::get<0>(toExpr(std::move(expr))));
     }
 
@@ -516,6 +506,17 @@ int main() {
 
     defineEmbeddedFunctions();
 
+    const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
+        std::make_unique<std::istringstream>("1+2*3; 1*2+3;")));
+    while (*parser) {
+        if (std::unique_ptr<BaseNode> stmt = parser->parseNextNode(); stmt != nullptr) {
+            std::ostringstream os;
+            auto printer = std::make_unique<NodePrinter>(os);
+            stmt->visit(printer.get());
+            std::cout << os.str() << "\n";
+        }
+    }
+
     const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
         i1 = 1;
         i2 = 2;
@@ -591,7 +592,8 @@ namespace {
         print(expr.get());
     }
 
-    void testParseBinExpression() { {
+    void testParseBinExpression() {
+        {
             const auto lexer = std::make_unique<Lexer>(std::make_unique<std::istringstream>("-1-21.2;"));
             lexer->readNextToken();
             if (lexer->getCurrentToken() != TokenType::NumberToken) {
@@ -740,7 +742,7 @@ namespace {
         if (ifStatement == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const ifExprPtr = dynamic_cast<IfStatementStatement *>(ifStatement.get());
+        const auto *const ifExprPtr = dynamic_cast<IfStatement *>(ifStatement.get());
         if (ifExprPtr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
