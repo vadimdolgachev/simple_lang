@@ -405,9 +405,6 @@ namespace {
                                                     const char *const functionName) {
         std::list<std::unique_ptr<BaseNode> > body;
         while (auto expr = parseAstNodeItem(lexer)) {
-            if (expr == nullptr) {
-                break;
-            }
             body.push_back(std::move(expr));
             lexer->readNextToken();
         }

@@ -7,7 +7,6 @@
 #define BASEASTNODE_H
 
 #include <string>
-#include <cstdint>
 
 class UnaryOpNode;
 class ForLoopNode;

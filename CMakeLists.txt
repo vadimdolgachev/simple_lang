@@ -6,6 +6,8 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
+add_subdirectory(tests)
+
 # Set your project compile flags.
 # E.g. if using the C++ header files
 # you will need to enable C++11 support
@@ -48,7 +50,8 @@ add_executable(simple_ast_parser
         Parser.h
         Parser.cpp
         NodePrinter.h
-        NodePrinter.cpp)
+        NodePrinter.cpp
+        Util.h)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
