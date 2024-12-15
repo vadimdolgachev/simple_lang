@@ -9,20 +9,20 @@
 #include "ast/NumberNode.h"
 
 class Parser {
-  public:
+public:
     explicit Parser(std::unique_ptr<Lexer> lexer);
 
     explicit operator bool() const;
 
     std::unique_ptr<BaseNode> parseNextNode();
 
+private:
     std::unique_ptr<ExpressionNode> parseExpr(int operatorPrecedence = 0);
 
     [[nodiscard]] std::unique_ptr<NumberNode> parseNumberExpr() const;
 
     std::unique_ptr<BinOpNode> parseBinExpr(std::unique_ptr<ExpressionNode> lhsOp);
 
-  private:
     std::unique_ptr<Lexer> lexer;
 };
 

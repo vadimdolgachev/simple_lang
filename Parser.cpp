@@ -19,11 +19,16 @@ Parser::operator bool() const { return lexer->hasNextToken(); }
 std::unique_ptr<BaseNode> Parser::parseNextNode() {
     const auto token = lexer->readNextToken();
 
-    if (token == TokenType::NumberToken) {
+    if (token == TokenType::NumberToken
+        || token == TokenType::LeftParenthesisToken) {
         return parseExpr();
     }
 
     return nullptr;
+}
+
+static bool isEndOfExpr(const TokenType token) {
+    return token == TokenType::EosToken || token == TokenType::RightParenthesisToken;
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseExpr(const int operatorPrecedence) {
@@ -32,15 +37,18 @@ std::unique_ptr<ExpressionNode> Parser::parseExpr(const int operatorPrecedence) 
         const auto token = lexer->readNextToken(true);
         // parsing of binary expression
         if (Lexer::isArithmeticOp(token)) {
-            while (operatorPrecedence < getInfixOpPrecedence(token) &&
-                   lexer->getCurrentToken() != TokenType::EosToken) {
+            while (operatorPrecedence < getInfixOpPrecedence(token)
+                && !isEndOfExpr(lexer->getCurrentToken())) {
                 resultExpr = parseBinExpr(std::move(resultExpr));
             }
-            return resultExpr;
         }
-        if (token == TokenType::EosToken) {
-            return resultExpr;
-        }
+        return resultExpr;
+    }
+    if (lexer->getCurrentToken() == TokenType::LeftParenthesisToken) {
+        lexer->readNextToken(); // eat "("
+        auto expr = parseExpr();
+        lexer->readNextToken(); // eat ")"
+        return expr;
     }
     return nullptr;
 }
