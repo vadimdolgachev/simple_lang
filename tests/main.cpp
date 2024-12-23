@@ -10,11 +10,32 @@
 #include "Parser.h"
 #include "ast/BinOpNode.h"
 #include "ast/BaseNode.h"
+#include "ast/VariableDefinitionStatement.h"
 #include "Util.h"
 
 namespace {
     std::string makeTestFailMsg(const std::uint32_t line) {
         return std::string("test failed, line=").append(std::to_string(line));
+    }
+
+    void testVarDefinition() {
+        const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
+                std::make_unique<std::istringstream>("varName=2*(1-2);")));
+        auto ident = parser->parseNextNode();
+        if (auto [varExprAst, orig] = tryCast<VariableDefinitionStatement>(std::move(ident));
+            varExprAst != nullptr) {
+            if (varExprAst == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            const auto *const var = (varExprAst.get());
+            if (var->name != "varName") {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            const auto *const binOp = dynamic_cast<BinOpNode *>(var->rvalue.get());
+            if (binOp == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+        }
     }
 
     void testParseBinExpression() {
@@ -103,10 +124,11 @@ namespace {
             }
         }
     }
-}  // namespace
+} // namespace
 
 
 int main(int argc, const char *argv[]) {
+    testVarDefinition();
     testParseBinExpression();
     return 0;
 }

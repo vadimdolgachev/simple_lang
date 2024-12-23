@@ -19,6 +19,8 @@ public:
 private:
     std::unique_ptr<ExpressionNode> parseExpr(int operatorPrecedence = 0);
 
+    [[nodiscard]] std::unique_ptr<BaseNode> parseIdent();
+
     [[nodiscard]] std::unique_ptr<NumberNode> parseNumberExpr() const;
 
     std::unique_ptr<BinOpNode> parseBinExpr(std::unique_ptr<ExpressionNode> lhsOp);

@@ -1,4 +1,6 @@
 #include "Parser.h"
+#include "ast/VariableAccessNode.h"
+#include "ast/VariableDefinitionStatement.h"
 
 namespace {
     int getInfixOpPrecedence(const TokenType token) {
@@ -22,6 +24,10 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
     if (token == TokenType::NumberToken
         || token == TokenType::LeftParenthesisToken) {
         return parseExpr();
+    }
+
+    if (token == TokenType::IdentifierToken) {
+        return parseIdent();
     }
 
     return nullptr;
@@ -51,6 +57,16 @@ std::unique_ptr<ExpressionNode> Parser::parseExpr(const int operatorPrecedence) 
         return expr;
     }
     return nullptr;
+}
+
+std::unique_ptr<BaseNode> Parser::parseIdent() {
+    auto ident = lexer->getIdentifier();
+    lexer->readNextToken();
+    if (lexer->getCurrentToken() == TokenType::EqualsToken) {
+        lexer->readNextToken();
+        return std::make_unique<VariableDefinitionStatement>(std::move(ident), parseExpr());
+    }
+    return std::make_unique<VariableAccessNode>(std::move(ident));
 }
 
 std::unique_ptr<NumberNode> Parser::parseNumberExpr() const {
