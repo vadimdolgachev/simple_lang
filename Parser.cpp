@@ -41,7 +41,8 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
     // Assignment
     if (typeType == TokenType::IdentifierToken) {
         lexer->nextToken(true);
-        if (lexer->peekToken().type == TokenType::EqualsToken && value.has_value()) {
+        if (lexer->currToken().type == TokenType::EqualsToken && value.has_value()) {
+            lexer->nextToken(true);
             return parseDefinition(value.value());
         }
         // Rollback
@@ -61,20 +62,18 @@ std::unique_ptr<ExpressionNode> Parser::parseExpr() {
 }
 
 std::unique_ptr<ExpressionNode> Parser::parsePrimary() {
-    if (lexer->peekToken().type == TokenType::LeftParenthesisToken) {
+    if (lexer->currToken().type == TokenType::LeftParenthesisToken) {
         lexer->nextToken();
         auto expr = parseExpr();
         lexer->nextToken(true);
         return expr;
     }
-    if (lexer->peekToken().type == TokenType::NumberToken) {
+    if (lexer->currToken().type == TokenType::NumberToken) {
         auto value = parseNumber();
-        lexer->nextToken(true);
         return value;
     }
-    if (lexer->peekToken().type == TokenType::IdentifierToken) {
+    if (lexer->currToken().type == TokenType::IdentifierToken) {
         auto ident = parseIdent();
-        lexer->nextToken(true);
         return ident;
     }
     throw std::runtime_error("Unexpected token");
@@ -82,9 +81,9 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimary() {
 
 std::unique_ptr<ExpressionNode> Parser::parseFactor() {
     auto lhs = parsePrimary();
-    while (lexer->peekToken().type == TokenType::StarToken
-        || lexer->peekToken().type == TokenType::SlashToken) {
-        const auto op = lexer->peekToken().type;
+    while (lexer->currToken().type == TokenType::StarToken
+        || lexer->currToken().type == TokenType::SlashToken) {
+        const auto op = lexer->currToken().type;
         lexer->nextToken(true);
         auto rhs = parsePrimary();
         lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
@@ -94,35 +93,31 @@ std::unique_ptr<ExpressionNode> Parser::parseFactor() {
 
 std::unique_ptr<ExpressionNode> Parser::parseTerm() {
     auto lhs = parseFactor();
-    if (lexer->peekToken().type == TokenType::PlusToken) {
+    while (lexer->currToken().type == TokenType::PlusToken || lexer->currToken().type == TokenType::MinusToken) {
+        const auto op = lexer->currToken().type;
         lexer->nextToken(true);
-        return std::make_unique<BinOpNode>(TokenType::PlusToken,
-            std::move(lhs),
-            parseFactor());
+        auto rhs = parseFactor();
+        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
     }
-    if (lexer->peekToken().type == TokenType::MinusToken) {
-        lexer->nextToken(true);
-        return std::make_unique<BinOpNode>(TokenType::MinusToken,
-        std::move(lhs),
-        parseFactor());
-    }
-    if (isEndOfExpr(lexer->peekToken().type)) {
+
+    if (isEndOfExpr(lexer->currToken().type)) {
         return lhs;
     }
     throw std::runtime_error("Unexpected token");
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseIdent() const {
-    return std::make_unique<VariableAccessNode>(lexer->peekToken().value.value_or(""));
+    auto ident = std::make_unique<VariableAccessNode>(lexer->currToken().value.value_or(""));
+    lexer->nextToken(true);
+    return ident;
 }
 
 std::unique_ptr<BaseNode> Parser::parseDefinition(std::string identName) {
-    lexer->nextToken(true);
-    auto expr = parseExpr();
-    return std::make_unique<VariableDefinitionStatement>(std::move(identName), std::move(expr));
+    return std::make_unique<VariableDefinitionStatement>(std::move(identName), parseExpr());
 }
 
 std::unique_ptr<NumberNode> Parser::parseNumber() const {
-    auto number = std::make_unique<NumberNode>(strtod(lexer->peekToken().value.value_or("").c_str(), nullptr));
+    auto number = std::make_unique<NumberNode>(strtod(lexer->currToken().value.value_or("").c_str(), nullptr));
+    lexer->nextToken(true);
     return number;
 }

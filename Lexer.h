@@ -49,7 +49,9 @@ public:
 
     Token prevToken();
 
-    [[nodiscard]] Token peekToken() const;
+    Token peekToken(bool inExpression);
+
+    [[nodiscard]] Token currToken() const;
 
     [[nodiscard]] bool hasNextToken() const;
 
@@ -60,7 +62,7 @@ private:
 
     void readNextChar();
 
-    [[nodiscard]] Token readNextToken(bool inExpression = false);
+    [[nodiscard]] Token fetchNextToken(bool inExpression = false);
 
     [[nodiscard]] int getPeekChar() const;
 

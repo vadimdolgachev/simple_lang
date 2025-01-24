@@ -21,12 +21,12 @@ void Lexer::readNextChar() {
     } while (hasNextToken());
 }
 
-Token Lexer::readNextToken(const bool inExpression) {
-    std::string tokenValue;
+Token Lexer::fetchNextToken(const bool inExpression) {
+    std::optional<std::string> tokenValue;
 
     if (currTokIndex + 1 < tokenQueue.size()) {
         currTokIndex += 1;
-        return peekToken();
+        return currToken();
     }
 
     do {
@@ -85,8 +85,9 @@ Token Lexer::readNextToken(const bool inExpression) {
     } else {
         // parse identifiers
         if (std::isalpha(lastChar)) {
+            std::string ident;
             while (std::isalnum(lastChar)) {
-                tokenValue.push_back(static_cast<char>(lastChar));
+                ident.push_back(static_cast<char>(lastChar));
                 if (const int peekChar = getPeekChar(); !isalnum(peekChar)) {
                     break;
                 }
@@ -103,12 +104,13 @@ Token Lexer::readNextToken(const bool inExpression) {
             } else {
                 resultToken = TokenType::IdentifierToken;
             }
+            tokenValue = ident;
         }
     }
 
     pushToken({resultToken, tokenValue});
 
-    return peekToken();
+    return currToken();
 }
 
 int Lexer::getPeekChar() const {
@@ -151,10 +153,10 @@ std::string Lexer::parseNumber() {
 std::optional<TokenType> Lexer::maybeParseUnaryToken() {
     if (const int peek = getPeekChar(); peek == lastChar) {
         readNextChar();
-        if (peekToken().type == TokenType::PlusToken) {
+        if (currToken().type == TokenType::PlusToken) {
             return TokenType::IncrementOperatorToken;
         }
-        if (peekToken().type == TokenType::MinusToken) {
+        if (currToken().type == TokenType::MinusToken) {
             return TokenType::DecrementOperatorToken;
         }
     }
@@ -167,10 +169,10 @@ Lexer::Lexer(std::unique_ptr<std::istream> stream):
 }
 
 Token Lexer::nextToken(const bool inExpression) {
-    return readNextToken(inExpression);
+    return fetchNextToken(inExpression);
 }
 
-Token Lexer::peekToken() const {
+Token Lexer::currToken() const {
     return tokenQueue[currTokIndex];
 }
 
@@ -189,7 +191,19 @@ Token Lexer::prevToken() {
         throw std::out_of_range("Empty token history");
     }
     currTokIndex -= 1;
-    return peekToken();
+    return currToken();
+}
+
+Token Lexer::peekToken(const bool inExpression) {
+    if (tokenQueue.empty()) {
+        throw std::out_of_range("Empty token history");
+    }
+    if (currTokIndex + 1 < tokenQueue.size()) {
+        return tokenQueue[currTokIndex + 1];
+    }
+    const auto token = fetchNextToken(inExpression);
+    currTokIndex -= 1;
+    return token;
 }
 
 bool Lexer::isArithmeticOp(const TokenType token) {

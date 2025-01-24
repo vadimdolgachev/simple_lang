@@ -136,11 +136,42 @@ namespace {
                 }
             }
         }
+
+        {
+            const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
+                    std::make_unique<std::istringstream>("1+2+3;")));
+            auto node = parser->parseNextNode();
+            if (node == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (auto [binOp, orig] = tryCast<BinOpNode>(std::move(node)); binOp != nullptr) {
+                if (binOp == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (const auto *const rhs = dynamic_cast<NumberNode *>(binOp->rhs.get());
+                    rhs != nullptr && rhs->value != 3) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                const auto *const binOpNode = dynamic_cast<BinOpNode *>(binOp->lhs.get());
+                if (binOpNode == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (const auto *const lhs = dynamic_cast<NumberNode *>(binOpNode->lhs.get());
+                    lhs == nullptr || lhs->value != 1) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (const auto *const rhs = dynamic_cast<NumberNode *>(binOpNode->rhs.get());
+                    rhs == nullptr || rhs->value != 2) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+            }
+        }
     }
 
     void parseIdentifiers() {
         {
-            const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>("v+1;")));
+            const auto parser = std::make_unique<Parser>(
+                    std::make_unique<Lexer>(std::make_unique<std::istringstream>("v+1;")));
             const auto node = parser->parseNextNode();
             if (node == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -169,7 +200,7 @@ namespace {
             if (const auto *const value = dynamic_cast<VariableAccessNode *>(node.get());
                 value == nullptr || value->name != "var") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
-                }
+            }
         }
     }
 } // namespace
