@@ -6,6 +6,7 @@
 #define LEXER_H
 
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <istream>
 #include <optional>
@@ -30,29 +31,36 @@ enum class TokenType : std::uint8_t {
     EqualsToken,
     PlusToken,
     MinusToken,
-    MultiplyToken,
-    DivideToken,
+    StarToken,
+    SlashToken,
     UnknownToken,
+};
+
+struct Token final {
+    TokenType type = TokenType::UnknownToken;
+    std::optional<std::string> value;
 };
 
 class Lexer {
 public:
     explicit Lexer(std::unique_ptr<std::istream> stream);
 
-    TokenType readNextToken(bool inExpression = false);
+    Token nextToken(bool inExpression = false);
 
-    [[nodiscard]] std::string getIdentifier() const;
+    Token prevToken();
 
-    [[nodiscard]] TokenType getCurrentToken() const;
+    [[nodiscard]] Token peekToken() const;
 
     [[nodiscard]] bool hasNextToken() const;
-
-    [[nodiscard]] std::string getNumberValue() const;
 
     [[nodiscard]] static bool isArithmeticOp(TokenType token);
 
 private:
+    void pushToken(Token token);
+
     void readNextChar();
+
+    [[nodiscard]] Token readNextToken(bool inExpression = false);
 
     [[nodiscard]] int getPeekChar() const;
 
@@ -60,15 +68,14 @@ private:
 
     static bool isCharOfNumber(int ch);
 
-    void parseNumber();
+    [[nodiscard]] std::string parseNumber();
 
     std::optional<TokenType> maybeParseUnaryToken();
 
     std::unique_ptr<std::istream> stream;
     int lastChar;
-    TokenType currentToken;
-    std::string numberValue;
-    std::string identifier;
+    std::deque<Token> tokenQueue;
+    size_t currTokIndex = 0;
 };
 
 

@@ -40,3 +40,5 @@ target_compile_options(tests PRIVATE
         -Werror=unused-result
         -Werror=return-type
 )
+target_compile_options(tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)

@@ -17,13 +17,13 @@ public:
     std::unique_ptr<BaseNode> parseNextNode();
 
 private:
-    std::unique_ptr<ExpressionNode> parseExpr(int operatorPrecedence = 0);
-
-    [[nodiscard]] std::unique_ptr<BaseNode> parseIdent();
-
-    [[nodiscard]] std::unique_ptr<NumberNode> parseNumberExpr() const;
-
-    std::unique_ptr<BinOpNode> parseBinExpr(std::unique_ptr<ExpressionNode> lhsOp);
+    [[nodiscard]] std::unique_ptr<ExpressionNode> parseExpr();
+    [[nodiscard]] std::unique_ptr<ExpressionNode> parsePrimary();
+    [[nodiscard]] std::unique_ptr<ExpressionNode> parseFactor();
+    [[nodiscard]] std::unique_ptr<ExpressionNode> parseTerm();
+    [[nodiscard]] std::unique_ptr<ExpressionNode> parseIdent() const;
+    [[nodiscard]] std::unique_ptr<BaseNode> parseDefinition(std::string identName);
+    [[nodiscard]] std::unique_ptr<NumberNode> parseNumber() const;
 
     std::unique_ptr<Lexer> lexer;
 };

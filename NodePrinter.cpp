@@ -20,10 +20,10 @@ namespace {
             case TokenType::MinusToken:
                 os << "-";
                 break;
-            case TokenType::MultiplyToken:
+            case TokenType::StarToken:
                 os << "*";
                 break;
-            case TokenType::DivideToken:
+            case TokenType::SlashToken:
                 os << "/";
                 break;
             case TokenType::IncrementOperatorToken:

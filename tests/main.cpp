@@ -11,6 +11,7 @@
 #include "ast/BinOpNode.h"
 #include "ast/BaseNode.h"
 #include "ast/VariableDefinitionStatement.h"
+#include "ast/VariableAccessNode.h"
 #include "Util.h"
 
 namespace {
@@ -124,11 +125,32 @@ namespace {
             }
         }
     }
+
+    void parseIdentifiers() {
+        auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>("v+1;")));
+        auto node = parser->parseNextNode();
+        if (node == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        const auto *const binOp = dynamic_cast<BinOpNode *>(node.get());
+        if (binOp == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        const auto *const lhs = dynamic_cast<VariableAccessNode *>(binOp->lhs.get());
+        if (lhs == nullptr || lhs->name != "v") {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        const auto *const rhs = dynamic_cast<NumberNode *>(binOp->rhs.get());
+        if (rhs == nullptr || rhs->value != 1.0) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+    }
 } // namespace
 
 
 int main(int argc, const char *argv[]) {
     testVarDefinition();
     testParseBinExpression();
+    parseIdentifiers();
     return 0;
 }

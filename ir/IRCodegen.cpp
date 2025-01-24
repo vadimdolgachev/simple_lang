@@ -148,10 +148,10 @@ void IRCodegen::visit(const BinOpNode *node) {
         case TokenType::MinusToken:
             value_ = llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "sub_tmp");
             return;
-        case TokenType::MultiplyToken:
+        case TokenType::StarToken:
             value_ = llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "mul_tmp");
             return;
-        case TokenType::DivideToken:
+        case TokenType::SlashToken:
             value_ = llvmIRBuilder->CreateFDiv(lhsValue, rhsValue, "div_tmp");
             return;
         case TokenType::LeftAngleBracketToken:
