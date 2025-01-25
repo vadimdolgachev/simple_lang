@@ -142,19 +142,19 @@ void IRCodegen::visit(const BinOpNode *node) {
     }
 
     switch (node->binOp) {
-        case TokenType::PlusToken:
+        case TokenType::Plus:
             value_ = llvmIRBuilder->CreateFAdd(lhsValue, rhsValue, "add_tmp");
             return;
-        case TokenType::MinusToken:
+        case TokenType::Minus:
             value_ = llvmIRBuilder->CreateFSub(lhsValue, rhsValue, "sub_tmp");
             return;
-        case TokenType::StarToken:
+        case TokenType::Star:
             value_ = llvmIRBuilder->CreateFMul(lhsValue, rhsValue, "mul_tmp");
             return;
-        case TokenType::SlashToken:
+        case TokenType::Slash:
             value_ = llvmIRBuilder->CreateFDiv(lhsValue, rhsValue, "div_tmp");
             return;
-        case TokenType::LeftAngleBracketToken:
+        case TokenType::LeftAngleBracket:
             lhsValue = llvmIRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmp_tmp");
         // Convert bool 0/1 to double 0.0 or 1.0
             value_ = llvmIRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*llvmContext), "bool_tmp");
@@ -367,12 +367,12 @@ void IRCodegen::visit(const ForLoopNode *node) {
 }
 
 void IRCodegen::visit(const UnaryOpNode *node) {
-    if (node->operatorType == TokenType::IncrementOperatorToken) {
+    if (node->operatorType == TokenType::IncrementOperator) {
         value_ = llvmIRBuilder->CreateFAdd(generateIR(node->expr.get(),
                                                       llvmContext, llvmIRBuilder, llvmModule, functionProtos,
                                                       namedValues),
                                            llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)), "increment");
-    } else if (node->operatorType == TokenType::DecrementOperatorToken) {
+    } else if (node->operatorType == TokenType::DecrementOperator) {
         value_ = llvmIRBuilder->CreateFSub(
             generateIR(node->expr.get(), llvmContext, llvmIRBuilder, llvmModule, functionProtos, namedValues),
             llvm::ConstantFP::get(*llvmContext, llvm::APFloat(1.0)), "decrement");

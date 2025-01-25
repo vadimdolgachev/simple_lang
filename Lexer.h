@@ -7,66 +7,154 @@
 
 #include <cstdint>
 #include <deque>
+#include <format>
 #include <memory>
 #include <istream>
 #include <optional>
 
 enum class TokenType : std::uint8_t {
-    EosToken,
-    NumberToken,
-    FunctionDefinitionToken,
-    IdentifierToken,
-    IfToken,
-    ElseToken,
-    ForLoopToken,
-    IncrementOperatorToken,
-    DecrementOperatorToken,
-    LeftParenthesisToken,
-    RightParenthesisToken,
-    LeftCurlyBracketToken,
-    RightCurlyBracketToken,
-    LeftAngleBracketToken,
-    RightAngleBracketToken,
-    CommaToken,
-    EqualsToken,
-    PlusToken,
-    MinusToken,
-    StarToken,
-    SlashToken,
-    UnknownToken,
+    // Keywords
+    If,
+    Else,
+    ForLoop,
+    FunctionDefinition,
+
+    // Identifiers and literals
+    Identifier,
+    Number,
+
+    // Operators
+    IncrementOperator,
+    DecrementOperator,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Equals,
+
+    // Comparison and relational operators
+    LeftAngleBracket,
+    RightAngleBracket,
+
+    // Punctuation
+    Comma,
+    LeftParenthesis,
+    RightParenthesis,
+    LeftCurlyBracket,
+    RightCurlyBracket,
+
+    // Special
+    Eos,
+    Unknown,
 };
 
+inline std::string toString(const TokenType token) {
+    switch (token) {
+        case TokenType::If: {
+            return "If";
+        }
+        case TokenType::Else: {
+            return "Else";
+        }
+        case TokenType::ForLoop: {
+            return "ForLoop";
+        }
+        case TokenType::FunctionDefinition: {
+            return "FunctionDefinition";
+        }
+        case TokenType::Identifier: {
+            return "Identifier";
+        }
+        case TokenType::Number: {
+            return "Number";
+        }
+        case TokenType::IncrementOperator: {
+            return "IncrementOperator";
+        }
+        case TokenType::DecrementOperator: {
+            return "DecrementOperator";
+        }
+        case TokenType::Plus: {
+            return "Plus";
+        }
+        case TokenType::Minus: {
+            return "Minus";
+        }
+        case TokenType::Star: {
+            return "Star";
+        }
+        case TokenType::Slash: {
+            return "Slash";
+        }
+        case TokenType::Equals: {
+            return "Equals";
+        }
+        case TokenType::LeftAngleBracket: {
+            return "LeftAngleBracket";
+        }
+        case TokenType::RightAngleBracket: {
+            return "RightAngleBracket";
+        }
+        case TokenType::Comma: {
+            return "Comma";
+        }
+        case TokenType::LeftParenthesis: {
+            return "LeftParenthesis";
+        }
+        case TokenType::RightParenthesis: {
+            return "RightParenthesis";
+        }
+        case TokenType::LeftCurlyBracket: {
+            return "LeftCurlyBracket";
+        }
+        case TokenType::RightCurlyBracket: {
+            return "RightCurlyBracket";
+        }
+        case TokenType::Eos: {
+            return "Eos";
+        }
+        case TokenType::Unknown: {
+            return "Unknown";
+        }
+        default: {
+            return "Invalid";
+        }
+    }
+}
+
 struct Token final {
-    TokenType type = TokenType::UnknownToken;
+    TokenType type = TokenType::Unknown;
     std::optional<std::string> value;
+
+    [[nodiscard]] std::string toString() const {
+        return value
+                   ? std::format("type: {}, value: {}", ::toString(type), *value)
+                   : std::format("type: {}", ::toString(type));
+    }
 };
 
 class Lexer {
 public:
     explicit Lexer(std::unique_ptr<std::istream> stream);
 
-    Token nextToken(bool inExpression = false);
+    Token nextToken();
 
     Token prevToken();
 
-    Token peekToken(bool inExpression);
+    Token peekToken();
 
     [[nodiscard]] Token currToken() const;
 
     [[nodiscard]] bool hasNextToken() const;
-
-    [[nodiscard]] static bool isArithmeticOp(TokenType token);
 
 private:
     void pushToken(Token token);
 
     void readNextChar();
 
-    [[nodiscard]] Token fetchNextToken(bool inExpression = false);
+    [[nodiscard]] Token fetchNextToken();
 
     [[nodiscard]] int getPeekChar() const;
-
-    static bool isSignOfNumber(int ch);
 
     static bool isCharOfNumber(int ch);
 

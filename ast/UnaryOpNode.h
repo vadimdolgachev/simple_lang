@@ -12,15 +12,22 @@
 
 class UnaryOpNode final : public ExpressionNode {
 public:
-  UnaryOpNode(TokenType operatorType,
-              std::unique_ptr<ExpressionNode> expr);
+    enum class UnaryOpType : int8_t {
+        Postfix,
+        Prefix
+    };
 
-  [[nodiscard]] std::string toString() const override;
+    UnaryOpNode(TokenType operatorType,
+                UnaryOpType unaryPosType,
+                std::unique_ptr<ExpressionNode> expr);
 
-  void visit(NodeVisitor *visitor) const override;
+    [[nodiscard]] std::string toString() const override;
 
-  const std::unique_ptr<ExpressionNode> expr;
-  const TokenType operatorType;
+    void visit(NodeVisitor *visitor) const override;
+
+    const TokenType operatorType;
+    const UnaryOpType unaryPosType;
+    const std::unique_ptr<ExpressionNode> expr;
 };
 
 #endif //UNARYOPAST_H

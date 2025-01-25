@@ -21,7 +21,7 @@ void Lexer::readNextChar() {
     } while (hasNextToken());
 }
 
-Token Lexer::fetchNextToken(const bool inExpression) {
+Token Lexer::fetchNextToken() {
     std::optional<std::string> tokenValue;
 
     if (currTokIndex + 1 < tokenQueue.size()) {
@@ -33,55 +33,49 @@ Token Lexer::fetchNextToken(const bool inExpression) {
         readNextChar();
     } while (std::isspace(lastChar));
 
-    auto resultToken = TokenType::UnknownToken;
+    auto resultToken = TokenType::Unknown;
 
     if (isEos(lastChar)) {
         while (isEos(getPeekChar())) {
             readNextChar();
         }
-        resultToken = TokenType::EosToken;
+        resultToken = TokenType::Eos;
     } else if (lastChar == EOF) {
-        resultToken = TokenType::EosToken;
+        resultToken = TokenType::Eos;
     } else if (isCharOfNumber(lastChar)) {
         // parse number
-        resultToken = TokenType::NumberToken;
+        resultToken = TokenType::Number;
         tokenValue = parseNumber();
     } else if (lastChar == '(') {
-        resultToken = TokenType::LeftParenthesisToken;
+        resultToken = TokenType::LeftParenthesis;
     } else if (lastChar == ')') {
-        resultToken = TokenType::RightParenthesisToken;
+        resultToken = TokenType::RightParenthesis;
     } else if (lastChar == '{') {
-        resultToken = TokenType::LeftCurlyBracketToken;
+        resultToken = TokenType::LeftCurlyBracket;
     } else if (lastChar == '}') {
-        resultToken = TokenType::RightCurlyBracketToken;
+        resultToken = TokenType::RightCurlyBracket;
     } else if (lastChar == ',') {
-        resultToken = TokenType::CommaToken;
+        resultToken = TokenType::Comma;
     } else if (lastChar == '=') {
-        resultToken = TokenType::EqualsToken;
+        resultToken = TokenType::Equals;
     } else if (lastChar == '+') {
-        resultToken = TokenType::PlusToken;
+        resultToken = TokenType::Plus;
         if (const auto token = maybeParseUnaryToken()) {
             resultToken = *token;
-        } else if (isCharOfNumber(getPeekChar()) && !inExpression) {
-            resultToken = TokenType::NumberToken;
-            tokenValue = parseNumber();
         }
     } else if (lastChar == '-') {
-        resultToken = TokenType::MinusToken;
+        resultToken = TokenType::Minus;
         if (const auto token = maybeParseUnaryToken()) {
             resultToken = *token;
-        } else if (isCharOfNumber(getPeekChar()) && !inExpression) {
-            resultToken = TokenType::NumberToken;
-            tokenValue = parseNumber();
         }
     } else if (lastChar == '*') {
-        resultToken = TokenType::StarToken;
+        resultToken = TokenType::Star;
     } else if (lastChar == '/') {
-        resultToken = TokenType::SlashToken;
+        resultToken = TokenType::Slash;
     } else if (lastChar == '<') {
-        resultToken = TokenType::LeftAngleBracketToken;
+        resultToken = TokenType::LeftAngleBracket;
     } else if (lastChar == '>') {
-        resultToken = TokenType::RightAngleBracketToken;
+        resultToken = TokenType::RightAngleBracket;
     } else {
         // parse identifiers
         if (std::isalpha(lastChar)) {
@@ -94,15 +88,15 @@ Token Lexer::fetchNextToken(const bool inExpression) {
                 readNextChar();
             }
             if (tokenValue == "def") {
-                resultToken = TokenType::FunctionDefinitionToken;
+                resultToken = TokenType::FunctionDefinition;
             } else if (tokenValue == "if") {
-                resultToken = TokenType::IfToken;
+                resultToken = TokenType::If;
             } else if (tokenValue == "else") {
-                resultToken = TokenType::ElseToken;
+                resultToken = TokenType::Else;
             } else if (tokenValue == "for") {
-                resultToken = TokenType::ForLoopToken;
+                resultToken = TokenType::ForLoop;
             } else {
-                resultToken = TokenType::IdentifierToken;
+                resultToken = TokenType::Identifier;
             }
             tokenValue = ident;
         }
@@ -115,10 +109,6 @@ Token Lexer::fetchNextToken(const bool inExpression) {
 
 int Lexer::getPeekChar() const {
     return stream->peek();
-}
-
-bool Lexer::isSignOfNumber(const int ch) {
-    return ch == '+' || ch == '-';
 }
 
 bool Lexer::isCharOfNumber(const int ch) {
@@ -136,7 +126,7 @@ std::string Lexer::parseNumber() {
             continue;
         }
 
-        if ((isSignOfNumber(lastChar) && tokenValue.empty()) || isCharOfNumber(lastChar)) {
+        if (isCharOfNumber(lastChar)) {
             tokenValue.push_back(static_cast<char>(lastChar));
             // last symbol of number
             if (ispunct(getPeekChar()) && getPeekChar() != '.') {
@@ -153,12 +143,7 @@ std::string Lexer::parseNumber() {
 std::optional<TokenType> Lexer::maybeParseUnaryToken() {
     if (const int peek = getPeekChar(); peek == lastChar) {
         readNextChar();
-        if (currToken().type == TokenType::PlusToken) {
-            return TokenType::IncrementOperatorToken;
-        }
-        if (currToken().type == TokenType::MinusToken) {
-            return TokenType::DecrementOperatorToken;
-        }
+        return lastChar == '+' ? TokenType::IncrementOperator : TokenType::DecrementOperator;
     }
     return std::nullopt;
 }
@@ -168,8 +153,8 @@ Lexer::Lexer(std::unique_ptr<std::istream> stream):
     lastChar(' ') {
 }
 
-Token Lexer::nextToken(const bool inExpression) {
-    return fetchNextToken(inExpression);
+Token Lexer::nextToken() {
+    return fetchNextToken();
 }
 
 Token Lexer::currToken() const {
@@ -194,23 +179,16 @@ Token Lexer::prevToken() {
     return currToken();
 }
 
-Token Lexer::peekToken(const bool inExpression) {
+Token Lexer::peekToken() {
     if (tokenQueue.empty()) {
         throw std::out_of_range("Empty token history");
     }
     if (currTokIndex + 1 < tokenQueue.size()) {
         return tokenQueue[currTokIndex + 1];
     }
-    const auto token = fetchNextToken(inExpression);
+    const auto token = fetchNextToken();
     currTokIndex -= 1;
     return token;
-}
-
-bool Lexer::isArithmeticOp(const TokenType token) {
-    return token == TokenType::PlusToken
-           || token == TokenType::MinusToken
-           || token == TokenType::StarToken
-           || token == TokenType::SlashToken;
 }
 
 void Lexer::pushToken(Token token) {

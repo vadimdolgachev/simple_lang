@@ -1,10 +1,11 @@
 #include "UnaryOpNode.h"
 
 UnaryOpNode::UnaryOpNode(const TokenType operatorType,
-                         std::unique_ptr<ExpressionNode> expr)
-    : expr(std::move(expr)),
-      operatorType(operatorType) {
-}
+                         const UnaryOpType unaryPosType,
+                         std::unique_ptr<ExpressionNode> expr) :
+    operatorType(operatorType),
+    unaryPosType(unaryPosType),
+    expr(std::move(expr)) {}
 
 std::string UnaryOpNode::toString() const {
     return "unary operator";

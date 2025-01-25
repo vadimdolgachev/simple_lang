@@ -14,22 +14,22 @@
 namespace {
     std::ostream &operator<<(std::ostream &os, const TokenType token) {
         switch (token) {
-            case TokenType::PlusToken:
+            case TokenType::Plus:
                 os << "+";
                 break;
-            case TokenType::MinusToken:
+            case TokenType::Minus:
                 os << "-";
                 break;
-            case TokenType::StarToken:
+            case TokenType::Star:
                 os << "*";
                 break;
-            case TokenType::SlashToken:
+            case TokenType::Slash:
                 os << "/";
                 break;
-            case TokenType::IncrementOperatorToken:
+            case TokenType::IncrementOperator:
                 os << "++";
                 break;
-            case TokenType::DecrementOperatorToken:
+            case TokenType::DecrementOperator:
                 os << "--";
                 break;
             default:

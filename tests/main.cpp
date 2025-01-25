@@ -12,6 +12,7 @@
 #include "ast/BaseNode.h"
 #include "ast/VariableDefinitionStatement.h"
 #include "ast/VariableAccessNode.h"
+#include "ast/UnaryOpNode.h"
 #include "Util.h"
 
 namespace {
@@ -51,7 +52,7 @@ namespace {
                 if (binOp == nullptr) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
-                if (binOp->binOp != TokenType::MinusToken) {
+                if (binOp->binOp != TokenType::Minus) {
                     throw std::logic_error(makeTestFailMsg(__LINE__));
                 }
                 const auto *const lhsNumber = dynamic_cast<NumberNode *>(binOp->lhs.get());
@@ -168,7 +169,7 @@ namespace {
         }
     }
 
-    void parseIdentifiers() {
+    void testIdentifiers() {
         {
             const auto parser = std::make_unique<Parser>(
                     std::make_unique<Lexer>(std::make_unique<std::istringstream>("v+1;")));
@@ -203,12 +204,128 @@ namespace {
             }
         }
     }
+
+    void testPostIncrementOperator() {
+        {
+            const auto parser = std::make_unique<Parser>(
+                   std::make_unique<Lexer>(std::make_unique<std::istringstream>("var++")));
+            auto node = parser->parseNextNode();
+            if (node == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (auto [unOp, orig] = tryCast<UnaryOpNode>(std::move(node)); unOp != nullptr) {
+                if (unOp->operatorType != TokenType::IncrementOperator) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (unOp->unaryPosType != UnaryOpNode::UnaryOpType::Postfix) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (unOp->expr == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (const auto *const var = dynamic_cast<VariableAccessNode *>(unOp->expr.get())) {
+                    if (var->name != "var") {
+                        throw std::logic_error(makeTestFailMsg(__LINE__));
+                    }
+                } else {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+            } else {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+        }
+        {
+            const auto parser = std::make_unique<Parser>(
+            std::make_unique<Lexer>(std::make_unique<std::istringstream>("++var")));
+            auto node = parser->parseNextNode();
+            if (node == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (auto [unOp, orig] = tryCast<UnaryOpNode>(std::move(node)); unOp != nullptr) {
+                if (unOp->operatorType != TokenType::IncrementOperator) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (unOp->unaryPosType != UnaryOpNode::UnaryOpType::Prefix) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (unOp->expr == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (const auto *const var = dynamic_cast<VariableAccessNode *>(unOp->expr.get())) {
+                    if (var->name != "var") {
+                        throw std::logic_error(makeTestFailMsg(__LINE__));
+                    }
+                } else {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+            } else {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+        }
+                {
+            const auto parser = std::make_unique<Parser>(
+                   std::make_unique<Lexer>(std::make_unique<std::istringstream>("var--")));
+            auto node = parser->parseNextNode();
+            if (node == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (auto [unOp, orig] = tryCast<UnaryOpNode>(std::move(node)); unOp != nullptr) {
+                if (unOp->operatorType != TokenType::DecrementOperator) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (unOp->unaryPosType != UnaryOpNode::UnaryOpType::Postfix) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (unOp->expr == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (const auto *const var = dynamic_cast<VariableAccessNode *>(unOp->expr.get())) {
+                    if (var->name != "var") {
+                        throw std::logic_error(makeTestFailMsg(__LINE__));
+                    }
+                } else {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+            } else {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+        }
+        {
+            const auto parser = std::make_unique<Parser>(
+            std::make_unique<Lexer>(std::make_unique<std::istringstream>("--var")));
+            auto node = parser->parseNextNode();
+            if (node == nullptr) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (auto [unOp, orig] = tryCast<UnaryOpNode>(std::move(node)); unOp != nullptr) {
+                if (unOp->operatorType != TokenType::DecrementOperator) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (unOp->unaryPosType != UnaryOpNode::UnaryOpType::Prefix) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (unOp->expr == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (const auto *const var = dynamic_cast<VariableAccessNode *>(unOp->expr.get())) {
+                    if (var->name != "var") {
+                        throw std::logic_error(makeTestFailMsg(__LINE__));
+                    }
+                } else {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+            } else {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+        }
+    }
 } // namespace
 
 
 int main(int argc, const char *argv[]) {
     testVarDefinition();
     testParseBinExpression();
-    parseIdentifiers();
+    testIdentifiers();
+    testPostIncrementOperator();
     return 0;
 }
