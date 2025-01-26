@@ -13,15 +13,17 @@
 
 class FunctionNode final : public StatementNode {
 public:
-  FunctionNode(std::unique_ptr<ProtoFunctionStatement> proto,
-               std::list<std::unique_ptr<BaseNode>> body);
+    FunctionNode(std::unique_ptr<IdentNode> name,
+                 std::vector<std::unique_ptr<IdentNode>> params,
+                 std::vector<std::unique_ptr<BaseNode>> body);
 
-  [[nodiscard]] std::string toString() const override;
+    [[nodiscard]] std::string toString() const override;
 
-  void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) const override;
 
-  const std::unique_ptr<ProtoFunctionStatement> proto;
-  const std::list<std::unique_ptr<BaseNode>> body;
+    const std::unique_ptr<IdentNode> name;
+    const std::vector<std::unique_ptr<IdentNode>> params;
+    const std::vector<std::unique_ptr<BaseNode>> body;
 };
 
 #endif //FUNCTIONAST_H

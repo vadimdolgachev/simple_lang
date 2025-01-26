@@ -15,6 +15,7 @@
 #include "ast/UnaryOpNode.h"
 #include "Util.h"
 #include "ast/FunctionCallNode.h"
+#include "ast/FunctionNode.h"
 
 namespace {
     std::string makeTestFailMsg(const std::uint32_t line) {
@@ -22,21 +23,42 @@ namespace {
     }
 
     void testVarDefinition() {
-        const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
-                std::make_unique<std::istringstream>("varName=2*(1-2);")));
-        auto ident = parser->parseNextNode();
-        if (auto [varExprAst, orig] = tryCast<VariableDefinitionStatement>(std::move(ident));
-            varExprAst != nullptr) {
-            if (varExprAst == nullptr) {
-                throw std::logic_error(makeTestFailMsg(__LINE__));
+        {
+            const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
+                    std::make_unique<std::istringstream>("varName=2*(1-2);")));
+            auto ident = parser->parseNextNode();
+            if (auto [varExprAst, orig] = tryCast<VariableDefinitionStatement>(std::move(ident));
+                varExprAst != nullptr) {
+                if (varExprAst == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                const auto *const var = (varExprAst.get());
+                if (var->name != "varName") {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                const auto *const binOp = dynamic_cast<BinOpNode *>(var->rvalue.get());
+                if (binOp == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
             }
-            const auto *const var = (varExprAst.get());
-            if (var->name != "varName") {
-                throw std::logic_error(makeTestFailMsg(__LINE__));
-            }
-            const auto *const binOp = dynamic_cast<BinOpNode *>(var->rvalue.get());
-            if (binOp == nullptr) {
-                throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        {
+            const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
+                    std::make_unique<std::istringstream>("varName=1;")));
+            auto ident = parser->parseNextNode();
+            if (auto [varExprAst, orig] = tryCast<VariableDefinitionStatement>(std::move(ident));
+                varExprAst != nullptr) {
+                if (varExprAst == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                const auto *const var = (varExprAst.get());
+                if (var->name != "varName") {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                const auto *const value = dynamic_cast<NumberNode *>(var->rvalue.get());
+                if (value == nullptr) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
             }
         }
     }
@@ -209,7 +231,7 @@ namespace {
     void testIncrementOperators() {
         {
             const auto parser = std::make_unique<Parser>(
-                   std::make_unique<Lexer>(std::make_unique<std::istringstream>("var++")));
+                    std::make_unique<Lexer>(std::make_unique<std::istringstream>("var++")));
             auto node = parser->parseNextNode();
             if (node == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -237,7 +259,7 @@ namespace {
         }
         {
             const auto parser = std::make_unique<Parser>(
-            std::make_unique<Lexer>(std::make_unique<std::istringstream>("++var")));
+                    std::make_unique<Lexer>(std::make_unique<std::istringstream>("++var")));
             auto node = parser->parseNextNode();
             if (node == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -263,9 +285,9 @@ namespace {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
         }
-                {
+        {
             const auto parser = std::make_unique<Parser>(
-                   std::make_unique<Lexer>(std::make_unique<std::istringstream>("var--")));
+                    std::make_unique<Lexer>(std::make_unique<std::istringstream>("var--")));
             auto node = parser->parseNextNode();
             if (node == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -293,7 +315,7 @@ namespace {
         }
         {
             const auto parser = std::make_unique<Parser>(
-            std::make_unique<Lexer>(std::make_unique<std::istringstream>("--var")));
+                    std::make_unique<Lexer>(std::make_unique<std::istringstream>("--var")));
             auto node = parser->parseNextNode();
             if (node == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -323,7 +345,7 @@ namespace {
 
     void testFunctionCalls() {
         const auto parser = std::make_unique<Parser>(
-          std::make_unique<Lexer>(std::make_unique<std::istringstream>("foo(1, 2.1, var, 1 + 2)")));
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>("foo(1, 2.1, var, 1 + 2)")));
         auto node = parser->parseNextNode();
         if (node == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
@@ -376,6 +398,64 @@ namespace {
             }
         }
     }
+
+    void testFunctionDefs() {
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(
+                        std::make_unique<std::istringstream>(R"(
+        fn foo(arg1, arg2, arg3, arg4) {
+            v = 1
+            ++v
+        }
+        v=2
+        )")));
+        auto node = parser->parseNextNode();
+        if (node == nullptr) {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+        if (auto [fn, orig] = tryCast<FunctionNode>(std::move(node)); fn != nullptr) {
+            if (fn->name->name != "foo") {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (fn->params.size() != 4) {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (fn->params[0]->name != "arg1") {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (fn->params[1]->name != "arg2") {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (fn->params[2]->name != "arg3") {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (fn->params[3]->name != "arg4") {
+                throw std::logic_error(makeTestFailMsg(__LINE__));
+            }
+            if (const auto *const statement = dynamic_cast<IdentNode *>(fn->body[0].get())) {
+                if (statement->name != "v") {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+            }
+            if (const auto *const statement = dynamic_cast<UnaryOpNode *>(fn->body[1].get())) {
+                if (const auto *const var = dynamic_cast<IdentNode *>(statement->expr.get())) {
+                    if (var->name != "v") {
+                        throw std::logic_error(makeTestFailMsg(__LINE__));
+                    }
+                } else {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (statement->operatorType != TokenType::IncrementOperator) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+                if (statement->unaryPosType != UnaryOpNode::UnaryOpType::Prefix) {
+                    throw std::logic_error(makeTestFailMsg(__LINE__));
+                }
+            }
+        } else {
+            throw std::logic_error(makeTestFailMsg(__LINE__));
+        }
+    }
 } // namespace
 
 
@@ -385,5 +465,6 @@ int main(int argc, const char *argv[]) {
     testIdentifiers();
     testIncrementOperators();
     testFunctionCalls();
+    testFunctionDefs();
     return 0;
 }

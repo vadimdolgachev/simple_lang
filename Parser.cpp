@@ -1,81 +1,13 @@
 #include "Parser.h"
 
 #include <complex>
-#include <iostream>
 
+#include "ast/BinOpNode.h"
 #include "ast/FunctionCallNode.h"
+#include "ast/FunctionNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/IdentNode.h"
 #include "ast/VariableDefinitionStatement.h"
-
-/*
-<Declaration> ::= <Identifier> <Initialization>
-               | <FunctionDefinition>
-
-<Identifier> ::= [a-zA-Z_][a-zA-Z0-9_]*
-
-<Initialization> ::= "=" <Expression>
-                 | ε
-
-<Parameters> ::= <Parameter> "," <Parameters>
-             | <Parameter>
-             | ε
-
-<Parameter> ::= <Identifier>
-
-<Block> ::= "{" <Declarations> "}"
-
-<Declarations> ::= <Declaration> | <Declaration> <Declarations>
-
-<Assignment> ::= <Identifier> "=" <Expression> ";"
-
-<Expression> ::= <Literal>
-             | <Identifier>
-             | <FunctionCall>
-             | <Expression> <AddOp> <Term>
-             | <Expression> "++"
-             | <Expression> "--"
-             | <Term>
-
-<FunctionCall> ::= <Identifier> "(" <Arguments> ")"
-
-<Arguments> ::= <Expression> "," <Arguments>
-             | <Expression>
-             | ε
-
-<AddOp> ::= "+" | "-"
-
-<Literal> ::= <Integer>
-
-<Integer> ::= [0-9]+
-
-<Term> ::= <Factor>
-        | <Term> <MulOp> <Factor>
-
-<MulOp> ::= "*" | "/"
-
-<Factor> ::= "(" <Expression> ")"
-         | <Identifier>
-         | <Number>
-         | <FunctionCall>
-         | <PrefixIncDec> <Identifier>
-         | <Identifier> <PostfixIncDec>
-
-<PrefixIncDec> ::= "++" | "--"
-
-<PostfixIncDec> ::= "++" | "--"
-
-<Statement> ::= "if" "(" <Expression> ")" <Block> ("else" <Block>)?
-             | "while" "(" <Expression> ")" <Block>
-             | "for" "(" <ForLoopInit> ";" <Expression> ";" <Expression> ")" <Block>
-             | <Expression> ";"
-             | <FunctionDefinition>
-
-<FunctionDefinition> ::= "fn" <Identifier> "(" <Parameters> ")" <Block>
-
-<ForLoopInit> ::= <Assignment>
-              | <Declaration>
- */
 
 namespace {
     bool isEndOfExpr(const TokenType token) {
@@ -94,21 +26,27 @@ namespace {
     }
 } // namespace
 
-Parser::Parser(std::unique_ptr<Lexer> lexer) :
-    lexer(std::move(lexer)) {}
+Parser::Parser(std::unique_ptr<Lexer> lexer_) :
+    lexer(std::move(lexer_)) {
+    lexer->nextToken();
+}
 
 Parser::operator bool() const {
     return lexer->hasNextToken();
 }
 
 std::unique_ptr<BaseNode> Parser::parseNextNode() {
-    const auto [typeType, value] = lexer->nextToken();
+    const auto [typeType, value] = lexer->currToken();
     // Assignment
     if (typeType == TokenType::Identifier) {
+        if (value && value == "fn") {
+            lexer->nextToken();
+            return parseFunctionDef();
+        }
         lexer->nextToken();
         if (lexer->currToken().type == TokenType::Equals && value.has_value()) {
             lexer->nextToken();
-            return parseDefinition(value.value());
+            return parseVarDefinition(value.value());
         }
         // Rollback
         lexer->prevToken();
@@ -190,10 +128,7 @@ std::unique_ptr<ExpressionNode> Parser::parseTerm() {
         lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
     }
 
-    if (isEndOfExpr(lexer->currToken().type) || lexer->currToken().type == TokenType::Comma) {
-        return lhs;
-    }
-    throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+    return lhs;
 }
 
 std::unique_ptr<IdentNode> Parser::parseIdent() const {
@@ -202,7 +137,7 @@ std::unique_ptr<IdentNode> Parser::parseIdent() const {
     return ident;
 }
 
-std::unique_ptr<BaseNode> Parser::parseDefinition(std::string identName) {
+std::unique_ptr<BaseNode> Parser::parseVarDefinition(std::string identName) {
     return std::make_unique<VariableDefinitionStatement>(std::move(identName), parseExpr());
 }
 
@@ -238,4 +173,37 @@ std::unique_ptr<ExpressionNode> Parser::parseFunctionCall(std::unique_ptr<IdentN
     }
     lexer->nextToken(); // ')'
     return std::make_unique<FunctionCallNode>(std::move(ident), std::move(args));
+}
+
+std::unique_ptr<BaseNode> Parser::parseFunctionDef() {
+    if (lexer->currToken().type != TokenType::Identifier) {
+        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+    }
+    auto fnName = parseIdent();
+    lexer->nextToken();
+    std::vector<std::unique_ptr<IdentNode>> params;
+    while (lexer->currToken().type != TokenType::RightParenthesis) {
+        params.emplace_back(parseIdent());
+        if (lexer->currToken().type != TokenType::Comma && lexer->currToken().type != TokenType::RightParenthesis) {
+            throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+        }
+        if (lexer->currToken().type == TokenType::Comma) {
+            lexer->nextToken();
+        }
+    }
+    std::vector<std::unique_ptr<BaseNode>> body;
+    lexer->nextToken(); // {
+    if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
+        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+    }
+    lexer->nextToken();
+    while (lexer->currToken().type != TokenType::RightCurlyBracket) {
+        if (auto node = parseNextNode(); node != nullptr) {
+            body.emplace_back(std::move(node));
+        }
+    }
+    lexer->nextToken(); // }
+    return std::make_unique<FunctionNode>(std::move(fnName),
+                                          std::move(params),
+                                          std::move(body));
 }
