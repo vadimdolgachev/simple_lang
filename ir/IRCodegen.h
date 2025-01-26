@@ -10,13 +10,13 @@
 
 #include "ast/BaseNode.h"
 
-class CallFunctionNode;
+class FunctionCallNode;
 class VariableDefinitionStatement;
 class ProtoFunctionStatement;
 class FunctionNode;
 class BinOpNode;
 class NumberNode;
-class VariableAccessNode;
+class IdentNode;
 
 class IRCodegen final : public NodeVisitor {
 public:
@@ -26,7 +26,7 @@ public:
               std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos,
               std::unordered_map<std::string, llvm::Value *> &namedValues);
 
-    void visit(const VariableAccessNode *node) override;
+    void visit(const IdentNode *node) override;
 
     void visit(const FunctionNode *node) override;
 
@@ -38,7 +38,7 @@ public:
 
     void visit(const VariableDefinitionStatement *node) override;
 
-    void visit(const CallFunctionNode *node) override;
+    void visit(const FunctionCallNode *node) override;
 
     void visit(const IfStatement *node) override;
 

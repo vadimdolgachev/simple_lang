@@ -21,9 +21,10 @@ private:
     [[nodiscard]] std::unique_ptr<ExpressionNode> parsePrimary();
     [[nodiscard]] std::unique_ptr<ExpressionNode> parseFactor();
     [[nodiscard]] std::unique_ptr<ExpressionNode> parseTerm();
-    [[nodiscard]] std::unique_ptr<ExpressionNode> parseIdent() const;
+    [[nodiscard]] std::unique_ptr<IdentNode> parseIdent() const;
     [[nodiscard]] std::unique_ptr<BaseNode> parseDefinition(std::string identName);
     [[nodiscard]] std::unique_ptr<NumberNode> parseNumber() const;
+    [[nodiscard]] std::unique_ptr<ExpressionNode> parseFunctionCall(std::unique_ptr<IdentNode> ident);
 
     std::unique_ptr<Lexer> lexer;
 };

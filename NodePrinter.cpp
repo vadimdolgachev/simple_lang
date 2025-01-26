@@ -4,11 +4,11 @@
 
 #include "NodePrinter.h"
 #include "ast/BinOpNode.h"
-#include "ast/CallFunctionNode.h"
+#include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
 #include "ast/NumberNode.h"
 #include "ast/UnaryOpNode.h"
-#include "ast/VariableAccessNode.h"
+#include "ast/IdentNode.h"
 #include "ast/VariableDefinitionStatement.h"
 
 namespace {
@@ -43,7 +43,7 @@ NodePrinter::NodePrinter(std::ostream &os)
     : ostream(os) {
 }
 
-void NodePrinter::visit(const VariableAccessNode *node) {
+void NodePrinter::visit(const IdentNode *node) {
     ostream << "VariableAccess: name=" << node->name << ", ";
 }
 
@@ -73,8 +73,8 @@ void NodePrinter::visit(const VariableDefinitionStatement *node) {
     ostream << "VariableDefinition: var=" << node->name;
 }
 
-void NodePrinter::visit(const CallFunctionNode *node) {
-    ostream << "CallFunctionNode: name=" << node->callee;
+void NodePrinter::visit(const FunctionCallNode *node) {
+    ostream << "CallFunctionNode: name=" << node->name;
 }
 
 void NodePrinter::visit(const IfStatement *node) {

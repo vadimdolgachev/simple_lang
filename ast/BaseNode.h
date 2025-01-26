@@ -11,19 +11,19 @@
 class UnaryOpNode;
 class ForLoopNode;
 class IfStatement;
-class CallFunctionNode;
+class FunctionCallNode;
 class VariableDefinitionStatement;
 class ProtoFunctionStatement;
 class FunctionNode;
 class BinOpNode;
 class NumberNode;
-class VariableAccessNode;
+class IdentNode;
 
 class NodeVisitor {
 public:
     virtual ~NodeVisitor() = default;
 
-    virtual void visit(const VariableAccessNode *node) = 0;
+    virtual void visit(const IdentNode *node) = 0;
 
     virtual void visit(const NumberNode *node) = 0;
 
@@ -35,7 +35,7 @@ public:
 
     virtual void visit(const VariableDefinitionStatement *node) = 0;
 
-    virtual void visit(const CallFunctionNode *node) = 0;
+    virtual void visit(const FunctionCallNode *node) = 0;
 
     virtual void visit(const IfStatement *node) = 0;
 

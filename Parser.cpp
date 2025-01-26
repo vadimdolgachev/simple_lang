@@ -1,12 +1,16 @@
 #include "Parser.h"
 
+#include <complex>
+#include <iostream>
+
+#include "ast/FunctionCallNode.h"
 #include "ast/UnaryOpNode.h"
-#include "ast/VariableAccessNode.h"
+#include "ast/IdentNode.h"
 #include "ast/VariableDefinitionStatement.h"
 
 /*
 <Declaration> ::= <Identifier> <Initialization>
-               | <Identifier> "(" <Parameters> ")" <Block>
+               | <FunctionDefinition>
 
 <Identifier> ::= [a-zA-Z_][a-zA-Z0-9_]*
 
@@ -27,10 +31,17 @@
 
 <Expression> ::= <Literal>
              | <Identifier>
+             | <FunctionCall>
              | <Expression> <AddOp> <Term>
              | <Expression> "++"
              | <Expression> "--"
              | <Term>
+
+<FunctionCall> ::= <Identifier> "(" <Arguments> ")"
+
+<Arguments> ::= <Expression> "," <Arguments>
+             | <Expression>
+             | ε
 
 <AddOp> ::= "+" | "-"
 
@@ -46,6 +57,7 @@
 <Factor> ::= "(" <Expression> ")"
          | <Identifier>
          | <Number>
+         | <FunctionCall>
          | <PrefixIncDec> <Identifier>
          | <Identifier> <PostfixIncDec>
 
@@ -56,6 +68,10 @@
 <Statement> ::= "if" "(" <Expression> ")" <Block> ("else" <Block>)?
              | "while" "(" <Expression> ")" <Block>
              | "for" "(" <ForLoopInit> ";" <Expression> ";" <Expression> ")" <Block>
+             | <Expression> ";"
+             | <FunctionDefinition>
+
+<FunctionDefinition> ::= "fn" <Identifier> "(" <Parameters> ")" <Block>
 
 <ForLoopInit> ::= <Assignment>
               | <Declaration>
@@ -135,6 +151,9 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimary() {
                                                  UnaryOpNode::UnaryOpType::Postfix,
                                                  std::move(ident));
         }
+        if (lexer->currToken().type == TokenType::LeftParenthesis) {
+            return parseFunctionCall(std::move(ident));
+        }
         return ident;
     }
     if (lexer->currToken().type == TokenType::DecrementOperator
@@ -171,14 +190,14 @@ std::unique_ptr<ExpressionNode> Parser::parseTerm() {
         lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
     }
 
-    if (isEndOfExpr(lexer->currToken().type)) {
+    if (isEndOfExpr(lexer->currToken().type) || lexer->currToken().type == TokenType::Comma) {
         return lhs;
     }
     throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
 }
 
-std::unique_ptr<ExpressionNode> Parser::parseIdent() const {
-    auto ident = std::make_unique<VariableAccessNode>(lexer->currToken().value.value_or(""));
+std::unique_ptr<IdentNode> Parser::parseIdent() const {
+    auto ident = std::make_unique<IdentNode>(lexer->currToken().value.value_or(""));
     lexer->nextToken();
     return ident;
 }
@@ -199,4 +218,24 @@ std::unique_ptr<NumberNode> Parser::parseNumber() const {
     auto number = std::make_unique<NumberNode>(sign * strtod(lexer->currToken().value.value().c_str(), nullptr));
     lexer->nextToken();
     return number;
+}
+
+std::unique_ptr<ExpressionNode> Parser::parseFunctionCall(std::unique_ptr<IdentNode> ident) {
+    if (lexer->currToken().type != TokenType::LeftParenthesis) {
+        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+    }
+    lexer->nextToken(); // '('
+    std::vector<std::unique_ptr<ExpressionNode>> args;
+    do {
+        if (lexer->currToken().type == TokenType::Comma) {
+            lexer->nextToken();
+        }
+        args.emplace_back(parseExpr());
+    } while (lexer->currToken().type == TokenType::Comma);
+
+    if (lexer->currToken().type != TokenType::RightParenthesis) {
+        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+    }
+    lexer->nextToken(); // ')'
+    return std::make_unique<FunctionCallNode>(std::move(ident), std::move(args));
 }

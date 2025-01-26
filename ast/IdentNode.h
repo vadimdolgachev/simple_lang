@@ -9,9 +9,9 @@
 
 #include "BaseNode.h"
 
-class VariableAccessNode final : public ExpressionNode {
+class IdentNode final : public ExpressionNode {
 public:
-  explicit VariableAccessNode(std::string name);
+  explicit IdentNode(std::string name);
 
   [[nodiscard]] std::string toString() const override;
 

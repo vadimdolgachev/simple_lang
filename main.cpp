@@ -34,14 +34,14 @@
 #include "Lexer.h"
 #include "NodePrinter.h"
 #include "ast/BinOpNode.h"
-#include "ast/CallFunctionNode.h"
+#include "ast/FunctionCallNode.h"
 #include "ast/ForLoopNode.h"
 #include "ast/FunctionNode.h"
 #include "ast/IfStatement.h"
 #include "ast/NumberNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/UnaryOpNode.h"
-#include "ast/VariableAccessNode.h"
+#include "ast/IdentNode.h"
 #include "ast/VariableDefinitionStatement.h"
 #include "ir/IRCodegen.h"
 
@@ -152,7 +152,7 @@ namespace {
             return std::make_unique<VariableDefinitionStatement>(name, std::get<0>(toExpr(std::move(expr))));
         }
         if (lexer->currToken().type != TokenType::LeftParenthesis) {
-            return std::make_unique<VariableAccessNode>(name);
+            return std::make_unique<IdentNode>(name);
         }
 
         std::vector<std::unique_ptr<ExpressionNode> > args;
@@ -173,7 +173,7 @@ namespace {
             return nullptr;
         }
         lexer->nextToken(); // eat TokenType::RightParenthesis
-        return std::make_unique<CallFunctionNode>(name, std::move(args));
+        return std::make_unique<FunctionCallNode>(name, std::move(args));
     }
 
     std::list<std::unique_ptr<BaseNode> > parseCurlyBrackets(const std::unique_ptr<Lexer> &lexer) {
@@ -375,7 +375,7 @@ namespace {
                 break;
             }
             if (auto arg = parseIdentifier(lexer)) {
-                const auto *const var = dynamic_cast<const VariableAccessNode *>(arg.get());
+                const auto *const var = dynamic_cast<const IdentNode *>(arg.get());
                 args.push_back(var->name);
                 if (lexer->currToken().type == TokenType::Comma) {
                     lexer->nextToken(); // eat next arg
@@ -686,7 +686,7 @@ namespace {
             if (binOp == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const lhs = dynamic_cast<VariableAccessNode *>(binOp->lhs.get());
+            const auto *const lhs = dynamic_cast<IdentNode *>(binOp->lhs.get());
             if (lhs == nullptr || lhs->name != "v") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
@@ -703,8 +703,8 @@ namespace {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             print(expr.get());
-            const auto *const callFunc = dynamic_cast<CallFunctionNode *>(expr.get());
-            if (callFunc->callee != "foo") {
+            const auto *const callFunc = dynamic_cast<FunctionCallNode *>(expr.get());
+            if (callFunc->name != "foo") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             if (callFunc->args.size() != 5) {
@@ -716,7 +716,7 @@ namespace {
             if (auto *const number = dynamic_cast<NumberNode *>(callFunc->args[1].get()); number->value != 12.1) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            if (auto *const var = dynamic_cast<VariableAccessNode *>(callFunc->args[2].get()); var->name != "id1") {
+            if (auto *const var = dynamic_cast<IdentNode *>(callFunc->args[2].get()); var->name != "id1") {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
             if (auto *const number = dynamic_cast<NumberNode *>(callFunc->args[3].get()); number->value != -1.2) {
@@ -756,7 +756,7 @@ namespace {
         if (ifExprPtr->thenBranch.empty()) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const thenFuncAstPtr = dynamic_cast<CallFunctionNode *>(ifExprPtr->thenBranch.back().get());
+        const auto *const thenFuncAstPtr = dynamic_cast<FunctionCallNode *>(ifExprPtr->thenBranch.back().get());
         if (thenFuncAstPtr == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -765,7 +765,7 @@ namespace {
             if (ifExprPtr->elseBranch.value().empty()) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));
             }
-            const auto *const elseFuncAstPtr = dynamic_cast<CallFunctionNode *>(
+            const auto *const elseFuncAstPtr = dynamic_cast<FunctionCallNode *>(
                 ifExprPtr->elseBranch.value().back().get());
             if (elseFuncAstPtr == nullptr) {
                 throw std::logic_error(makeTestFailMsg(__LINE__));

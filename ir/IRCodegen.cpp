@@ -9,10 +9,10 @@
 #include <llvm/IR/Verifier.h>
 
 #include "ast/FunctionNode.h"
-#include "ast/VariableAccessNode.h"
+#include "ast/IdentNode.h"
 #include "ast/VariableDefinitionStatement.h"
 #include "ast/NumberNode.h"
-#include "ast/CallFunctionNode.h"
+#include "ast/FunctionCallNode.h"
 #include "ast/BinOpNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/ForLoopNode.h"
@@ -78,7 +78,7 @@ IRCodegen::IRCodegen(
     namedValues(namedValues) {
 }
 
-void IRCodegen::visit(const VariableAccessNode *node) {
+void IRCodegen::visit(const IdentNode *node) {
     value_ = namedValues[node->name];
 }
 
@@ -207,10 +207,10 @@ void IRCodegen::visit(const VariableDefinitionStatement *const node) {
     value_ = variable;
 }
 
-void IRCodegen::visit(const CallFunctionNode *const node) {
+void IRCodegen::visit(const FunctionCallNode *const node) {
     assert(llvmContext != nullptr);
     // Look up the name in the global module table.
-    auto *calleeFunc = getFunction(node->callee,
+    auto *calleeFunc = getFunction(node->name,
                                    llvmContext,
                                    llvmIRBuilder,
                                    llvmModule,

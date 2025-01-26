@@ -12,7 +12,7 @@ class NodePrinter final : public NodeVisitor {
 public:
     explicit NodePrinter(std::ostream &os = std::cout);
 
-    void visit(const VariableAccessNode *node) override;
+    void visit(const IdentNode *node) override;
 
     void visit(const NumberNode *node) override;
 
@@ -24,7 +24,7 @@ public:
 
     void visit(const VariableDefinitionStatement *node) override;
 
-    void visit(const CallFunctionNode *node) override;
+    void visit(const FunctionCallNode *node) override;
 
     void visit(const IfStatement *node) override;
 

@@ -1,11 +1,11 @@
-#include "CallFunctionNode.h"
+#include "FunctionCallNode.h"
 #include "BinOpNode.h"
 
 #include <sstream>
 
-std::string CallFunctionNode::toString() const {
+std::string FunctionCallNode::toString() const {
     std::stringstream ss;
-    ss << "call func: " << callee << "(";
+    ss << "call func: " << ident->name << "(";
     for (const auto &arg: args) {
         const bool isBinOp = dynamic_cast<BinOpNode *>(arg.get()) != nullptr;
         if (isBinOp) {
@@ -20,6 +20,6 @@ std::string CallFunctionNode::toString() const {
     return ss.str();
 }
 
-void CallFunctionNode::visit(NodeVisitor *visitor) const {
+void FunctionCallNode::visit(NodeVisitor *visitor) const {
     visitor->visit(this);
 }

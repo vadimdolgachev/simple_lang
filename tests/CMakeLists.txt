@@ -7,8 +7,8 @@ add_executable(tests main.cpp
         ../ast/BaseNode.h
         ../ast/NumberNode.h
         ../ast/NumberNode.cpp
-        ../ast/VariableAccessNode.h
-        ../ast/VariableAccessNode.cpp
+        ../ast/IdentNode.h
+        ../ast/IdentNode.cpp
         ../ast/BinOpNode.h
         ../ast/BinOpNode.cpp
         ../ast/FunctionNode.h
@@ -17,8 +17,8 @@ add_executable(tests main.cpp
         ../ast/ProtoFunctionStatement.cpp
         ../ast/VariableDefinitionStatement.h
         ../ast/VariableDefinitionStatement.cpp
-        ../ast/CallFunctionNode.h
-        ../ast/CallFunctionNode.cpp
+        ../ast/FunctionCallNode.h
+        ../ast/FunctionCallNode.cpp
         ../ast/IfStatement.h
         ../ast/IfStatement.cpp
         ../ast/ForLoopNode.h
