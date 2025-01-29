@@ -35,8 +35,8 @@ add_executable(simple_ast_parser
         ast/FunctionNode.cpp
         ast/ProtoFunctionStatement.h
         ast/ProtoFunctionStatement.cpp
-        ast/VariableDefinitionStatement.h
-        ast/VariableDefinitionStatement.cpp
+        ast/AssignmentNode.h
+        ast/AssignmentNode.cpp
         ast/FunctionCallNode.h
         ast/FunctionCallNode.cpp
         ast/IfStatement.h

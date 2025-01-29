@@ -22,7 +22,7 @@ public:
 
     void visit(const ProtoFunctionStatement *node) override;
 
-    void visit(const VariableDefinitionStatement *node) override;
+    void visit(const AssignmentNode *node) override;
 
     void visit(const FunctionCallNode *node) override;
 

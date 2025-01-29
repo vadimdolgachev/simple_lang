@@ -3,6 +3,19 @@ project(tests)
 
 set(CMAKE_CXX_STANDARD 20)
 
+set(CPM_DOWNLOAD_VERSION 0.40.5)
+if (NOT EXISTS "${CMAKE_BINARY_DIR}/cmake/CPM.cmake")
+    file(DOWNLOAD https://github.com/cpm-cmake/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake
+            "${CMAKE_BINARY_DIR}/cmake/CPM.cmake")
+endif ()
+include("${CMAKE_BINARY_DIR}/cmake/CPM.cmake")
+
+CPMAddPackage(
+        NAME googletest
+        GITHUB_REPOSITORY google/googletest
+        GIT_TAG v1.15.2
+)
+
 add_executable(tests main.cpp
         ../ast/BaseNode.h
         ../ast/NumberNode.h
@@ -15,8 +28,8 @@ add_executable(tests main.cpp
         ../ast/FunctionNode.cpp
         ../ast/ProtoFunctionStatement.h
         ../ast/ProtoFunctionStatement.cpp
-        ../ast/VariableDefinitionStatement.h
-        ../ast/VariableDefinitionStatement.cpp
+        ../ast/AssignmentNode.h
+        ../ast/AssignmentNode.cpp
         ../ast/FunctionCallNode.h
         ../ast/FunctionCallNode.cpp
         ../ast/IfStatement.h
@@ -40,5 +53,8 @@ target_compile_options(tests PRIVATE
         -Werror=unused-result
         -Werror=return-type
 )
+
+enable_testing()
 target_compile_options(tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 target_link_options(tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_libraries(tests PRIVATE GTest::gtest GTest::gtest_main)

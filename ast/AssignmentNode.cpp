@@ -1,15 +1,15 @@
-#include "VariableDefinitionStatement.h"
+#include "AssignmentNode.h"
 
-VariableDefinitionStatement::VariableDefinitionStatement(
+AssignmentNode::AssignmentNode(
     std::string name, std::unique_ptr<ExpressionNode> rvalue)
     : name(std::move(name)),
       rvalue(std::move(rvalue)) {
 }
 
-std::string VariableDefinitionStatement::toString() const {
+std::string AssignmentNode::toString() const {
     return "var definition name=" + name + ", rvalue=" + rvalue->toString();
 }
 
-void VariableDefinitionStatement::visit(NodeVisitor *const visitor) const {
+void AssignmentNode::visit(NodeVisitor *const visitor) const {
     visitor->visit(this);
 }

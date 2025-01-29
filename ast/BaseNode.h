@@ -12,7 +12,7 @@ class UnaryOpNode;
 class ForLoopNode;
 class IfStatement;
 class FunctionCallNode;
-class VariableDefinitionStatement;
+class AssignmentNode;
 class ProtoFunctionStatement;
 class FunctionNode;
 class BinOpNode;
@@ -33,7 +33,7 @@ public:
 
     virtual void visit(const ProtoFunctionStatement *node) = 0;
 
-    virtual void visit(const VariableDefinitionStatement *node) = 0;
+    virtual void visit(const AssignmentNode *node) = 0;
 
     virtual void visit(const FunctionCallNode *node) = 0;
 

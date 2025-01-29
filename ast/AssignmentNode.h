@@ -9,9 +9,9 @@
 
 #include "BaseNode.h"
 
-class VariableDefinitionStatement final : public StatementNode {
+class AssignmentNode final : public StatementNode {
 public:
-  VariableDefinitionStatement(std::string name,
+  AssignmentNode(std::string name,
                               std::unique_ptr<ExpressionNode> rvalue);
 
   [[nodiscard]] std::string toString() const override;

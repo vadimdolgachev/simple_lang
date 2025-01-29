@@ -7,7 +7,7 @@
 #include "ast/FunctionNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/IdentNode.h"
-#include "ast/VariableDefinitionStatement.h"
+#include "ast/AssignmentNode.h"
 
 namespace {
     bool isEndOfExpr(const TokenType token) {
@@ -46,7 +46,7 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
         lexer->nextToken();
         if (lexer->currToken().type == TokenType::Equals && value.has_value()) {
             lexer->nextToken();
-            return parseVarDefinition(value.value());
+            return parseAssignment(value.value());
         }
         // Rollback
         lexer->prevToken();
@@ -137,8 +137,8 @@ std::unique_ptr<IdentNode> Parser::parseIdent() const {
     return ident;
 }
 
-std::unique_ptr<BaseNode> Parser::parseVarDefinition(std::string identName) {
-    return std::make_unique<VariableDefinitionStatement>(std::move(identName), parseExpr());
+std::unique_ptr<BaseNode> Parser::parseAssignment(std::string identName) {
+    return std::make_unique<AssignmentNode>(std::move(identName), parseExpr());
 }
 
 std::unique_ptr<NumberNode> Parser::parseNumber() const {

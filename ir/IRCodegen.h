@@ -11,7 +11,7 @@
 #include "ast/BaseNode.h"
 
 class FunctionCallNode;
-class VariableDefinitionStatement;
+class AssignmentNode;
 class ProtoFunctionStatement;
 class FunctionNode;
 class BinOpNode;
@@ -36,7 +36,7 @@ public:
 
     void visit(const ProtoFunctionStatement *node) override;
 
-    void visit(const VariableDefinitionStatement *node) override;
+    void visit(const AssignmentNode *node) override;
 
     void visit(const FunctionCallNode *node) override;
 

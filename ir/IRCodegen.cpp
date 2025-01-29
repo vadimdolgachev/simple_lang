@@ -10,7 +10,7 @@
 
 #include "ast/FunctionNode.h"
 #include "ast/IdentNode.h"
-#include "ast/VariableDefinitionStatement.h"
+#include "ast/AssignmentNode.h"
 #include "ast/NumberNode.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/BinOpNode.h"
@@ -30,7 +30,7 @@ namespace {
                                     std::unordered_map<std::string, llvm::Value *> &namedValues) {
         for (auto it = expressions.begin(); it != expressions.end(); ++it) {
             auto *const ir = generateIR(it->get(), llvmContext, llvmIRBuilder, llvmModule, functionProtos, namedValues);
-            if (auto *const var = dynamic_cast<VariableDefinitionStatement *>(it->get()); var != nullptr) {
+            if (auto *const var = dynamic_cast<AssignmentNode *>(it->get()); var != nullptr) {
                 namedValues[var->name] = ir;
             }
             if (*it == expressions.back() && ir != nullptr) {
@@ -179,7 +179,7 @@ void IRCodegen::visit(const ProtoFunctionStatement *node) {
     value_ = function;
 }
 
-void IRCodegen::visit(const VariableDefinitionStatement *const node) {
+void IRCodegen::visit(const AssignmentNode *const node) {
     assert(llvmContext != nullptr);
     if (llvmIRBuilder->GetInsertBlock() == nullptr) {
         auto *const variable = new llvm::GlobalVariable(
@@ -307,7 +307,7 @@ void IRCodegen::visit(const ForLoopNode *node) {
     llvmIRBuilder->CreateBr(loopBB);
     llvmIRBuilder->SetInsertPoint(loopBB);
 
-    const auto *const initVarAst = dynamic_cast<const VariableDefinitionStatement *>(node->init.get());
+    const auto *const initVarAst = dynamic_cast<const AssignmentNode *>(node->init.get());
     if (initVarAst == nullptr) {
         return;
     }

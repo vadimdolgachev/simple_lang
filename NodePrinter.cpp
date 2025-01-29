@@ -9,7 +9,7 @@
 #include "ast/NumberNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/IdentNode.h"
-#include "ast/VariableDefinitionStatement.h"
+#include "ast/AssignmentNode.h"
 
 namespace {
     std::ostream &operator<<(std::ostream &os, const TokenType token) {
@@ -69,7 +69,7 @@ void NodePrinter::visit(const ProtoFunctionStatement *node) {
     ostream << "ProtoFunction: name=" << node->name;
 }
 
-void NodePrinter::visit(const VariableDefinitionStatement *node) {
+void NodePrinter::visit(const AssignmentNode *node) {
     ostream << "VariableDefinition: var=" << node->name;
 }
 

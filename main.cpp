@@ -42,7 +42,7 @@
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/IdentNode.h"
-#include "ast/VariableDefinitionStatement.h"
+#include "ast/AssignmentNode.h"
 #include "ir/IRCodegen.h"
 
 #include "Parser.h"
@@ -149,7 +149,7 @@ namespace {
         if (lexer->currToken().type == TokenType::Equals) {
             lexer->nextToken(); // eat =
             auto expr = parseAstNodeItem(lexer);
-            return std::make_unique<VariableDefinitionStatement>(name, std::get<0>(toExpr(std::move(expr))));
+            return std::make_unique<AssignmentNode>(name, std::get<0>(toExpr(std::move(expr))));
         }
         if (lexer->currToken().type != TokenType::LeftParenthesis) {
             return std::make_unique<IdentNode>(name);
@@ -542,7 +542,7 @@ namespace {
         if (varExprAst == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const var = dynamic_cast<VariableDefinitionStatement *>(varExprAst.get());
+        const auto *const var = dynamic_cast<AssignmentNode *>(varExprAst.get());
         if (var->name != "varName") {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
@@ -568,7 +568,7 @@ namespace {
         if (func == nullptr || func->proto->name != "test" || func->proto->args.size() != 3) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
-        const auto *const varPtr = dynamic_cast<VariableDefinitionStatement *>(func->body.front().get());
+        const auto *const varPtr = dynamic_cast<AssignmentNode *>(func->body.front().get());
         if (varPtr == nullptr || varPtr->name != "varPtr" || varPtr->rvalue == nullptr) {
             throw std::logic_error(makeTestFailMsg(__LINE__));
         }
