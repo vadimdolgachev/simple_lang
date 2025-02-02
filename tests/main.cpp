@@ -17,12 +17,9 @@
 #include "Util.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
+#include "ast/IfStatement.h"
 
 namespace {
-    std::string makeTestFailMsg(const std::uint32_t line) {
-        return std::string("test failed, line=").append(std::to_string(line));
-    }
-
     class VarDefinitionTest : public testing::Test {};
 
     TEST_F(VarDefinitionTest, AssignBinExpr) {
@@ -280,57 +277,127 @@ namespace {
             ++v
         }
     )";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input))
+                );
 
-        try {
-            const auto parser = std::make_unique<Parser>(
-                    std::make_unique<Lexer>(std::make_unique<std::istringstream>(input))
-                    );
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse function definition";
 
-            auto node = parser->parseNextNode();
-            ASSERT_NE(node, nullptr) << "Failed to parse function definition";
+        auto [fnNode, orig] = tryCast<FunctionNode>(std::move(node));
+        ASSERT_NE(fnNode, nullptr) << "Parsed node is not a function";
 
-            auto [fnNode, orig] = tryCast<FunctionNode>(std::move(node));
-            ASSERT_NE(fnNode, nullptr) << "Parsed node is not a function";
+        EXPECT_EQ(fnNode->name->name, "foo") << "Wrong function name";
 
-            // Проверка имени функции
-            EXPECT_EQ(fnNode->name->name, "foo") << "Wrong function name";
+        ASSERT_EQ(fnNode->params.size(), 4) << "Wrong number of parameters";
+        EXPECT_EQ(fnNode->params[0]->name, "arg1") << "Wrong parameter 1 name";
+        EXPECT_EQ(fnNode->params[1]->name, "arg2") << "Wrong parameter 2 name";
+        EXPECT_EQ(fnNode->params[2]->name, "arg3") << "Wrong parameter 3 name";
+        EXPECT_EQ(fnNode->params[3]->name, "arg4") << "Wrong parameter 4 name";
 
-            // Проверка параметров
-            ASSERT_EQ(fnNode->params.size(), 4) << "Wrong number of parameters";
-            EXPECT_EQ(fnNode->params[0]->name, "arg1") << "Wrong parameter 1 name";
-            EXPECT_EQ(fnNode->params[1]->name, "arg2") << "Wrong parameter 2 name";
-            EXPECT_EQ(fnNode->params[2]->name, "arg3") << "Wrong parameter 3 name";
-            EXPECT_EQ(fnNode->params[3]->name, "arg4") << "Wrong parameter 4 name";
+        ASSERT_FALSE(fnNode->body.empty()) << "Function body should not be empty";
+        ASSERT_EQ(fnNode->body.size(), 2) << "Wrong number of body statements";
 
-            // Проверка тела функции
-            ASSERT_FALSE(fnNode->body.empty()) << "Function body should not be empty";
-            ASSERT_EQ(fnNode->body.size(), 2) << "Wrong number of body statements";
+        const auto *stmt1 = dynamic_cast<AssignmentNode *>(fnNode->body[0].get());
+        ASSERT_NE(stmt1, nullptr) << "First statement is not a variable definition";
+        EXPECT_EQ(stmt1->name, "v") << "Wrong identifier in first statement";
 
-            // Проверка первого выражения (v = 1)
-            const auto *stmt1 = dynamic_cast<AssignmentNode *>(fnNode->body[0].get());
-            ASSERT_NE(stmt1, nullptr) << "First statement is not a variable definition";
-            EXPECT_EQ(stmt1->name, "v") << "Wrong identifier in first statement";
-
-            // Проверка второго выражения (++v)
-            const auto *stmt2 = dynamic_cast<UnaryOpNode *>(fnNode->body[1].get());
-            ASSERT_NE(stmt2, nullptr) << "Second statement is not a unary operation";
-            EXPECT_EQ(stmt2->operatorType, TokenType::IncrementOperator)
+        const auto *stmt2 = dynamic_cast<UnaryOpNode *>(fnNode->body[1].get());
+        ASSERT_NE(stmt2, nullptr) << "Second statement is not a unary operation";
+        EXPECT_EQ(stmt2->operatorType, TokenType::IncrementOperator)
             << "Wrong unary operator type";
-            EXPECT_EQ(stmt2->unaryPosType, UnaryOpNode::UnaryOpType::Prefix)
+        EXPECT_EQ(stmt2->unaryPosType, UnaryOpNode::UnaryOpType::Prefix)
             << "Wrong unary operator position";
 
-            const auto *operand = dynamic_cast<IdentNode *>(stmt2->expr.get());
-            ASSERT_NE(operand, nullptr) << "Invalid operand type";
-            EXPECT_EQ(operand->name, "v") << "Wrong operand identifier";
-
-        } catch (const std::exception &e) {
-            FAIL() << "Exception caught during parsing: " << e.what();
-        } catch (...) {
-            FAIL() << "Unknown exception caught during parsing";
-        }
+        const auto *operand = dynamic_cast<IdentNode *>(stmt2->expr.get());
+        ASSERT_NE(operand, nullptr) << "Invalid operand type";
+        EXPECT_EQ(operand->name, "v") << "Wrong operand identifier";
     }
 
+    class IfStatementTest : public ::testing::Test {};
 
+    TEST_F(IfStatementTest, IfWithoutElse) {
+        const std::string input = "if (flag) { doSomething() }";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse if without else";
+        const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
+        ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
+        ASSERT_EQ(ifNode->elseIfBranches.size(), 0) << "Unexpected else-if branches";
+        ASSERT_FALSE(ifNode->elseBranch.has_value()) << "Unexpected else branch";
+    }
+
+    TEST_F(IfStatementTest, IfWithElseIf) {
+        const std::string input = "if (flag) { doSomething() } else if (otherFlag) { doOtherThing() }";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse if-elseif";
+        const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
+        ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
+        ASSERT_EQ(ifNode->elseIfBranches.size(), 1) << "Wrong number of else-if branches";
+        ASSERT_FALSE(ifNode->elseBranch.has_value()) << "Unexpected else branch";
+    }
+
+    TEST_F(IfStatementTest, IfWithElse) {
+        const std::string input = "if (flag) { doSomething() } else { doOtherThing() }";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse if with else";
+        const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
+        ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
+        ASSERT_TRUE(ifNode->elseIfBranches.empty()) << "Unexpected else-if branches";
+        ASSERT_TRUE(ifNode->elseBranch.has_value()) << "Missing else branch";
+    }
+
+    TEST_F(IfStatementTest, IfElseIfElse) {
+        const std::string input =
+                R"(if (flag) {
+                        doSomething()
+                    } else if (otherFlag) {
+                        doOtherThing() }
+                    else {
+                        doAnotherThing()
+                    })";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse if-elseif-else";
+        const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
+        ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
+        ASSERT_EQ(ifNode->elseIfBranches.size(), 1) << "Wrong number of else-if branches";
+        ASSERT_TRUE(ifNode->elseBranch.has_value()) << "Missing else branch";
+    }
+
+    TEST_F(IfStatementTest, IfWithoutBraces) {
+        const std::string input = R"(if (flag)
+                                        doSomething())";
+        const auto parser = std::make_unique<Parser>(
+            std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse if without braces";
+        const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
+        ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
+        ASSERT_EQ(ifNode->ifBranch.then.size(), 1) << "Wrong then branch size";
+    }
+
+    TEST_F(IfStatementTest, IfElseWithoutBraces) {
+        const std::string input = R"(if (flag)
+                                        doSomething()
+                                    else
+                                        doOtherThing())";
+        const auto parser = std::make_unique<Parser>(
+            std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse if-else without braces";
+        const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
+        ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
+        ASSERT_EQ(ifNode->ifBranch.then.size(), 1) << "Wrong then branch size";
+        ASSERT_TRUE(ifNode->elseBranch.has_value()) << "Missing else branch";
+        ASSERT_EQ(ifNode->elseBranch->size(), 1) << "Wrong else branch size";
+    }
 } // namespace
 
 int main(int argc, char *argv[]) {

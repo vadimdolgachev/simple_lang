@@ -79,15 +79,16 @@ Token Lexer::fetchNextToken() {
     } else {
         // parse identifiers
         if (std::isalpha(lastChar)) {
-            std::string ident;
+            tokenValue = std::string();
             while (std::isalnum(lastChar)) {
-                ident.push_back(static_cast<char>(lastChar));
+                tokenValue.value().push_back(static_cast<char>(lastChar));
                 if (const int peekChar = getPeekChar(); !isalnum(peekChar)) {
                     break;
                 }
                 readNextChar();
             }
-            if (tokenValue == "def") {
+
+            if (tokenValue == "fn") {
                 resultToken = TokenType::FunctionDefinition;
             } else if (tokenValue == "if") {
                 resultToken = TokenType::If;
@@ -98,7 +99,6 @@ Token Lexer::fetchNextToken() {
             } else {
                 resultToken = TokenType::Identifier;
             }
-            tokenValue = ident;
         }
     }
 

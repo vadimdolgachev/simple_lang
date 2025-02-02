@@ -5,6 +5,7 @@
 
 #include "Lexer.h"
 #include "ast/BaseNode.h"
+#include "ast/IfStatement.h"
 #include "ast/NumberNode.h"
 
 /*
@@ -94,6 +95,9 @@ private:
     [[nodiscard]] std::unique_ptr<NumberNode> parseNumber() const;
     [[nodiscard]] std::unique_ptr<ExpressionNode> parseFunctionCall(std::unique_ptr<IdentNode> ident);
     [[nodiscard]] std::unique_ptr<BaseNode> parseFunctionDef();
+    [[nodiscard]] std::unique_ptr<BaseNode> parseIfExpr();
+    [[nodiscard]] std::vector<std::unique_ptr<BaseNode>> parseCurlyBracketBlock();
+    [[nodiscard]] IfStatement::CondBranch parseCondBranch();
 
     std::unique_ptr<Lexer> lexer;
 };

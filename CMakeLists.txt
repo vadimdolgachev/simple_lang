@@ -61,6 +61,7 @@ target_compile_options(simple_ast_parser PRIVATE
 #        -Wextra
         -Werror=unused-result
         -Werror=return-type
+        -Wstrict-aliasing
 )
 
 # Find the libraries that correspond to the LLVM components

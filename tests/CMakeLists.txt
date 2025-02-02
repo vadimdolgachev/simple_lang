@@ -52,6 +52,7 @@ target_compile_options(tests PRIVATE
         -Wextra
         -Werror=unused-result
         -Werror=return-type
+        -Wstrict-aliasing
 )
 
 enable_testing()

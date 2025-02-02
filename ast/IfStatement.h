@@ -5,26 +5,31 @@
 #ifndef IFSTATEMENT_H
 #define IFSTATEMENT_H
 
-#include <list>
 #include <memory>
 #include <optional>
+#include <vector>
 
 #include "BaseNode.h"
 
 class IfStatement final : public StatementNode {
 public:
-  IfStatement(
-      std::unique_ptr<ExpressionNode> cond,
-      std::list<std::unique_ptr<BaseNode>> thenBranch,
-      std::optional<std::list<std::unique_ptr<BaseNode>>> elseBranch);
+    struct CondBranch {
+        std::unique_ptr<ExpressionNode> cond;
+        std::vector<std::unique_ptr<BaseNode>> then;
+    };
 
-  [[nodiscard]] std::string toString() const override;
+    IfStatement(
+        CondBranch ifBranch,
+        std::vector<CondBranch> elseIfBranches,
+        std::optional<std::vector<std::unique_ptr<BaseNode>>> elseBranch);
 
-  void visit(NodeVisitor *visitor) const override;
+    [[nodiscard]] std::string toString() const override;
 
-  const std::unique_ptr<ExpressionNode> cond;
-  const std::list<std::unique_ptr<BaseNode>> thenBranch;
-  const std::optional<std::list<std::unique_ptr<BaseNode>>> elseBranch;
+    void visit(NodeVisitor *visitor) const override;
+
+    const CondBranch ifBranch;
+    const std::vector<CondBranch> elseIfBranches;
+    const std::optional<std::vector<std::unique_ptr<BaseNode>>> elseBranch;
 };
 
 #endif //IFSTATEMENT_H
