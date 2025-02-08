@@ -8,6 +8,7 @@
 #include "ast/UnaryOpNode.h"
 #include "ast/IdentNode.h"
 #include "ast/AssignmentNode.h"
+#include "ast/ForLoopNode.h"
 #include "ast/IfStatement.h"
 
 namespace {
@@ -53,7 +54,11 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
     }
     if (tokenType == TokenType::If) {
         lexer->nextToken();
-        return parseIfExpr();
+        return parseIfStatement();
+    }
+    if (tokenType == TokenType::ForLoop) {
+        lexer->nextToken();
+        return parseForStatement();
     }
     // Expressions
     if (isSign(tokenType)
@@ -78,7 +83,41 @@ IfStatement::CondBranch Parser::parseCondBranch() {
     return {std::move(condition), std::move(thenBranch)};
 }
 
-std::unique_ptr<BaseNode> Parser::parseIfExpr() {
+std::unique_ptr<BaseNode> Parser::parseForStatement() {
+    if (lexer->currToken().type != TokenType::LeftParenthesis) {
+        throw std::runtime_error("Expected '(' after 'for'");
+    }
+    lexer->nextToken(); // '('
+    auto initExpr = parseNextNode();
+    if (lexer->currToken().type != TokenType::Semicolon) {
+        throw std::runtime_error("Expected ';' after init statement");
+    }
+    lexer->nextToken(); // ';'
+    auto condition = parseExpr();
+    if (lexer->currToken().type != TokenType::Semicolon) {
+        throw std::runtime_error("Expected ';' after condition");
+    }
+    lexer->nextToken(); // ';'
+    auto nextExpr = parseExpr();
+    if (lexer->currToken().type != TokenType::RightParenthesis) {
+        throw std::runtime_error("Expected ')'");
+    }
+    lexer->nextToken(); // ')'
+    std::vector<std::unique_ptr<BaseNode>> forBody;
+    if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
+        forBody = parseCurlyBracketBlock();
+    } else {
+        forBody.emplace_back(parseExpr());
+    }
+    return std::make_unique<ForLoopNode>(
+        std::move(initExpr),
+        std::move(nextExpr),
+        std::move(condition),
+        std::move(forBody)
+    );
+}
+
+std::unique_ptr<BaseNode> Parser::parseIfStatement() {
     auto ifBranch = parseCondBranch();
     std::vector<IfStatement::CondBranch> elseIfBranches;
     std::optional<std::vector<std::unique_ptr<BaseNode>>> elseBranch;
@@ -163,7 +202,13 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimary() {
 std::unique_ptr<ExpressionNode> Parser::parseFactor() {
     auto lhs = parsePrimary();
     while (lexer->currToken().type == TokenType::Star
-           || lexer->currToken().type == TokenType::Slash) {
+           || lexer->currToken().type == TokenType::Slash
+           || lexer->currToken().type == TokenType::LeftAngleBracket
+           || lexer->currToken().type == TokenType::LeftAngleBracketEqual
+           || lexer->currToken().type == TokenType::RightAngleBracket
+           || lexer->currToken().type == TokenType::RightAngleBracketEqual
+           || lexer->currToken().type == TokenType::Equals
+           || lexer->currToken().type == TokenType::NotEqual) {
         const auto op = lexer->currToken().type;
         lexer->nextToken();
         auto rhs = parsePrimary();
@@ -191,7 +236,7 @@ std::unique_ptr<IdentNode> Parser::parseIdent() const {
     return ident;
 }
 
-std::unique_ptr<BaseNode> Parser::parseAssignment(std::string identName) {
+std::unique_ptr<StatementNode> Parser::parseAssignment(std::string identName) {
     return std::make_unique<AssignmentNode>(std::move(identName), parseExpr());
 }
 
@@ -231,7 +276,7 @@ std::unique_ptr<ExpressionNode> Parser::parseFunctionCall(std::unique_ptr<IdentN
     return std::make_unique<FunctionCallNode>(std::move(ident), std::move(args));
 }
 
-std::unique_ptr<BaseNode> Parser::parseFunctionDef() {
+std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
     if (lexer->currToken().type != TokenType::Identifier) {
         throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
     }

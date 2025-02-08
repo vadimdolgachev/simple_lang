@@ -17,35 +17,59 @@ enum class TokenType : std::uint8_t {
     If,
     Else,
     ForLoop,
+    WhileLoop,
+    DoLoop,
     FunctionDefinition,
+    Return,
 
     // Identifiers and literals
     Identifier,
     Number,
+    String,
+    BooleanTrue,
+    BooleanFalse,
 
     // Operators
-    IncrementOperator,
-    DecrementOperator,
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    Equals,
+    IncrementOperator,   // ++
+    DecrementOperator,   // --
+    Plus,                // +
+    Minus,               // -
+    Star,                // *
+    Slash,               // /
+    Equals,              // =
 
     // Comparison and relational operators
-    LeftAngleBracket,
-    RightAngleBracket,
+    LeftAngleBracket,         // <
+    LeftAngleBracketEqual,    // <=
+    RightAngleBracket,        // >
+    RightAngleBracketEqual,   // >=
+    Equal,                    // ==
+    NotEqual,                 // !=
+
+    // Logical operators
+    LogicalAnd,       // &&
+    LogicalOr,        // ||
+    LogicalNegation,  // !
+
+    // Bitwise operators
+    BitwiseAnd,   // &
+    BitwiseOr,    // |
+    BitwiseXor,   // ^
+    BitwiseNot,   // ~
 
     // Punctuation
-    Comma,
-    LeftParenthesis,
-    RightParenthesis,
-    LeftCurlyBracket,
-    RightCurlyBracket,
+    Comma,              // ,
+    Semicolon,          // ;
+    LeftParenthesis,    // (
+    RightParenthesis,   // )
+    LeftCurlyBracket,   // {
+    RightCurlyBracket,  // }
+    LeftSquareBracket,  // [
+    RightSquareBracket, // ]
 
     // Special
-    Eos,
-    Unknown,
+    Eos,       // End of Stream
+    Unknown    // Unknown token
 };
 
 inline std::string toString(const TokenType token) {
@@ -59,14 +83,32 @@ inline std::string toString(const TokenType token) {
         case TokenType::ForLoop: {
             return "ForLoop";
         }
+        case TokenType::WhileLoop: {
+            return "WhileLoop";
+        }
+        case TokenType::DoLoop: {
+            return "DoLoop";
+        }
         case TokenType::FunctionDefinition: {
             return "FunctionDefinition";
+        }
+        case TokenType::Return: {
+            return "Return";
         }
         case TokenType::Identifier: {
             return "Identifier";
         }
         case TokenType::Number: {
             return "Number";
+        }
+        case TokenType::String: {
+            return "String";
+        }
+        case TokenType::BooleanTrue: {
+            return "BooleanTrue";
+        }
+        case TokenType::BooleanFalse: {
+            return "BooleanFalse";
         }
         case TokenType::IncrementOperator: {
             return "IncrementOperator";
@@ -92,11 +134,47 @@ inline std::string toString(const TokenType token) {
         case TokenType::LeftAngleBracket: {
             return "LeftAngleBracket";
         }
+        case TokenType::LeftAngleBracketEqual: {
+            return "LeftAngleBracketEqual";
+        }
         case TokenType::RightAngleBracket: {
             return "RightAngleBracket";
         }
+        case TokenType::RightAngleBracketEqual: {
+            return "RightAngleBracketEqual";
+        }
+        case TokenType::Equal: {
+            return "Equal";
+        }
+        case TokenType::NotEqual: {
+            return "NotEqual";
+        }
+        case TokenType::LogicalAnd: {
+            return "LogicalAnd";
+        }
+        case TokenType::LogicalOr: {
+            return "LogicalOr";
+        }
+        case TokenType::LogicalNegation: {
+            return "LogicalNegation";
+        }
+        case TokenType::BitwiseAnd: {
+            return "BitwiseAnd";
+        }
+        case TokenType::BitwiseOr: {
+            return "BitwiseOr";
+        }
+        case TokenType::BitwiseXor: {
+            return "BitwiseXor";
+        }
+        case TokenType::BitwiseNot: {
+            return "BitwiseNot";
+        }
         case TokenType::Comma: {
             return "Comma";
+        }
+        case TokenType::Semicolon: {
+            return "Semicolon";
         }
         case TokenType::LeftParenthesis: {
             return "LeftParenthesis";
@@ -109,6 +187,12 @@ inline std::string toString(const TokenType token) {
         }
         case TokenType::RightCurlyBracket: {
             return "RightCurlyBracket";
+        }
+        case TokenType::LeftSquareBracket: {
+            return "LeftSquareBracket";
+        }
+        case TokenType::RightSquareBracket: {
+            return "RightSquareBracket";
         }
         case TokenType::Eos: {
             return "Eos";

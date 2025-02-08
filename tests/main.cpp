@@ -15,6 +15,7 @@
 #include "ast/IdentNode.h"
 #include "ast/UnaryOpNode.h"
 #include "Util.h"
+#include "ast/ForLoopNode.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
 #include "ast/IfStatement.h"
@@ -225,7 +226,7 @@ namespace {
                            "var");
     }
 
-    class FunctionCallTest : public ::testing::Test {};
+    class FunctionCallTest : public testing::Test {};
 
     TEST_F(FunctionCallTest, ComplexFunctionCall) {
         const std::string input = "foo(1, 2.1, var, 1 + 2)";
@@ -268,7 +269,7 @@ namespace {
         EXPECT_EQ(rhs->value, 2) << "Wrong right operand value in: " << input;
     }
 
-    class FunctionDefTest : public ::testing::Test {};
+    class FunctionDefTest : public testing::Test {};
 
     TEST_F(FunctionDefTest, ComplexFunctionDefinition) {
         const std::string input = R"(
@@ -314,7 +315,7 @@ namespace {
         EXPECT_EQ(operand->name, "v") << "Wrong operand identifier";
     }
 
-    class IfStatementTest : public ::testing::Test {};
+    class IfStatementTest : public testing::Test {};
 
     TEST_F(IfStatementTest, IfWithoutElse) {
         const std::string input = "if (flag) { doSomething() }";
@@ -398,6 +399,56 @@ namespace {
         ASSERT_TRUE(ifNode->elseBranch.has_value()) << "Missing else branch";
         ASSERT_EQ(ifNode->elseBranch->size(), 1) << "Wrong else branch size";
     }
+
+    class ForStatementTest : public testing::Test {};
+
+    TEST_F(ForStatementTest, ForEmpty) {
+        const std::string input = R"(for (var = 0; var < 10; ++var) {})";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input))
+                );
+        const auto node = parser->parseNextNode();
+
+        ASSERT_NE(node, nullptr) << "Failed to parse the for-loop expression";
+
+        const auto *const forNode = dynamic_cast<ForLoopNode *>(node.get());
+        ASSERT_NE(forNode, nullptr) << "Parsed node is not a for-loop node";
+
+        ASSERT_NE(forNode->init, nullptr) << "For loop missing initialization expression";
+        const auto *varNode = dynamic_cast<AssignmentNode *>(forNode->init.get());
+        ASSERT_NE(varNode, nullptr) << "For loop initialization is not an assignment node";
+        EXPECT_EQ(varNode->name, "var") << "Wrong variable name in initialization: " << input;
+
+        const auto *varNumber = dynamic_cast<NumberNode *>(varNode->rvalue.get());
+        ASSERT_NE(varNumber, nullptr) << "For loop initialization value is not a number node";
+        EXPECT_DOUBLE_EQ(varNumber->value, 0) << "Wrong initialization value for variable 'var': " << input;
+
+        ASSERT_NE(forNode->conditional, nullptr) << "For loop missing condition expression";
+        const auto *condNode = dynamic_cast<BinOpNode *>(forNode->conditional.get());
+        ASSERT_NE(condNode, nullptr) << "Condition expression is not a binary operation node";
+
+        const auto *condVar = dynamic_cast<IdentNode *>(condNode->lhs.get());
+        ASSERT_NE(condVar, nullptr) << "Left-hand side of condition is not an identifier node";
+        EXPECT_EQ(condVar->name, "var") << "Wrong variable name in condition: " << input;
+
+        ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket) << "Condition operator is not '<' as expected: " << input;
+
+        ASSERT_NE(forNode->next, nullptr) << "For loop missing iteration expression";
+        const auto *nextOp = dynamic_cast<UnaryOpNode *>(forNode->next.get());
+        ASSERT_NE(nextOp, nullptr) << "Iteration expression is not a unary operation node";
+
+        ASSERT_EQ(nextOp->operatorType,
+                  TokenType::IncrementOperator) << "Expected increment operator in iteration expression";
+        ASSERT_EQ(nextOp->unaryPosType,
+                  UnaryOpNode::UnaryOpType::Prefix) << "Expected prefix increment operator in iteration expression";
+
+        const auto *nextIdent = dynamic_cast<IdentNode *>(nextOp->expr.get());
+        ASSERT_NE(nextIdent, nullptr) << "Iteration expression does not contain a valid identifier node";
+        EXPECT_EQ(nextIdent->name, "var") << "Wrong variable name in iteration: " << input;
+
+        ASSERT_TRUE(forNode->body.empty()) << "Expected empty body for for loop: " << input;
+    }
+
 } // namespace
 
 int main(int argc, char *argv[]) {

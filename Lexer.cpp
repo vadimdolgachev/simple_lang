@@ -6,12 +6,6 @@
 
 #include <iostream>
 
-namespace {
-    bool isEos(const int v) {
-        return v == ';';
-    }
-}
-
 void Lexer::readNextChar() {
     do {
         lastChar = stream->get();
@@ -35,11 +29,8 @@ Token Lexer::fetchNextToken() {
 
     auto resultToken = TokenType::Unknown;
 
-    if (isEos(lastChar)) {
-        while (isEos(getPeekChar())) {
-            readNextChar();
-        }
-        resultToken = TokenType::Eos;
+    if (lastChar == ';') {
+        resultToken = TokenType::Semicolon;
     } else if (lastChar == EOF) {
         resultToken = TokenType::Eos;
     } else if (isCharOfNumber(lastChar)) {
