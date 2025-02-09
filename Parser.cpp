@@ -191,15 +191,10 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimary() {
         return ident;
     }
     if (lexer->currToken().type == TokenType::DecrementOperator
-        || lexer->currToken().type == TokenType::IncrementOperator) {
-        const auto type = lexer->currToken().type;
-        lexer->nextToken();
-        auto val = parsePrimary();
-        return std::make_unique<UnaryOpNode>(type,
-                                             UnaryOpNode::UnaryOpType::Prefix,
-                                             std::move(val));
-    }
-    if (lexer->currToken().type == TokenType::LogicalNegation) {
+        || lexer->currToken().type == TokenType::IncrementOperator
+        || lexer->currToken().type == TokenType::LogicalNegation
+        || lexer->currToken().type == TokenType::Plus
+        || lexer->currToken().type == TokenType::Minus) {
         const auto type = lexer->currToken().type;
         lexer->nextToken();
         auto val = parsePrimary();

@@ -206,26 +206,6 @@ namespace {
         EXPECT_EQ(binOp->binOp, TokenType::RightAngleBracketEqual) << "Wrong operator: " << input;
     }
 
-    class LogicalOpTest : public testing::Test {};
-
-    TEST_F(LogicalOpTest, Negation) {
-        const std::string input = "!v1";
-        const auto parser = std::make_unique<Parser>(
-                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-
-        auto node = parser->parseNextNode();
-        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
-
-        auto [unaryOp, orig] = tryCast<UnaryOpNode>(std::move(node));
-        ASSERT_NE(unaryOp, nullptr) << "Not a unary operation: " << input;
-
-        EXPECT_EQ(unaryOp->operatorType, TokenType::LogicalNegation) << "Wrong operator: " << input;
-        EXPECT_EQ(unaryOp->unaryPosType, UnaryOpNode::UnaryOpType::Prefix) << "Wrong operator: " << input;
-        const auto *ident = dynamic_cast<IdentNode *>(unaryOp->expr.get());
-        ASSERT_NE(ident, nullptr) << "Failed to cast unary operation: " << input;
-        EXPECT_EQ(ident->name, "v1") << "Wrong ident name: " << input;
-    }
-
     TEST_F(BinExpressionsTest, ComplexExpression) {
         const std::string input = "+1 *  (   2    +3.0);";
         const auto parser = std::make_unique<Parser>(
@@ -336,6 +316,27 @@ namespace {
     TEST_F(UnaryOpTest, PrefixDecrement) {
         testUnaryOperation("--var",
                            TokenType::DecrementOperator,
+                           UnaryOpNode::UnaryOpType::Prefix,
+                           "var");
+    }
+
+    TEST_F(UnaryOpTest, Plus) {
+        testUnaryOperation("+var",
+                           TokenType::Plus,
+                           UnaryOpNode::UnaryOpType::Prefix,
+                           "var");
+    }
+
+    TEST_F(UnaryOpTest, Minus) {
+        testUnaryOperation("-var",
+                           TokenType::Minus,
+                           UnaryOpNode::UnaryOpType::Prefix,
+                           "var");
+    }
+
+    TEST_F(UnaryOpTest, Negation) {
+        testUnaryOperation("!var",
+                           TokenType::LogicalNegation,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
@@ -490,7 +491,7 @@ namespace {
         const std::string input = R"(if (flag)
                                         doSomething())";
         const auto parser = std::make_unique<Parser>(
-            std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
         const auto node = parser->parseNextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse if without braces";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
@@ -504,7 +505,7 @@ namespace {
                                     else
                                         doOtherThing())";
         const auto parser = std::make_unique<Parser>(
-            std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
         const auto node = parser->parseNextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse if-else without braces";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
@@ -545,7 +546,8 @@ namespace {
         ASSERT_NE(condVar, nullptr) << "Left-hand side of condition is not an identifier node";
         EXPECT_EQ(condVar->name, "var") << "Wrong variable name in condition: " << input;
 
-        ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket) << "Condition operator is not '<' as expected: " << input;
+        ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket)
+            << "Condition operator is not '<' as expected: " << input;
 
         ASSERT_NE(forNode->next, nullptr) << "For loop missing iteration expression";
         const auto *nextOp = dynamic_cast<UnaryOpNode *>(forNode->next.get());
