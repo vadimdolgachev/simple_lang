@@ -112,6 +112,120 @@ namespace {
         EXPECT_EQ(rhsRhs->value, 2) << "Wrong nested RHS value: " << input;
     }
 
+    class ComparisonOpTest : public testing::Test {};
+
+    TEST_F(ComparisonOpTest, Equal) {
+        const std::string input = "v1 == v2";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::Equal) << "Wrong operator: " << input;
+
+        const auto *lhs = dynamic_cast<IdentNode *>(binOp->lhs.get());
+        ASSERT_NE(lhs, nullptr) << "Invalid LHS: " << input;
+        EXPECT_EQ(lhs->name, "v1") << "Wrong LHS var name: " << input;
+
+        const auto *rhs = dynamic_cast<IdentNode *>(binOp->rhs.get());
+        ASSERT_NE(rhs, nullptr) << "Invalid RHS: " << input;
+        EXPECT_EQ(rhs->name, "v2") << "Wrong RHS var name: " << input;
+    }
+
+    TEST_F(ComparisonOpTest, NotEqual) {
+        const std::string input = "v1 != v2";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::NotEqual) << "Wrong operator: " << input;
+    }
+
+    TEST_F(ComparisonOpTest, LessThan) {
+        const std::string input = "v1 < v2";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::LeftAngleBracket) << "Wrong operator: " << input;
+    }
+
+    TEST_F(ComparisonOpTest, LessThanEqual) {
+        const std::string input = "v1 <= v2";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::LeftAngleBracketEqual) << "Wrong operator: " << input;
+    }
+
+    TEST_F(ComparisonOpTest, GreatThan) {
+        const std::string input = "v1 > v2";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::RightAngleBracket) << "Wrong operator: " << input;
+    }
+
+    TEST_F(ComparisonOpTest, GreatThanEqual) {
+        const std::string input = "v1 >= v2";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::RightAngleBracketEqual) << "Wrong operator: " << input;
+    }
+
+    class LogicalOpTest : public testing::Test {};
+
+    TEST_F(LogicalOpTest, Negation) {
+        const std::string input = "!v1";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [unaryOp, orig] = tryCast<UnaryOpNode>(std::move(node));
+        ASSERT_NE(unaryOp, nullptr) << "Not a unary operation: " << input;
+
+        EXPECT_EQ(unaryOp->operatorType, TokenType::LogicalNegation) << "Wrong operator: " << input;
+        EXPECT_EQ(unaryOp->unaryPosType, UnaryOpNode::UnaryOpType::Prefix) << "Wrong operator: " << input;
+        const auto *ident = dynamic_cast<IdentNode *>(unaryOp->expr.get());
+        ASSERT_NE(ident, nullptr) << "Failed to cast unary operation: " << input;
+        EXPECT_EQ(ident->name, "v1") << "Wrong ident name: " << input;
+    }
+
     TEST_F(BinExpressionsTest, ComplexExpression) {
         const std::string input = "+1 *  (   2    +3.0);";
         const auto parser = std::make_unique<Parser>(

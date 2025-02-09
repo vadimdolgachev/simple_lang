@@ -36,7 +36,7 @@ enum class TokenType : std::uint8_t {
     Minus,               // -
     Star,                // *
     Slash,               // /
-    Equals,              // =
+    Assignment,          // =
 
     // Comparison and relational operators
     LeftAngleBracket,         // <
@@ -128,7 +128,7 @@ inline std::string toString(const TokenType token) {
         case TokenType::Slash: {
             return "Slash";
         }
-        case TokenType::Equals: {
+        case TokenType::Assignment: {
             return "Equals";
         }
         case TokenType::LeftAngleBracket: {
@@ -243,8 +243,6 @@ private:
     static bool isCharOfNumber(int ch);
 
     [[nodiscard]] std::string parseNumber();
-
-    std::optional<TokenType> maybeParseUnaryToken();
 
     std::unique_ptr<std::istream> stream;
     int lastChar;

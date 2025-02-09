@@ -146,7 +146,7 @@ namespace {
     std::unique_ptr<BaseNode> parseIdentifier(const std::unique_ptr<Lexer> &lexer, const bool inExpression = false) {
         const std::string name = lexer->currToken().value.value_or("");
         lexer->nextToken(); // eat identifier
-        if (lexer->currToken().type == TokenType::Equals) {
+        if (lexer->currToken().type == TokenType::Assignment) {
             lexer->nextToken(); // eat =
             auto expr = parseAstNodeItem(lexer);
             return std::make_unique<AssignmentNode>(name, std::get<0>(toExpr(std::move(expr))));

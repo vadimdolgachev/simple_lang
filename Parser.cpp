@@ -42,7 +42,7 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
     // Assignment
     if (tokenType == TokenType::Identifier) {
         lexer->nextToken();
-        if (lexer->currToken().type == TokenType::Equals && value.has_value()) {
+        if (lexer->currToken().type == TokenType::Assignment && value.has_value()) {
             lexer->nextToken();
             return parseAssignment(value.value());
         }
@@ -66,7 +66,10 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
         || tokenType == TokenType::LeftParenthesis
         || tokenType == TokenType::Identifier
         || tokenType == TokenType::IncrementOperator
-        || tokenType == TokenType::DecrementOperator) {
+        || tokenType == TokenType::DecrementOperator
+        || tokenType == TokenType::LogicalNegation
+        || tokenType == TokenType::Minus
+        || tokenType == TokenType::Plus) {
         return parseExpr();
     }
     return nullptr;
@@ -196,6 +199,14 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimary() {
                                              UnaryOpNode::UnaryOpType::Prefix,
                                              std::move(val));
     }
+    if (lexer->currToken().type == TokenType::LogicalNegation) {
+        const auto type = lexer->currToken().type;
+        lexer->nextToken();
+        auto val = parsePrimary();
+        return std::make_unique<UnaryOpNode>(type,
+                                             UnaryOpNode::UnaryOpType::Prefix,
+                                             std::move(val));
+    }
     throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
 }
 
@@ -207,7 +218,7 @@ std::unique_ptr<ExpressionNode> Parser::parseFactor() {
            || lexer->currToken().type == TokenType::LeftAngleBracketEqual
            || lexer->currToken().type == TokenType::RightAngleBracket
            || lexer->currToken().type == TokenType::RightAngleBracketEqual
-           || lexer->currToken().type == TokenType::Equals
+           || lexer->currToken().type == TokenType::Equal
            || lexer->currToken().type == TokenType::NotEqual) {
         const auto op = lexer->currToken().type;
         lexer->nextToken();

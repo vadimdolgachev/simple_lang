@@ -48,25 +48,51 @@ Token Lexer::fetchNextToken() {
     } else if (lastChar == ',') {
         resultToken = TokenType::Comma;
     } else if (lastChar == '=') {
-        resultToken = TokenType::Equals;
+        if (getPeekChar() == '=') {
+            readNextChar();
+            resultToken = TokenType::Equal;
+        } else {
+            resultToken = TokenType::Assignment;
+        }
     } else if (lastChar == '+') {
-        resultToken = TokenType::Plus;
-        if (const auto token = maybeParseUnaryToken()) {
-            resultToken = *token;
+        if (getPeekChar() == '+') {
+            readNextChar();
+            resultToken = TokenType::IncrementOperator;
+        } else {
+            resultToken = TokenType::Plus;
         }
     } else if (lastChar == '-') {
-        resultToken = TokenType::Minus;
-        if (const auto token = maybeParseUnaryToken()) {
-            resultToken = *token;
+        if (getPeekChar() == '-') {
+            readNextChar();
+            resultToken = TokenType::DecrementOperator;
+        } else {
+            resultToken = TokenType::Minus;
         }
     } else if (lastChar == '*') {
         resultToken = TokenType::Star;
     } else if (lastChar == '/') {
         resultToken = TokenType::Slash;
     } else if (lastChar == '<') {
-        resultToken = TokenType::LeftAngleBracket;
+        if (getPeekChar() == '=') {
+            readNextChar();
+            resultToken = TokenType::LeftAngleBracketEqual;
+        } else {
+            resultToken = TokenType::LeftAngleBracket;
+        }
     } else if (lastChar == '>') {
-        resultToken = TokenType::RightAngleBracket;
+        if (getPeekChar() == '=') {
+            readNextChar();
+            resultToken = TokenType::RightAngleBracketEqual;
+        } else {
+            resultToken = TokenType::RightAngleBracket;
+        }
+    } else if (lastChar == '!') {
+        if (getPeekChar() == '=') {
+            readNextChar();
+            resultToken = TokenType::NotEqual;
+        } else {
+            resultToken = TokenType::LogicalNegation;
+        }
     } else {
         // parse identifiers
         if (std::isalpha(lastChar)) {
@@ -129,14 +155,6 @@ std::string Lexer::parseNumber() {
         }
     } while (hasNextToken());
     return tokenValue;
-}
-
-std::optional<TokenType> Lexer::maybeParseUnaryToken() {
-    if (const int peek = getPeekChar(); peek == lastChar) {
-        readNextChar();
-        return lastChar == '+' ? TokenType::IncrementOperator : TokenType::DecrementOperator;
-    }
-    return std::nullopt;
 }
 
 Lexer::Lexer(std::unique_ptr<std::istream> stream):
