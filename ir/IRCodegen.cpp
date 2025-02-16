@@ -131,6 +131,10 @@ void IRCodegen::visit(const StringNode *node) {
     throw std::runtime_error("not implemented");
 }
 
+void IRCodegen::visit(const BooleanNode *node) {
+    throw std::runtime_error("not implemented");
+}
+
 void IRCodegen::visit(const BinOpNode *node) {
     assert(llvmContext != nullptr);
     auto *lhsValue = generateIR(node->lhs.get(), llvmContext, llvmIRBuilder, llvmModule, functionProtos, namedValues);

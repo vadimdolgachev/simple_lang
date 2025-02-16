@@ -20,6 +20,8 @@ public:
 
     void visit(const BinOpNode *node) override;
 
+    void visit(const BooleanNode *node) override;
+
     void visit(const FunctionNode *node) override;
 
     void visit(const ProtoFunctionStatement *node) override;

@@ -53,7 +53,9 @@ add_executable(simple_ast_parser
         Parser.cpp
         NodePrinter.h
         NodePrinter.cpp
-        Util.h)
+        Util.h
+        ast/BooleanNode.cpp
+        ast/BooleanNode.h)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

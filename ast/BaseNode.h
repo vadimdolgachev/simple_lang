@@ -19,6 +19,7 @@ class BinOpNode;
 class IdentNode;
 class NumberNode;
 class StringNode;
+class BooleanNode;
 
 class NodeVisitor {
 public:
@@ -29,6 +30,8 @@ public:
     virtual void visit(const NumberNode *node) = 0;
 
     virtual void visit(const StringNode *node) = 0;
+
+    virtual void visit(const BooleanNode* node) = 0;
 
     virtual void visit(const BinOpNode *node) = 0;
 

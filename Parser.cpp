@@ -8,6 +8,7 @@
 #include "ast/UnaryOpNode.h"
 #include "ast/IdentNode.h"
 #include "ast/AssignmentNode.h"
+#include "ast/BooleanNode.h"
 #include "ast/ForLoopNode.h"
 #include "ast/IfStatement.h"
 #include "ast/StringNode.h"
@@ -63,19 +64,7 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
         return parseForStatement();
     }
     // Expressions
-    if (isSign(tokenType)
-        || tokenType == TokenType::Number
-        || tokenType == TokenType::String
-        || tokenType == TokenType::LeftParenthesis
-        || tokenType == TokenType::Identifier
-        || tokenType == TokenType::IncrementOperator
-        || tokenType == TokenType::DecrementOperator
-        || tokenType == TokenType::LogicalNegation
-        || tokenType == TokenType::Minus
-        || tokenType == TokenType::Plus) {
-        return parseExpr();
-    }
-    return nullptr;
+    return parseExpr();
 }
 
 IfStatement::CondBranch Parser::parseCondBranch() {
@@ -162,7 +151,20 @@ std::vector<std::unique_ptr<BaseNode>> Parser::parseCurlyBracketBlock() {
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseExpr() {
-    return parseBoolLogic();
+    if (const auto [tokenType, value] = lexer->currToken();
+        isSign(tokenType)
+        || tokenType == TokenType::Number
+        || tokenType == TokenType::String
+        || tokenType == TokenType::BooleanTrue
+        || tokenType == TokenType::BooleanFalse
+        || tokenType == TokenType::LeftParenthesis
+        || tokenType == TokenType::Identifier
+        || tokenType == TokenType::IncrementOperator
+        || tokenType == TokenType::DecrementOperator
+        || tokenType == TokenType::LogicalNegation) {
+        return parseBoolLogic();
+    }
+    throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseBoolLogic() {
@@ -263,6 +265,13 @@ std::unique_ptr<ExpressionNode> Parser::tryParseIdentifier() {
     return nullptr;
 }
 
+std::unique_ptr<BooleanNode> Parser::parseBoolean() const {
+    if (lexer->currToken().type != TokenType::BooleanTrue && lexer->currToken().type != TokenType::BooleanFalse) {
+        throw std::runtime_error("Invalid boolean expression");
+    }
+    return std::make_unique<BooleanNode>(lexer->currToken().type == TokenType::BooleanTrue);
+}
+
 std::unique_ptr<ExpressionNode> Parser::tryParseLiteral() const {
     if (lexer->currToken().type == TokenType::Number
         || (isSign(lexer->currToken().type) && lexer->peekToken().type == TokenType::Number)) {
@@ -271,6 +280,10 @@ std::unique_ptr<ExpressionNode> Parser::tryParseLiteral() const {
     }
     if (lexer->currToken().type == TokenType::String) {
         return parseString();
+    }
+    if (lexer->currToken().type == TokenType::BooleanTrue
+        || lexer->currToken().type == TokenType::BooleanFalse) {
+        return parseBoolean();
     }
     return nullptr;
 }

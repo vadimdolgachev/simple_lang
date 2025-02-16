@@ -34,6 +34,8 @@ public:
 
     void visit(const StringNode *node) override;
 
+    void visit(const BooleanNode *node) override;
+
     void visit(const BinOpNode *node) override;
 
     void visit(const ProtoFunctionStatement *node) override;

@@ -115,8 +115,8 @@ Token Lexer::fetchNextToken() {
                 readNextChar();
             }
             tokenValue = std::string();
-            const auto isAllowChar = [isStringLiteral](const char c) {
-                return isStringLiteral ? std::isalnum(c) || c == ' ' : std::isalnum(c);
+            const auto isAllowChar = [isStringLiteral](const int c) {
+                return isStringLiteral ? c != '"' : std::isalnum(c);
             };
             while (isAllowChar(lastChar)) {
                 tokenValue.value().push_back(static_cast<char>(lastChar));
@@ -136,6 +136,10 @@ Token Lexer::fetchNextToken() {
                 resultToken = TokenType::Else;
             } else if (tokenValue == "for") {
                 resultToken = TokenType::ForLoop;
+            } else if (tokenValue == "true") {
+              resultToken = TokenType::BooleanTrue;
+            } else if (tokenValue == "false") {
+              resultToken = TokenType::BooleanFalse;
             } else if (isStringLiteral) {
                 resultToken = TokenType::String;
             } else {

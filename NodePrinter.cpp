@@ -65,6 +65,10 @@ void NodePrinter::visit(const BinOpNode *node) {
     ostream << ")";
 }
 
+void NodePrinter::visit(const BooleanNode *node) {
+    throw std::runtime_error("not implemented");
+}
+
 void NodePrinter::visit(const FunctionNode *node) {
     ostream << "Function: name=" << node->proto->name;
 }

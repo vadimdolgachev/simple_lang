@@ -25,6 +25,7 @@ private:
     [[nodiscard]] std::unique_ptr<ExpressionNode> tryParseUnaryOp();
     [[nodiscard]] std::unique_ptr<ExpressionNode> tryParsePrefixOp();
     [[nodiscard]] std::unique_ptr<ExpressionNode> tryParseIdentifier();
+    [[nodiscard]] std::unique_ptr<BooleanNode> parseBoolean() const;
     [[nodiscard]] std::unique_ptr<ExpressionNode> tryParseLiteral() const;
     [[nodiscard]] std::unique_ptr<IdentNode> parseIdent() const;
     [[nodiscard]] std::unique_ptr<StatementNode> parseAssignment(std::string identName);

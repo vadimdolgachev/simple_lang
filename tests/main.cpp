@@ -14,6 +14,7 @@
 #include "ast/BinOpNode.h"
 #include "ast/BaseNode.h"
 #include "ast/AssignmentNode.h"
+#include "ast/BooleanNode.h"
 #include "ast/IdentNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/ForLoopNode.h"
@@ -274,7 +275,7 @@ namespace {
         ASSERT_NE(binOp, nullptr);
         EXPECT_EQ(binOp->binOp, TokenType::LogicalAnd);
 
-        auto* left = dynamic_cast<BinOpNode*>(binOp->lhs.get());
+        auto *left = dynamic_cast<BinOpNode *>(binOp->lhs.get());
         ASSERT_NE(left, nullptr);
         EXPECT_EQ(left->binOp, TokenType::LogicalOr);
     }
@@ -290,7 +291,7 @@ namespace {
         ASSERT_NE(binOp, nullptr);
         EXPECT_EQ(binOp->binOp, TokenType::LogicalOr);
 
-        auto* right = dynamic_cast<BinOpNode*>(binOp->rhs.get());
+        auto *right = dynamic_cast<BinOpNode *>(binOp->rhs.get());
         ASSERT_NE(right, nullptr);
         EXPECT_EQ(right->binOp, TokenType::LogicalAnd);
     }
@@ -341,7 +342,8 @@ namespace {
     }
 
     TEST_F(NodesTest, StringNode) {
-        const std::string input = R"("hello world")";
+        const std::string input = R"("hello,
+ world")";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
@@ -350,8 +352,34 @@ namespace {
 
         auto [strNode, orig] = tryCast<StringNode>(std::move(node));
         ASSERT_NE(strNode, nullptr) << "Not a string node: " << input;
-        EXPECT_STREQ(strNode->str.c_str(), "hello world") << "Wrong string value: " << input;
+        EXPECT_EQ(std::format("\"{}\"", strNode->str), input) << "Wrong string value: " << input;
     }
+
+    class BooleanNodeTest : public NodesTest,
+                            public testing::WithParamInterface<std::pair<std::string, bool>> {};
+
+    TEST_P(BooleanNodeTest, ParsesBooleanLiterals) {
+        const auto &[input, expected] = GetParam();
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [booleanNode, orig] = tryCast<BooleanNode>(std::move(node));
+        ASSERT_NE(booleanNode, nullptr) << "Not a boolean node: " << input;
+        EXPECT_EQ(booleanNode->value, expected) << "Wrong value for: " << input;
+    }
+
+    INSTANTIATE_TEST_SUITE_P(
+            BooleanLiterals,
+            BooleanNodeTest,
+            testing::Values(
+                std::make_pair("true", true),
+                std::make_pair ("false", false)
+            ),
+            [](const testing::TestParamInfo<BooleanNodeTest::ParamType>& info) {return info.param.first;}
+            );
 
     class IdentifiersTest : public testing::Test {};
 
