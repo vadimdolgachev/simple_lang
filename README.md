@@ -1,5 +1,7 @@
 # SimpleASTParser
 
+
+## BNF grammar:
 ```text
 <Program> ::= <FunctionDefinition>*
 

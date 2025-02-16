@@ -20,6 +20,8 @@ add_executable(tests main.cpp
         ../ast/BaseNode.h
         ../ast/NumberNode.h
         ../ast/NumberNode.cpp
+        ../ast/StringNode.h
+        ../ast/StringNode.cpp
         ../ast/IdentNode.h
         ../ast/IdentNode.cpp
         ../ast/BinOpNode.h

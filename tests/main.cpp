@@ -9,16 +9,19 @@
 
 #include "Lexer.h"
 #include "Parser.h"
+#include "Util.h"
+
 #include "ast/BinOpNode.h"
 #include "ast/BaseNode.h"
 #include "ast/AssignmentNode.h"
 #include "ast/IdentNode.h"
 #include "ast/UnaryOpNode.h"
-#include "Util.h"
 #include "ast/ForLoopNode.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
 #include "ast/IfStatement.h"
+#include "ast/NumberNode.h"
+#include "ast/StringNode.h"
 
 namespace {
     class VarDefinitionTest : public testing::Test {};
@@ -206,6 +209,92 @@ namespace {
         EXPECT_EQ(binOp->binOp, TokenType::RightAngleBracketEqual) << "Wrong operator: " << input;
     }
 
+    class LogicalOpTest : public testing::Test {};
+
+    TEST_F(LogicalOpTest, LogicalAnd) {
+        const std::string input = "v1 && v2";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::LogicalAnd) << "Wrong operator: " << input;
+    }
+
+    TEST_F(LogicalOpTest, LogicalAndNeg) {
+        const std::string input = "!(v1 && v2)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [unaryOp, orig] = tryCast<UnaryOpNode>(std::move(node));
+        ASSERT_NE(unaryOp, nullptr) << "Not a unary operation: " << input;
+
+        ASSERT_NE(unaryOp->expr, nullptr) << "Not a expression: " << input;
+        const auto *binOp = dynamic_cast<BinOpNode *>(unaryOp->expr.get());
+        EXPECT_EQ(binOp->binOp, TokenType::LogicalAnd) << "Wrong operator: " << input;
+
+        ASSERT_NE(binOp->lhs, nullptr) << "Wrong lhs: " << input;
+        const auto *lhs = dynamic_cast<IdentNode *>(binOp->lhs.get());
+        EXPECT_EQ(lhs->name, "v1") << "Wrong ident name: " << input;
+
+        ASSERT_NE(binOp->rhs, nullptr) << "Wrong rhs: " << input;
+        const auto *rhs = dynamic_cast<IdentNode *>(binOp->rhs.get());
+        EXPECT_EQ(rhs->name, "v2") << "Wrong ident name: " << input;
+    }
+
+    TEST_F(LogicalOpTest, LogicalOr) {
+        const std::string input = "v1 || v2";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::LogicalOr) << "Wrong operator: " << input;
+    }
+
+    TEST_F(LogicalOpTest, MixedLogicalOpsWithParentheses) {
+        const std::string input = "(a || b) && (c || d)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+
+        ASSERT_NE(binOp, nullptr);
+        EXPECT_EQ(binOp->binOp, TokenType::LogicalAnd);
+
+        auto* left = dynamic_cast<BinOpNode*>(binOp->lhs.get());
+        ASSERT_NE(left, nullptr);
+        EXPECT_EQ(left->binOp, TokenType::LogicalOr);
+    }
+
+    TEST_F(LogicalOpTest, NestedLogicalOps) {
+        const std::string input = "a || b && c";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+
+        ASSERT_NE(binOp, nullptr);
+        EXPECT_EQ(binOp->binOp, TokenType::LogicalOr);
+
+        auto* right = dynamic_cast<BinOpNode*>(binOp->rhs.get());
+        ASSERT_NE(right, nullptr);
+        EXPECT_EQ(right->binOp, TokenType::LogicalAnd);
+    }
+
     TEST_F(BinExpressionsTest, ComplexExpression) {
         const std::string input = "+1 *  (   2    +3.0);";
         const auto parser = std::make_unique<Parser>(
@@ -249,6 +338,19 @@ namespace {
         auto [numberNode, orig] = tryCast<NumberNode>(std::move(node));
         ASSERT_NE(numberNode, nullptr) << "Not a number node: " << input;
         EXPECT_DOUBLE_EQ(numberNode->value, -1.123) << "Wrong number value: " << input;
+    }
+
+    TEST_F(NodesTest, StringNode) {
+        const std::string input = R"("hello world")";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->parseNextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [strNode, orig] = tryCast<StringNode>(std::move(node));
+        ASSERT_NE(strNode, nullptr) << "Not a string node: " << input;
+        EXPECT_STREQ(strNode->str.c_str(), "hello world") << "Wrong string value: " << input;
     }
 
     class IdentifiersTest : public testing::Test {};

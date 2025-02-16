@@ -10,6 +10,8 @@
 #include "ast/AssignmentNode.h"
 #include "ast/ForLoopNode.h"
 #include "ast/IfStatement.h"
+#include "ast/StringNode.h"
+#include "ast/NumberNode.h"
 
 namespace {
     bool isEndOfExpr(const TokenType token) {
@@ -63,6 +65,7 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
     // Expressions
     if (isSign(tokenType)
         || tokenType == TokenType::Number
+        || tokenType == TokenType::String
         || tokenType == TokenType::LeftParenthesis
         || tokenType == TokenType::Identifier
         || tokenType == TokenType::IncrementOperator
@@ -113,11 +116,10 @@ std::unique_ptr<BaseNode> Parser::parseForStatement() {
         forBody.emplace_back(parseExpr());
     }
     return std::make_unique<ForLoopNode>(
-        std::move(initExpr),
-        std::move(nextExpr),
-        std::move(condition),
-        std::move(forBody)
-    );
+            std::move(initExpr),
+            std::move(nextExpr),
+            std::move(condition),
+            std::move(forBody));
 }
 
 std::unique_ptr<BaseNode> Parser::parseIfStatement() {
@@ -160,21 +162,89 @@ std::vector<std::unique_ptr<BaseNode>> Parser::parseCurlyBracketBlock() {
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseExpr() {
-    return parseTerm();
+    return parseBoolLogic();
 }
 
-std::unique_ptr<ExpressionNode> Parser::parsePrimary() {
-    if (lexer->currToken().type == TokenType::LeftParenthesis) {
+std::unique_ptr<ExpressionNode> Parser::parseBoolLogic() {
+    auto lhs = parseComparisonExpr();
+    while (lexer->currToken().type == TokenType::LogicalAnd
+           || lexer->currToken().type == TokenType::LogicalOr) {
+        const auto op = lexer->currToken().type;
         lexer->nextToken();
-        auto expr = parseExpr();
+        auto rhs = parseExpr();
+        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
+    }
+    return lhs;
+}
+
+std::unique_ptr<ExpressionNode> Parser::parseComparisonExpr() {
+    auto lhs = parseAdditiveExpr();
+    while (lexer->currToken().type == TokenType::LeftAngleBracket
+           || lexer->currToken().type == TokenType::LeftAngleBracketEqual
+           || lexer->currToken().type == TokenType::RightAngleBracket
+           || lexer->currToken().type == TokenType::RightAngleBracketEqual
+           || lexer->currToken().type == TokenType::Equal
+           || lexer->currToken().type == TokenType::NotEqual) {
+        const auto op = lexer->currToken().type;
         lexer->nextToken();
-        return expr;
+        auto rhs = parseExpr();
+        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
     }
-    if (lexer->currToken().type == TokenType::Number
-        || (isSign(lexer->currToken().type) && lexer->peekToken().type == TokenType::Number)) {
-        auto value = parseNumber();
-        return value;
+    return lhs;
+}
+
+std::unique_ptr<ExpressionNode> Parser::parseAdditiveExpr() {
+    auto lhs = parseTerm();
+    while (lexer->currToken().type == TokenType::Plus
+           || lexer->currToken().type == TokenType::Minus) {
+        const auto op = lexer->currToken().type;
+        lexer->nextToken();
+        auto rhs = parseExpr();
+        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
     }
+    return lhs;
+}
+
+std::unique_ptr<ExpressionNode> Parser::parseTerm() {
+    auto lhs = parseFactor();
+    while (lexer->currToken().type == TokenType::Star
+           || lexer->currToken().type == TokenType::Slash) {
+        const auto op = lexer->currToken().type;
+        lexer->nextToken();
+        auto rhs = parseExpr();
+        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
+    }
+    return lhs;
+}
+
+std::unique_ptr<ExpressionNode> Parser::tryParseUnaryOp() {
+    if (lexer->currToken().type == TokenType::Plus
+        || lexer->currToken().type == TokenType::Minus
+        || lexer->currToken().type == TokenType::LogicalNegation) {
+        const auto type = lexer->currToken().type;
+        lexer->nextToken();
+        auto val = parseFactor();
+        return std::make_unique<UnaryOpNode>(type,
+                                             UnaryOpNode::UnaryOpType::Prefix,
+                                             std::move(val));
+    }
+    return nullptr;
+}
+
+std::unique_ptr<ExpressionNode> Parser::tryParsePrefixOp() {
+    if (lexer->currToken().type == TokenType::DecrementOperator
+        || lexer->currToken().type == TokenType::IncrementOperator) {
+        const auto type = lexer->currToken().type;
+        lexer->nextToken();
+        auto val = parseFactor();
+        return std::make_unique<UnaryOpNode>(type,
+                                             UnaryOpNode::UnaryOpType::Prefix,
+                                             std::move(val));
+    }
+    return nullptr;
+}
+
+std::unique_ptr<ExpressionNode> Parser::tryParseIdentifier() {
     if (lexer->currToken().type == TokenType::Identifier) {
         auto ident = parseIdent();
         if (lexer->currToken().type == TokenType::DecrementOperator
@@ -190,50 +260,41 @@ std::unique_ptr<ExpressionNode> Parser::parsePrimary() {
         }
         return ident;
     }
-    if (lexer->currToken().type == TokenType::DecrementOperator
-        || lexer->currToken().type == TokenType::IncrementOperator
-        || lexer->currToken().type == TokenType::LogicalNegation
-        || lexer->currToken().type == TokenType::Plus
-        || lexer->currToken().type == TokenType::Minus) {
-        const auto type = lexer->currToken().type;
-        lexer->nextToken();
-        auto val = parsePrimary();
-        return std::make_unique<UnaryOpNode>(type,
-                                             UnaryOpNode::UnaryOpType::Prefix,
-                                             std::move(val));
+    return nullptr;
+}
+
+std::unique_ptr<ExpressionNode> Parser::tryParseLiteral() const {
+    if (lexer->currToken().type == TokenType::Number
+        || (isSign(lexer->currToken().type) && lexer->peekToken().type == TokenType::Number)) {
+        auto value = parseNumber();
+        return value;
     }
-    throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+    if (lexer->currToken().type == TokenType::String) {
+        return parseString();
+    }
+    return nullptr;
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseFactor() {
-    auto lhs = parsePrimary();
-    while (lexer->currToken().type == TokenType::Star
-           || lexer->currToken().type == TokenType::Slash
-           || lexer->currToken().type == TokenType::LeftAngleBracket
-           || lexer->currToken().type == TokenType::LeftAngleBracketEqual
-           || lexer->currToken().type == TokenType::RightAngleBracket
-           || lexer->currToken().type == TokenType::RightAngleBracketEqual
-           || lexer->currToken().type == TokenType::Equal
-           || lexer->currToken().type == TokenType::NotEqual) {
-        const auto op = lexer->currToken().type;
+    if (lexer->currToken().type == TokenType::LeftParenthesis) {
         lexer->nextToken();
-        auto rhs = parsePrimary();
-        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
-    }
-    return lhs;
-}
-
-std::unique_ptr<ExpressionNode> Parser::parseTerm() {
-    auto lhs = parseFactor();
-    while (lexer->currToken().type == TokenType::Plus
-           || lexer->currToken().type == TokenType::Minus) {
-        const auto op = lexer->currToken().type;
+        auto expr = parseExpr();
         lexer->nextToken();
-        auto rhs = parseFactor();
-        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
+        return expr;
     }
-
-    return lhs;
+    if (auto expr = tryParseLiteral()) {
+        return expr;
+    }
+    if (auto expr = tryParseIdentifier()) {
+        return expr;
+    }
+    if (auto expr = tryParseUnaryOp()) {
+        return expr;
+    }
+    if (auto expr = tryParsePrefixOp()) {
+        return expr;
+    }
+    throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
 }
 
 std::unique_ptr<IdentNode> Parser::parseIdent() const {
@@ -258,6 +319,10 @@ std::unique_ptr<NumberNode> Parser::parseNumber() const {
     auto number = std::make_unique<NumberNode>(sign * strtod(lexer->currToken().value.value().c_str(), nullptr));
     lexer->nextToken();
     return number;
+}
+
+std::unique_ptr<StringNode> Parser::parseString() const {
+    return std::make_unique<StringNode>(lexer->currToken().value.value_or(""));
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseFunctionCall(std::unique_ptr<IdentNode> ident) {

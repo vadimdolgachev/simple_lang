@@ -93,18 +93,41 @@ Token Lexer::fetchNextToken() {
         } else {
             resultToken = TokenType::LogicalNegation;
         }
+    } else if (lastChar == '&') {
+        if (getPeekChar() == '&') {
+            readNextChar();
+            resultToken = TokenType::LogicalAnd;
+        } else {
+            resultToken = TokenType::BitwiseAnd;
+        }
+    } else if (lastChar == '|') {
+        if (getPeekChar() == '|') {
+            readNextChar();
+            resultToken = TokenType::LogicalOr;
+        } else {
+            resultToken = TokenType::BitwiseOr;
+        }
     } else {
         // parse identifiers
-        if (std::isalpha(lastChar)) {
+        if (std::isalpha(lastChar) || lastChar == '"') {
+            const bool isStringLiteral = lastChar == '"';
+            if (isStringLiteral) {
+                readNextChar();
+            }
             tokenValue = std::string();
-            while (std::isalnum(lastChar)) {
+            const auto isAllowChar = [isStringLiteral](const char c) {
+                return isStringLiteral ? std::isalnum(c) || c == ' ' : std::isalnum(c);
+            };
+            while (isAllowChar(lastChar)) {
                 tokenValue.value().push_back(static_cast<char>(lastChar));
-                if (const int peekChar = getPeekChar(); !isalnum(peekChar)) {
+                if (const int peekChar = getPeekChar(); !isAllowChar(peekChar)) {
                     break;
                 }
                 readNextChar();
             }
-
+            if (isStringLiteral) {
+                readNextChar();
+            }
             if (tokenValue == "fn") {
                 resultToken = TokenType::FunctionDefinition;
             } else if (tokenValue == "if") {
@@ -113,6 +136,8 @@ Token Lexer::fetchNextToken() {
                 resultToken = TokenType::Else;
             } else if (tokenValue == "for") {
                 resultToken = TokenType::ForLoop;
+            } else if (isStringLiteral) {
+                resultToken = TokenType::String;
             } else {
                 resultToken = TokenType::Identifier;
             }

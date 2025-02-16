@@ -25,6 +25,8 @@ add_executable(simple_ast_parser
         ast/BaseNode.h
         ast/NumberNode.h
         ast/NumberNode.cpp
+        ast/StringNode.h
+        ast/StringNode.cpp
         ast/IdentNode.h
         ast/IdentNode.cpp
         ast/BinOpNode.h

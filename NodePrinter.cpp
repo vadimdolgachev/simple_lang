@@ -51,6 +51,10 @@ void NodePrinter::visit(const NumberNode *node) {
     ostream << node->value;
 }
 
+void NodePrinter::visit(const StringNode *node) {
+    throw std::runtime_error("not implemented");
+}
+
 void NodePrinter::visit(const BinOpNode *node) {
     ostream << "BinOp: op=" << node->binOp;
     ostream << ", lhs=(";

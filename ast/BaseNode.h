@@ -16,8 +16,9 @@ class AssignmentNode;
 class ProtoFunctionStatement;
 class FunctionNode;
 class BinOpNode;
-class NumberNode;
 class IdentNode;
+class NumberNode;
+class StringNode;
 
 class NodeVisitor {
 public:
@@ -26,6 +27,8 @@ public:
     virtual void visit(const IdentNode *node) = 0;
 
     virtual void visit(const NumberNode *node) = 0;
+
+    virtual void visit(const StringNode *node) = 0;
 
     virtual void visit(const BinOpNode *node) = 0;
 

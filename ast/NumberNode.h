@@ -2,8 +2,8 @@
 // Created by vadim on 06.10.24.
 //
 
-#ifndef NUMBERAST_H
-#define NUMBERAST_H
+#ifndef NUMBER_NODE_H
+#define NUMBER_NODE_H
 
 #include "BaseNode.h"
 
@@ -18,4 +18,4 @@ public:
   double value;
 };
 
-#endif //NUMBERAST_H
+#endif //NUMBER_NODE_H

@@ -127,6 +127,10 @@ void IRCodegen::visit(const NumberNode *node) {
     value_ = llvm::ConstantFP::get(*llvmContext, llvm::APFloat(node->value));
 }
 
+void IRCodegen::visit(const StringNode *node) {
+    throw std::runtime_error("not implemented");
+}
+
 void IRCodegen::visit(const BinOpNode *node) {
     assert(llvmContext != nullptr);
     auto *lhsValue = generateIR(node->lhs.get(), llvmContext, llvmIRBuilder, llvmModule, functionProtos, namedValues);
