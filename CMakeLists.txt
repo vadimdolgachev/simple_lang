@@ -55,7 +55,9 @@ add_executable(simple_ast_parser
         NodePrinter.cpp
         Util.h
         ast/BooleanNode.cpp
-        ast/BooleanNode.h)
+        ast/BooleanNode.h
+        ast/LoopCondNode.cpp
+        ast/LoopCondNode.h)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

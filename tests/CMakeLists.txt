@@ -40,6 +40,8 @@ add_executable(tests main.cpp
         ../ast/IfStatement.cpp
         ../ast/ForLoopNode.h
         ../ast/ForLoopNode.cpp
+        ../ast/LoopCondNode.h
+        ../ast/LoopCondNode.cpp
         ../ast/UnaryOpNode.h
         ../ast/UnaryOpNode.cpp
         ../Lexer.cpp

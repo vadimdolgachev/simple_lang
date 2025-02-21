@@ -50,6 +50,8 @@ public:
 
     void visit(const UnaryOpNode *node) override;
 
+    void visit(const LoopCondNode *node) override;
+
     [[nodiscard]] llvm::Value *value() const;
 
 private:

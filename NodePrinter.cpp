@@ -96,3 +96,7 @@ void NodePrinter::visit(const ForLoopNode *node) {
 void NodePrinter::visit(const UnaryOpNode *node) {
     ostream << "UnaryOp: name=" << node->operatorType;
 }
+
+void NodePrinter::visit(const LoopCondNode *node) {
+    ostream << "WhileLoop";
+}

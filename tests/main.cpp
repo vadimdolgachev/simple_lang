@@ -23,6 +23,7 @@
 #include "ast/IfStatement.h"
 #include "ast/NumberNode.h"
 #include "ast/StringNode.h"
+#include "ast/LoopCondNode.h"
 
 namespace {
     class VarDefinitionTest : public testing::Test {};
@@ -645,9 +646,9 @@ namespace {
         ASSERT_EQ(ifNode->elseBranch->size(), 1) << "Wrong else branch size";
     }
 
-    class ForStatementTest : public testing::Test {};
+    class LoopStatementTest : public testing::Test {};
 
-    TEST_F(ForStatementTest, ForEmpty) {
+    TEST_F(LoopStatementTest, ForEmpty) {
         const std::string input = R"(for (var = 0; var < 10; ++var) {})";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input))
@@ -693,6 +694,56 @@ namespace {
         EXPECT_EQ(nextIdent->name, "var") << "Wrong variable name in iteration: " << input;
 
         ASSERT_TRUE(forNode->body.empty()) << "Expected empty body for for loop: " << input;
+    }
+
+    TEST_F(LoopStatementTest, WhileEmpty) {
+        const std::string input = R"(while (var < 10) {})";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->parseNextNode();
+
+        ASSERT_NE(node, nullptr) << "Failed to parse the while-loop expression";
+
+        const auto *const loopNode = dynamic_cast<LoopCondNode *>(node.get());
+        ASSERT_NE(loopNode, nullptr) << "Parsed node is not a while-loop node";
+
+        ASSERT_NE(loopNode->conditional, nullptr) << "While loop missing condition expression";
+        const auto *condNode = dynamic_cast<BinOpNode *>(loopNode->conditional.get());
+        ASSERT_NE(condNode, nullptr) << "Condition expression is not a binary operation node";
+
+        const auto *condVar = dynamic_cast<IdentNode *>(condNode->lhs.get());
+        ASSERT_NE(condVar, nullptr) << "Left-hand side of condition is not an identifier node";
+        EXPECT_EQ(condVar->name, "var") << "Wrong variable name in condition: " << input;
+
+        ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket)
+            << "Condition operator is not '<' as expected: " << input;
+
+        ASSERT_TRUE(loopNode->body.empty()) << "Expected empty body for for loop: " << input;
+    }
+
+    TEST_F(LoopStatementTest, DoWhileEmpty) {
+        const std::string input = R"(do {} while (var < 10);)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->parseNextNode();
+
+        ASSERT_NE(node, nullptr) << "Failed to parse the do-while-loop expression";
+
+        const auto *const loopNode = dynamic_cast<LoopCondNode *>(node.get());
+        ASSERT_NE(loopNode, nullptr) << "Parsed node is not a do-while-loop node";
+
+        ASSERT_NE(loopNode->conditional, nullptr) << "While loop missing condition expression";
+        const auto *condNode = dynamic_cast<BinOpNode *>(loopNode->conditional.get());
+        ASSERT_NE(condNode, nullptr) << "Condition expression is not a binary operation node";
+
+        const auto *condVar = dynamic_cast<IdentNode *>(condNode->lhs.get());
+        ASSERT_NE(condVar, nullptr) << "Left-hand side of condition is not an identifier node";
+        EXPECT_EQ(condVar->name, "var") << "Wrong variable name in condition: " << input;
+
+        ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket)
+            << "Condition operator is not '<' as expected: " << input;
+
+        ASSERT_TRUE(loopNode->body.empty()) << "Expected empty body for for loop: " << input;
     }
 
 } // namespace

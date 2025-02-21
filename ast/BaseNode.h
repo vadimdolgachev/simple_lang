@@ -20,6 +20,7 @@ class IdentNode;
 class NumberNode;
 class StringNode;
 class BooleanNode;
+class LoopCondNode;
 
 class NodeVisitor {
 public:
@@ -48,6 +49,8 @@ public:
     virtual void visit(const ForLoopNode *node) = 0;
 
     virtual void visit(const UnaryOpNode *node) = 0;
+
+    virtual void visit(const LoopCondNode * node) = 0;
 };
 
 class BaseNode {

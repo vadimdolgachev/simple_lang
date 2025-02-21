@@ -13,6 +13,7 @@
 #include "ast/IfStatement.h"
 #include "ast/StringNode.h"
 #include "ast/NumberNode.h"
+#include "ast/LoopCondNode.h"
 
 namespace {
     bool isEndOfExpr(const TokenType token) {
@@ -63,6 +64,14 @@ std::unique_ptr<BaseNode> Parser::parseNextNode() {
         lexer->nextToken();
         return parseForStatement();
     }
+    if (tokenType == TokenType::WhileLoop) {
+        lexer->nextToken();
+        return parseWhileStatement();
+    }
+    if (tokenType == TokenType::DoLoop) {
+        lexer->nextToken();
+        return parseDoWhileStatement();
+    }
     // Expressions
     return parseExpr();
 }
@@ -109,6 +118,46 @@ std::unique_ptr<BaseNode> Parser::parseForStatement() {
             std::move(nextExpr),
             std::move(condition),
             std::move(forBody));
+}
+
+std::unique_ptr<BaseNode> Parser::parseWhileStatement() {
+    if (lexer->currToken().type != TokenType::LeftParenthesis) {
+        throw std::runtime_error("Expected '(' after 'while'");
+    }
+    lexer->nextToken(); // '('
+    auto condition = parseExpr();
+    if (lexer->currToken().type != TokenType::RightParenthesis) {
+        throw std::runtime_error("Expected ')' after condition");
+    }
+    lexer->nextToken(); // ')'
+    std::vector<std::unique_ptr<BaseNode>> body;
+    if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
+        body = parseCurlyBracketBlock();
+    } else {
+        body.emplace_back(parseExpr());
+    }
+    return std::make_unique<LoopCondNode>(std::move(condition), std::move(body), LoopCondNode::LoopType::While);
+}
+
+std::unique_ptr<BaseNode> Parser::parseDoWhileStatement() {
+    if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
+        throw std::runtime_error("Expected '{' after 'do'");
+    }
+    auto body = parseCurlyBracketBlock();
+    if (lexer->currToken().type != TokenType::WhileLoop) {
+        throw std::runtime_error("Expected 'while' keyword");
+    }
+    lexer->nextToken();
+    if (lexer->currToken().type != TokenType::LeftParenthesis) {
+        throw std::runtime_error("Expected '(' after 'while'");
+    }
+    lexer->nextToken(); // '('
+    auto condition = parseExpr();
+    if (lexer->currToken().type != TokenType::RightParenthesis) {
+        throw std::runtime_error("Expected ')' after condition");
+    }
+    lexer->nextToken(); // ')'
+    return std::make_unique<LoopCondNode>(std::move(condition), std::move(body), LoopCondNode::LoopType::DoWhile);
 }
 
 std::unique_ptr<BaseNode> Parser::parseIfStatement() {

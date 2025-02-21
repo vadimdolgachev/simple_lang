@@ -387,6 +387,10 @@ void IRCodegen::visit(const UnaryOpNode *node) {
     }
 }
 
+void IRCodegen::visit(const LoopCondNode *node) {
+    throw std::runtime_error("not implemented");
+}
+
 llvm::Value *IRCodegen::value() const {
     return value_;
 }

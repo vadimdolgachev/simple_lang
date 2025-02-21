@@ -37,6 +37,8 @@ private:
     [[nodiscard]] std::vector<std::unique_ptr<BaseNode>> parseCurlyBracketBlock();
     [[nodiscard]] IfStatement::CondBranch parseCondBranch();
     [[nodiscard]] std::unique_ptr<BaseNode> parseForStatement();
+    [[nodiscard]] std::unique_ptr<BaseNode> parseWhileStatement();
+    [[nodiscard]] std::unique_ptr<BaseNode> parseDoWhileStatement();
 
     std::unique_ptr<Lexer> lexer;
 };

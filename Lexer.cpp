@@ -136,10 +136,14 @@ Token Lexer::fetchNextToken() {
                 resultToken = TokenType::Else;
             } else if (tokenValue == "for") {
                 resultToken = TokenType::ForLoop;
+            } else if (tokenValue == "while") {
+                resultToken = TokenType::WhileLoop;
+            } else if (tokenValue == "do") {
+                resultToken = TokenType::DoLoop;
             } else if (tokenValue == "true") {
-              resultToken = TokenType::BooleanTrue;
+                resultToken = TokenType::BooleanTrue;
             } else if (tokenValue == "false") {
-              resultToken = TokenType::BooleanFalse;
+                resultToken = TokenType::BooleanFalse;
             } else if (isStringLiteral) {
                 resultToken = TokenType::String;
             } else {
@@ -188,8 +192,7 @@ std::string Lexer::parseNumber() {
 
 Lexer::Lexer(std::unique_ptr<std::istream> stream):
     stream(std::move(stream)),
-    lastChar(' ') {
-}
+    lastChar(' ') {}
 
 Token Lexer::nextToken() {
     return fetchNextToken();
