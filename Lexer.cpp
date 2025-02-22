@@ -140,10 +140,8 @@ Token Lexer::fetchNextToken() {
                 resultToken = TokenType::WhileLoop;
             } else if (tokenValue == "do") {
                 resultToken = TokenType::DoLoop;
-            } else if (tokenValue == "true") {
-                resultToken = TokenType::BooleanTrue;
-            } else if (tokenValue == "false") {
-                resultToken = TokenType::BooleanFalse;
+            } else if (tokenValue == "true" || tokenValue == "false") {
+                resultToken = TokenType::Boolean;
             } else if (isStringLiteral) {
                 resultToken = TokenType::String;
             } else {

@@ -16,17 +16,6 @@
 #include "ast/LoopCondNode.h"
 
 namespace {
-    bool isEndOfExpr(const TokenType token) {
-        return token == TokenType::Eos || token == TokenType::RightParenthesis;
-    }
-
-    bool isArithmeticOp(const TokenType token) {
-        return token == TokenType::Plus
-               || token == TokenType::Minus
-               || token == TokenType::Star
-               || token == TokenType::Slash;
-    }
-
     bool isSign(const TokenType token) {
         return token == TokenType::Plus || token == TokenType::Minus;
     }
@@ -41,39 +30,37 @@ Parser::operator bool() const {
     return lexer->hasNextToken();
 }
 
-std::unique_ptr<BaseNode> Parser::parseNextNode() {
-    const auto [tokenType, value] = lexer->currToken();
+std::unique_ptr<BaseNode> Parser::nextNode() {
     // Assignment
-    if (tokenType == TokenType::Identifier) {
-        lexer->nextToken();
-        if (lexer->currToken().type == TokenType::Assignment && value.has_value()) {
-            lexer->nextToken();
-            return parseAssignment(value.value());
-        }
-        // Rollback
-        lexer->prevToken();
-    } else if (tokenType == TokenType::FunctionDefinition) {
+    if (auto assignment = tryParseAssignment()) {
+        return assignment;
+    }
+    const auto token = lexer->currToken().type;
+    if (token == TokenType::FunctionDefinition) {
         lexer->nextToken();
         return parseFunctionDef();
     }
-    if (tokenType == TokenType::If) {
+    // Statements
+    if (token == TokenType::If) {
         lexer->nextToken();
         return parseIfStatement();
     }
-    if (tokenType == TokenType::ForLoop) {
+    if (token == TokenType::ForLoop) {
         lexer->nextToken();
         return parseForStatement();
     }
-    if (tokenType == TokenType::WhileLoop) {
+    if (token == TokenType::WhileLoop) {
         lexer->nextToken();
         return parseWhileStatement();
     }
-    if (tokenType == TokenType::DoLoop) {
+    if (token == TokenType::DoLoop) {
         lexer->nextToken();
         return parseDoWhileStatement();
     }
     // Expressions
-    return parseExpr();
+    auto result = parseExpr();
+    consumeSemicolon();
+    return result;
 }
 
 IfStatement::CondBranch Parser::parseCondBranch() {
@@ -83,8 +70,26 @@ IfStatement::CondBranch Parser::parseCondBranch() {
         thenBranch = parseCurlyBracketBlock();
     } else {
         thenBranch.emplace_back(parseExpr());
+        consumeSemicolon();
     }
     return {std::move(condition), std::move(thenBranch)};
+}
+
+std::unique_ptr<BaseNode> Parser::tryParseAssignment(const bool needConsumeSemicolon) {
+    if (const auto [token, value] = lexer->currToken(); token == TokenType::Identifier) {
+        lexer->nextToken();
+        if (lexer->currToken().type == TokenType::Assignment && value.has_value()) {
+            lexer->nextToken();
+            auto result = parseAssignment(value.value());
+            if (needConsumeSemicolon) {
+                consumeSemicolon();
+            }
+            return result;
+        }
+        // Rollback
+        lexer->prevToken();
+    }
+    return nullptr;
 }
 
 std::unique_ptr<BaseNode> Parser::parseForStatement() {
@@ -92,7 +97,7 @@ std::unique_ptr<BaseNode> Parser::parseForStatement() {
         throw std::runtime_error("Expected '(' after 'for'");
     }
     lexer->nextToken(); // '('
-    auto initExpr = parseNextNode();
+    auto initExpr = tryParseAssignment(false);
     if (lexer->currToken().type != TokenType::Semicolon) {
         throw std::runtime_error("Expected ';' after init statement");
     }
@@ -160,6 +165,13 @@ std::unique_ptr<BaseNode> Parser::parseDoWhileStatement() {
     return std::make_unique<LoopCondNode>(std::move(condition), std::move(body), LoopCondNode::LoopType::DoWhile);
 }
 
+void Parser::consumeSemicolon() const {
+    if (lexer->currToken().type != TokenType::Semicolon) {
+        throw std::runtime_error("Expected ';'");
+    }
+    lexer->nextToken();
+}
+
 std::unique_ptr<BaseNode> Parser::parseIfStatement() {
     auto ifBranch = parseCondBranch();
     std::vector<IfStatement::CondBranch> elseIfBranches;
@@ -191,7 +203,7 @@ std::vector<std::unique_ptr<BaseNode>> Parser::parseCurlyBracketBlock() {
     }
     lexer->nextToken(); // {
     while (lexer->currToken().type != TokenType::RightCurlyBracket) {
-        if (auto node = parseNextNode(); node != nullptr) {
+        if (auto node = nextNode(); node != nullptr) {
             body.emplace_back(std::move(node));
         }
     }
@@ -204,8 +216,7 @@ std::unique_ptr<ExpressionNode> Parser::parseExpr() {
         isSign(tokenType)
         || tokenType == TokenType::Number
         || tokenType == TokenType::String
-        || tokenType == TokenType::BooleanTrue
-        || tokenType == TokenType::BooleanFalse
+        || tokenType == TokenType::Boolean
         || tokenType == TokenType::LeftParenthesis
         || tokenType == TokenType::Identifier
         || tokenType == TokenType::IncrementOperator
@@ -315,23 +326,23 @@ std::unique_ptr<ExpressionNode> Parser::tryParseIdentifier() {
 }
 
 std::unique_ptr<BooleanNode> Parser::parseBoolean() const {
-    if (lexer->currToken().type != TokenType::BooleanTrue && lexer->currToken().type != TokenType::BooleanFalse) {
+    if (lexer->currToken().type != TokenType::Boolean && lexer->currToken().value.has_value()) {
         throw std::runtime_error("Invalid boolean expression");
     }
-    return std::make_unique<BooleanNode>(lexer->currToken().type == TokenType::BooleanTrue);
+    auto result = std::make_unique<BooleanNode>(lexer->currToken().value == "true");
+    lexer->nextToken();
+    return result;
 }
 
 std::unique_ptr<ExpressionNode> Parser::tryParseLiteral() const {
     if (lexer->currToken().type == TokenType::Number
         || (isSign(lexer->currToken().type) && lexer->peekToken().type == TokenType::Number)) {
-        auto value = parseNumber();
-        return value;
+        return parseNumber();
     }
     if (lexer->currToken().type == TokenType::String) {
         return parseString();
     }
-    if (lexer->currToken().type == TokenType::BooleanTrue
-        || lexer->currToken().type == TokenType::BooleanFalse) {
+    if (lexer->currToken().type == TokenType::Boolean) {
         return parseBoolean();
     }
     return nullptr;
@@ -384,7 +395,9 @@ std::unique_ptr<NumberNode> Parser::parseNumber() const {
 }
 
 std::unique_ptr<StringNode> Parser::parseString() const {
-    return std::make_unique<StringNode>(lexer->currToken().value.value_or(""));
+    auto result = std::make_unique<StringNode>(lexer->currToken().value.value_or(""));
+    lexer->nextToken();
+    return result;
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseFunctionCall(std::unique_ptr<IdentNode> ident) {

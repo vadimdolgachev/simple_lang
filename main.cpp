@@ -507,7 +507,7 @@ int main() {
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
         std::make_unique<std::istringstream>("1+2*3; 1*2+3;")));
     while (*parser) {
-        if (std::unique_ptr<BaseNode> stmt = parser->parseNextNode(); stmt != nullptr) {
+        if (std::unique_ptr<BaseNode> stmt = parser->nextNode(); stmt != nullptr) {
             std::ostringstream os;
             auto printer = std::make_unique<NodePrinter>(os);
             stmt->visit(printer.get());

@@ -13,7 +13,7 @@ public:
 
     explicit operator bool() const;
 
-    [[nodiscard]] std::unique_ptr<BaseNode> parseNextNode();
+    [[nodiscard]] std::unique_ptr<BaseNode> nextNode();
 
 private:
     [[nodiscard]] std::unique_ptr<ExpressionNode> parseExpr();
@@ -36,9 +36,11 @@ private:
     [[nodiscard]] std::unique_ptr<BaseNode> parseIfStatement();
     [[nodiscard]] std::vector<std::unique_ptr<BaseNode>> parseCurlyBracketBlock();
     [[nodiscard]] IfStatement::CondBranch parseCondBranch();
+    [[nodiscard]] std::unique_ptr<BaseNode> tryParseAssignment(bool needConsumeSemicolon = true);
     [[nodiscard]] std::unique_ptr<BaseNode> parseForStatement();
     [[nodiscard]] std::unique_ptr<BaseNode> parseWhileStatement();
     [[nodiscard]] std::unique_ptr<BaseNode> parseDoWhileStatement();
+    void consumeSemicolon() const;
 
     std::unique_ptr<Lexer> lexer;
 };

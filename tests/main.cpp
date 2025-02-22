@@ -33,7 +33,7 @@ namespace {
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
@@ -50,7 +50,7 @@ namespace {
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
@@ -63,6 +63,36 @@ namespace {
         EXPECT_EQ(number->value, 1) << "Wrong number value: " << input;
     }
 
+    TEST_F(VarDefinitionTest, MultipleAssigns) {
+        const std::string input = "varName1=1;varName2=2;";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [varDef1, orig] = tryCast<AssignmentNode>(std::move(node));
+        ASSERT_NE(varDef1, nullptr) << "Not a variable definition: " << input;
+
+        EXPECT_EQ(varDef1->name, "varName1") << "Wrong variable name: " << input;
+
+        const auto *number1 = dynamic_cast<NumberNode *>(varDef1->rvalue.get());
+        ASSERT_NE(number1, nullptr) << "RHS is not a number: " << input;
+        EXPECT_EQ(number1->value, 1) << "Wrong number value: " << input;
+
+        node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [varDef2, orig2] = tryCast<AssignmentNode>(std::move(node));
+        ASSERT_NE(varDef2, nullptr) << "Not a variable definition: " << input;
+
+        EXPECT_EQ(varDef2->name, "varName2") << "Wrong variable name: " << input;
+
+        const auto *number2 = dynamic_cast<NumberNode *>(varDef2->rvalue.get());
+        ASSERT_NE(number2, nullptr) << "RHS is not a number: " << input;
+        EXPECT_EQ(number2->value, 2) << "Wrong number value: " << input;
+    }
+
     class BinExpressionsTest : public testing::Test {};
 
     TEST_F(BinExpressionsTest, SimpleSubtraction) {
@@ -70,7 +100,7 @@ namespace {
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -92,7 +122,7 @@ namespace {
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -120,11 +150,11 @@ namespace {
     class ComparisonOpTest : public testing::Test {};
 
     TEST_F(ComparisonOpTest, Equal) {
-        const std::string input = "v1 == v2";
+        const std::string input = "v1 == v2;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -142,11 +172,11 @@ namespace {
     }
 
     TEST_F(ComparisonOpTest, NotEqual) {
-        const std::string input = "v1 != v2";
+        const std::string input = "v1 != v2;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -156,11 +186,11 @@ namespace {
     }
 
     TEST_F(ComparisonOpTest, LessThan) {
-        const std::string input = "v1 < v2";
+        const std::string input = "v1 < v2;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -170,11 +200,11 @@ namespace {
     }
 
     TEST_F(ComparisonOpTest, LessThanEqual) {
-        const std::string input = "v1 <= v2";
+        const std::string input = "v1 <= v2;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -184,11 +214,11 @@ namespace {
     }
 
     TEST_F(ComparisonOpTest, GreatThan) {
-        const std::string input = "v1 > v2";
+        const std::string input = "v1 > v2;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -198,11 +228,11 @@ namespace {
     }
 
     TEST_F(ComparisonOpTest, GreatThanEqual) {
-        const std::string input = "v1 >= v2";
+        const std::string input = "v1 >= v2;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -214,11 +244,11 @@ namespace {
     class LogicalOpTest : public testing::Test {};
 
     TEST_F(LogicalOpTest, LogicalAnd) {
-        const std::string input = "v1 && v2";
+        const std::string input = "v1 && v2;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -228,11 +258,11 @@ namespace {
     }
 
     TEST_F(LogicalOpTest, LogicalAndNeg) {
-        const std::string input = "!(v1 && v2)";
+        const std::string input = "!(v1 && v2);";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [unaryOp, orig] = tryCast<UnaryOpNode>(std::move(node));
@@ -252,11 +282,11 @@ namespace {
     }
 
     TEST_F(LogicalOpTest, LogicalOr) {
-        const std::string input = "v1 || v2";
+        const std::string input = "v1 || v2;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -266,11 +296,11 @@ namespace {
     }
 
     TEST_F(LogicalOpTest, MixedLogicalOpsWithParentheses) {
-        const std::string input = "(a || b) && (c || d)";
+        const std::string input = "(a || b) && (c || d);";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
 
         ASSERT_NE(binOp, nullptr);
@@ -282,11 +312,11 @@ namespace {
     }
 
     TEST_F(LogicalOpTest, NestedLogicalOps) {
-        const std::string input = "a || b && c";
+        const std::string input = "a || b && c;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
 
         ASSERT_NE(binOp, nullptr);
@@ -302,7 +332,7 @@ namespace {
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
@@ -330,11 +360,11 @@ namespace {
     class NodesTest : public testing::Test {};
 
     TEST_F(NodesTest, NumberNode) {
-        const std::string input = "-1.123";
+        const std::string input = "-1.123;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [numberNode, orig] = tryCast<NumberNode>(std::move(node));
@@ -344,16 +374,16 @@ namespace {
 
     TEST_F(NodesTest, StringNode) {
         const std::string input = R"("hello,
- world")";
+ world";)";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [strNode, orig] = tryCast<StringNode>(std::move(node));
         ASSERT_NE(strNode, nullptr) << "Not a string node: " << input;
-        EXPECT_EQ(std::format("\"{}\"", strNode->str), input) << "Wrong string value: " << input;
+        EXPECT_EQ(std::format("\"{}\";", strNode->str), input) << "Wrong string value: " << input;
     }
 
     class BooleanNodeTest : public NodesTest,
@@ -362,9 +392,9 @@ namespace {
     TEST_P(BooleanNodeTest, ParsesBooleanLiterals) {
         const auto &[input, expected] = GetParam();
         const auto parser = std::make_unique<Parser>(
-                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(std::format("{};", input))));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [booleanNode, orig] = tryCast<BooleanNode>(std::move(node));
@@ -385,11 +415,11 @@ namespace {
     class IdentifiersTest : public testing::Test {};
 
     TEST_F(IdentifiersTest, IdentNode) {
-        const std::string input = "var";
+        const std::string input = "var;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
         auto [identNode, orig] = tryCast<IdentNode>(std::move(node));
@@ -405,7 +435,7 @@ namespace {
                                 const std::string &expectedIdent) {
             const auto parser = std::make_unique<Parser>(
                     std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-            auto node = parser->parseNextNode();
+            auto node = parser->nextNode();
 
             ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
@@ -424,49 +454,49 @@ namespace {
     };
 
     TEST_F(UnaryOpTest, PostfixIncrement) {
-        testUnaryOperation("var++",
+        testUnaryOperation("var++;",
                            TokenType::IncrementOperator,
                            UnaryOpNode::UnaryOpType::Postfix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PrefixIncrement) {
-        testUnaryOperation("++var",
+        testUnaryOperation("++var;",
                            TokenType::IncrementOperator,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PostfixDecrement) {
-        testUnaryOperation("var--",
+        testUnaryOperation("var--;",
                            TokenType::DecrementOperator,
                            UnaryOpNode::UnaryOpType::Postfix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PrefixDecrement) {
-        testUnaryOperation("--var",
+        testUnaryOperation("--var;",
                            TokenType::DecrementOperator,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, Plus) {
-        testUnaryOperation("+var",
+        testUnaryOperation("+var;",
                            TokenType::Plus,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, Minus) {
-        testUnaryOperation("-var",
+        testUnaryOperation("-var;",
                            TokenType::Minus,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, Negation) {
-        testUnaryOperation("!var",
+        testUnaryOperation("!var;",
                            TokenType::LogicalNegation,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
@@ -475,11 +505,11 @@ namespace {
     class FunctionCallTest : public testing::Test {};
 
     TEST_F(FunctionCallTest, ComplexFunctionCall) {
-        const std::string input = "foo(1, 2.1, var, 1 + 2)";
+        const std::string input = "foo(1, 2.1, var, 1 + 2);";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse input: " << input;
 
         auto [fnCall, orig] = tryCast<FunctionCallNode>(std::move(node));
@@ -515,20 +545,54 @@ namespace {
         EXPECT_EQ(rhs->value, 2) << "Wrong right operand value in: " << input;
     }
 
+    TEST_F(FunctionCallTest, MultipleFunctionCall) {
+        const std::string input = "foo1(1);foo2(2);";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse input: " << input;
+
+        auto [fnCall1, orig1] = tryCast<FunctionCallNode>(std::move(node));
+        ASSERT_NE(fnCall1, nullptr) << "Not a function call node: " << input;
+
+        EXPECT_EQ(fnCall1->ident->name, "foo1") << "Wrong function name in: " << input;
+
+        ASSERT_EQ(fnCall1->args.size(), 1) << "Wrong number of arguments in: " << input;
+
+        const auto *fn1Arg1 = dynamic_cast<NumberNode *>(fnCall1->args[0].get());
+        ASSERT_NE(fn1Arg1, nullptr) << "Argument 1 is not a number in: " << input;
+        EXPECT_EQ(fn1Arg1->value, 1) << "Wrong value for argument 1 in: " << input;
+
+        node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse input: " << input;
+
+        auto [fnCall2, orig2] = tryCast<FunctionCallNode>(std::move(node));
+        ASSERT_NE(fnCall2, nullptr) << "Not a function call node: " << input;
+
+        EXPECT_EQ(fnCall2->ident->name, "foo2") << "Wrong function name in: " << input;
+
+        ASSERT_EQ(fnCall2->args.size(), 1) << "Wrong number of arguments in: " << input;
+
+        const auto *fn2Arg1 = dynamic_cast<NumberNode *>(fnCall2->args[0].get());
+        ASSERT_NE(fn2Arg1, nullptr) << "Argument 1 is not a number in: " << input;
+        EXPECT_EQ(fn2Arg1->value, 2) << "Wrong value for argument 1 in: " << input;
+    }
+
     class FunctionDefTest : public testing::Test {};
 
     TEST_F(FunctionDefTest, ComplexFunctionDefinition) {
         const std::string input = R"(
         fn foo(arg1, arg2, arg3, arg4) {
-            v = 1
-            ++v
+            v = 1;
+            ++v;
         }
     )";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input))
                 );
 
-        auto node = parser->parseNextNode();
+        auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse function definition";
 
         auto [fnNode, orig] = tryCast<FunctionNode>(std::move(node));
@@ -564,10 +628,10 @@ namespace {
     class IfStatementTest : public testing::Test {};
 
     TEST_F(IfStatementTest, IfWithoutElse) {
-        const std::string input = "if (flag) { doSomething() }";
+        const std::string input = "if (flag) { doSomething(); }";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse if without else";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
         ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
@@ -576,10 +640,10 @@ namespace {
     }
 
     TEST_F(IfStatementTest, IfWithElseIf) {
-        const std::string input = "if (flag) { doSomething() } else if (otherFlag) { doOtherThing() }";
+        const std::string input = "if (flag) { doSomething(); } else if (otherFlag) { doOtherThing(); }";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse if-elseif";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
         ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
@@ -588,10 +652,10 @@ namespace {
     }
 
     TEST_F(IfStatementTest, IfWithElse) {
-        const std::string input = "if (flag) { doSomething() } else { doOtherThing() }";
+        const std::string input = "if (flag) { doSomething(); } else { doOtherThing(); }";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse if with else";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
         ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
@@ -602,15 +666,15 @@ namespace {
     TEST_F(IfStatementTest, IfElseIfElse) {
         const std::string input =
                 R"(if (flag) {
-                        doSomething()
+                        doSomething();
                     } else if (otherFlag) {
-                        doOtherThing() }
-                    else {
-                        doAnotherThing()
+                        doOtherThing();
+                    } else {
+                        doAnotherThing();
                     })";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse if-elseif-else";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
         ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
@@ -620,10 +684,10 @@ namespace {
 
     TEST_F(IfStatementTest, IfWithoutBraces) {
         const std::string input = R"(if (flag)
-                                        doSomething())";
+                                        doSomething();)";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse if without braces";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
         ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
@@ -632,12 +696,12 @@ namespace {
 
     TEST_F(IfStatementTest, IfElseWithoutBraces) {
         const std::string input = R"(if (flag)
-                                        doSomething()
+                                        doSomething();
                                     else
-                                        doOtherThing())";
+                                        doOtherThing();)";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse if-else without braces";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
         ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
@@ -653,7 +717,7 @@ namespace {
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input))
                 );
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
 
         ASSERT_NE(node, nullptr) << "Failed to parse the for-loop expression";
 
@@ -700,7 +764,7 @@ namespace {
         const std::string input = R"(while (var < 10) {})";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
 
         ASSERT_NE(node, nullptr) << "Failed to parse the while-loop expression";
 
@@ -725,7 +789,7 @@ namespace {
         const std::string input = R"(do {} while (var < 10);)";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
-        const auto node = parser->parseNextNode();
+        const auto node = parser->nextNode();
 
         ASSERT_NE(node, nullptr) << "Failed to parse the do-while-loop expression";
 
