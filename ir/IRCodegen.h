@@ -52,6 +52,8 @@ public:
 
     void visit(const LoopCondNode *node) override;
 
+    void visit(const BlockNode *node) override;
+
     [[nodiscard]] llvm::Value *value() const;
 
 private:

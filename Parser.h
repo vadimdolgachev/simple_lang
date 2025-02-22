@@ -34,12 +34,14 @@ private:
     [[nodiscard]] std::unique_ptr<ExpressionNode> parseFunctionCall(std::unique_ptr<IdentNode> ident);
     [[nodiscard]] std::unique_ptr<StatementNode> parseFunctionDef();
     [[nodiscard]] std::unique_ptr<BaseNode> parseIfStatement();
-    [[nodiscard]] std::vector<std::unique_ptr<BaseNode>> parseCurlyBracketBlock();
+    [[nodiscard]] std::unique_ptr<BlockNode> parseCurlyBracketBlock();
     [[nodiscard]] IfStatement::CondBranch parseCondBranch();
     [[nodiscard]] std::unique_ptr<BaseNode> tryParseAssignment(bool needConsumeSemicolon = true);
     [[nodiscard]] std::unique_ptr<BaseNode> parseForStatement();
     [[nodiscard]] std::unique_ptr<BaseNode> parseWhileStatement();
     [[nodiscard]] std::unique_ptr<BaseNode> parseDoWhileStatement();
+    [[nodiscard]] std::unique_ptr<BlockNode> parseBlock();
+
     void consumeSemicolon() const;
 
     std::unique_ptr<Lexer> lexer;

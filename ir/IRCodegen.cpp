@@ -391,6 +391,10 @@ void IRCodegen::visit(const LoopCondNode *node) {
     throw std::runtime_error("not implemented");
 }
 
+void IRCodegen::visit(const BlockNode *node) {
+    throw std::runtime_error("not implemented");
+}
+
 llvm::Value *IRCodegen::value() const {
     return value_;
 }

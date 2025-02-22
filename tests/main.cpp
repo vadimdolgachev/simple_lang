@@ -606,14 +606,14 @@ namespace {
         EXPECT_EQ(fnNode->params[2]->name, "arg3") << "Wrong parameter 3 name";
         EXPECT_EQ(fnNode->params[3]->name, "arg4") << "Wrong parameter 4 name";
 
-        ASSERT_FALSE(fnNode->body.empty()) << "Function body should not be empty";
-        ASSERT_EQ(fnNode->body.size(), 2) << "Wrong number of body statements";
+        ASSERT_FALSE(fnNode->body->statements.empty()) << "Function body should not be empty";
+        ASSERT_EQ(fnNode->body->statements.size(), 2) << "Wrong number of body statements";
 
-        const auto *stmt1 = dynamic_cast<AssignmentNode *>(fnNode->body[0].get());
+        const auto *stmt1 = dynamic_cast<AssignmentNode *>(fnNode->body->statements[0].get());
         ASSERT_NE(stmt1, nullptr) << "First statement is not a variable definition";
         EXPECT_EQ(stmt1->name, "v") << "Wrong identifier in first statement";
 
-        const auto *stmt2 = dynamic_cast<UnaryOpNode *>(fnNode->body[1].get());
+        const auto *stmt2 = dynamic_cast<UnaryOpNode *>(fnNode->body->statements[1].get());
         ASSERT_NE(stmt2, nullptr) << "Second statement is not a unary operation";
         EXPECT_EQ(stmt2->operatorType, TokenType::IncrementOperator)
             << "Wrong unary operator type";
@@ -691,7 +691,7 @@ namespace {
         ASSERT_NE(node, nullptr) << "Failed to parse if without braces";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
         ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
-        ASSERT_EQ(ifNode->ifBranch.then.size(), 1) << "Wrong then branch size";
+        ASSERT_EQ(ifNode->ifBranch.then->statements.size(), 1) << "Wrong then branch size";
     }
 
     TEST_F(IfStatementTest, IfElseWithoutBraces) {
@@ -705,9 +705,9 @@ namespace {
         ASSERT_NE(node, nullptr) << "Failed to parse if-else without braces";
         const auto *const ifNode = dynamic_cast<IfStatement *>(node.get());
         ASSERT_NE(ifNode, nullptr) << "Not an if-statement node";
-        ASSERT_EQ(ifNode->ifBranch.then.size(), 1) << "Wrong then branch size";
+        ASSERT_EQ(ifNode->ifBranch.then->statements.size(), 1) << "Wrong then branch size";
         ASSERT_TRUE(ifNode->elseBranch.has_value()) << "Missing else branch";
-        ASSERT_EQ(ifNode->elseBranch->size(), 1) << "Wrong else branch size";
+        ASSERT_EQ(ifNode->elseBranch.value()->statements.size(), 1) << "Wrong else branch size";
     }
 
     class LoopStatementTest : public testing::Test {};
@@ -757,7 +757,7 @@ namespace {
         ASSERT_NE(nextIdent, nullptr) << "Iteration expression does not contain a valid identifier node";
         EXPECT_EQ(nextIdent->name, "var") << "Wrong variable name in iteration: " << input;
 
-        ASSERT_TRUE(forNode->body.empty()) << "Expected empty body for for loop: " << input;
+        ASSERT_TRUE(forNode->body->statements.empty()) << "Expected empty body for for loop: " << input;
     }
 
     TEST_F(LoopStatementTest, WhileEmpty) {
@@ -782,7 +782,7 @@ namespace {
         ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket)
             << "Condition operator is not '<' as expected: " << input;
 
-        ASSERT_TRUE(loopNode->body.empty()) << "Expected empty body for for loop: " << input;
+        ASSERT_TRUE(loopNode->body->statements.empty()) << "Expected empty body for for loop: " << input;
     }
 
     TEST_F(LoopStatementTest, DoWhileEmpty) {
@@ -807,7 +807,7 @@ namespace {
         ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket)
             << "Condition operator is not '<' as expected: " << input;
 
-        ASSERT_TRUE(loopNode->body.empty()) << "Expected empty body for for loop: " << input;
+        ASSERT_TRUE(loopNode->body->statements.empty()) << "Expected empty body for for loop: " << input;
     }
 
 } // namespace

@@ -5,7 +5,7 @@
 #include "LoopCondNode.h"
 
 LoopCondNode::LoopCondNode(std::unique_ptr<ExpressionNode> conditional,
-                           std::vector<std::unique_ptr<BaseNode>> body,
+                           std::unique_ptr<BlockNode> body,
                            const LoopType loopType):
     conditional(std::move(conditional)),
     body(std::move(body)),

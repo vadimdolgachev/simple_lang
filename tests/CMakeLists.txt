@@ -44,6 +44,8 @@ add_executable(tests main.cpp
         ../ast/LoopCondNode.cpp
         ../ast/UnaryOpNode.h
         ../ast/UnaryOpNode.cpp
+        ../ast/BlockNode.h
+        ../ast/BlockNode.cpp
         ../Lexer.cpp
         ../Lexer.h
         ../Parser.h

@@ -2,6 +2,7 @@
 
 #include <complex>
 
+#include "Util.h"
 #include "ast/BinOpNode.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
@@ -14,6 +15,7 @@
 #include "ast/StringNode.h"
 #include "ast/NumberNode.h"
 #include "ast/LoopCondNode.h"
+#include "ast/BlockNode.h"
 
 namespace {
     bool isSign(const TokenType token) {
@@ -65,13 +67,7 @@ std::unique_ptr<BaseNode> Parser::nextNode() {
 
 IfStatement::CondBranch Parser::parseCondBranch() {
     auto condition = parseExpr();
-    std::vector<std::unique_ptr<BaseNode>> thenBranch;
-    if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
-        thenBranch = parseCurlyBracketBlock();
-    } else {
-        thenBranch.emplace_back(parseExpr());
-        consumeSemicolon();
-    }
+    auto thenBranch = parseBlock();
     return {std::move(condition), std::move(thenBranch)};
 }
 
@@ -112,12 +108,7 @@ std::unique_ptr<BaseNode> Parser::parseForStatement() {
         throw std::runtime_error("Expected ')'");
     }
     lexer->nextToken(); // ')'
-    std::vector<std::unique_ptr<BaseNode>> forBody;
-    if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
-        forBody = parseCurlyBracketBlock();
-    } else {
-        forBody.emplace_back(parseExpr());
-    }
+    auto forBody = parseBlock();
     return std::make_unique<ForLoopNode>(
             std::move(initExpr),
             std::move(nextExpr),
@@ -135,12 +126,7 @@ std::unique_ptr<BaseNode> Parser::parseWhileStatement() {
         throw std::runtime_error("Expected ')' after condition");
     }
     lexer->nextToken(); // ')'
-    std::vector<std::unique_ptr<BaseNode>> body;
-    if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
-        body = parseCurlyBracketBlock();
-    } else {
-        body.emplace_back(parseExpr());
-    }
+    auto body = parseBlock();
     return std::make_unique<LoopCondNode>(std::move(condition), std::move(body), LoopCondNode::LoopType::While);
 }
 
@@ -175,16 +161,11 @@ void Parser::consumeSemicolon() const {
 std::unique_ptr<BaseNode> Parser::parseIfStatement() {
     auto ifBranch = parseCondBranch();
     std::vector<IfStatement::CondBranch> elseIfBranches;
-    std::optional<std::vector<std::unique_ptr<BaseNode>>> elseBranch;
+    std::optional<std::unique_ptr<BlockNode>> elseBranch;
     while (lexer->currToken().type == TokenType::Else) {
         lexer->nextToken(); // else
         if (lexer->currToken().type != TokenType::If) {
-            if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
-                elseBranch = parseCurlyBracketBlock();
-            } else {
-                elseBranch = std::vector<std::unique_ptr<BaseNode>>();
-                elseBranch.value().emplace_back(parseExpr());
-            }
+            elseBranch = parseBlock();
             break;
         }
         if (lexer->currToken().type != TokenType::If) {
@@ -196,8 +177,8 @@ std::unique_ptr<BaseNode> Parser::parseIfStatement() {
     return std::make_unique<IfStatement>(std::move(ifBranch), std::move(elseIfBranches), std::move(elseBranch));
 }
 
-std::vector<std::unique_ptr<BaseNode>> Parser::parseCurlyBracketBlock() {
-    std::vector<std::unique_ptr<BaseNode>> body;
+std::unique_ptr<BlockNode> Parser::parseCurlyBracketBlock() {
+    BlockNode::BlockCode body;
     if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
         throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
     }
@@ -208,7 +189,7 @@ std::vector<std::unique_ptr<BaseNode>> Parser::parseCurlyBracketBlock() {
         }
     }
     lexer->nextToken(); // }
-    return body;
+    return std::make_unique<BlockNode>(std::move(body));
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseExpr() {
@@ -442,4 +423,15 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
     return std::make_unique<FunctionNode>(std::move(fnName),
                                           std::move(params),
                                           parseCurlyBracketBlock());
+}
+
+std::unique_ptr<BlockNode> Parser::parseBlock() {
+    std::unique_ptr<BlockNode> block;
+    if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
+        block = parseCurlyBracketBlock();
+    } else {
+        block = std::make_unique<BlockNode>(makeVectorUnique<BaseNode>(parseExpr()));
+        consumeSemicolon();
+    }
+    return block;
 }

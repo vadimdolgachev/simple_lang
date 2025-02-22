@@ -3,7 +3,7 @@
 IfStatement::IfStatement(
         CondBranch ifBranch,
         std::vector<CondBranch> elseIfBranches,
-        std::optional<std::vector<std::unique_ptr<BaseNode>>> elseBranch) :
+        std::optional<std::unique_ptr<BlockNode>> elseBranch) :
     ifBranch(std::move(ifBranch)),
     elseIfBranches(std::move(elseIfBranches)),
     elseBranch(std::move(elseBranch)) {}

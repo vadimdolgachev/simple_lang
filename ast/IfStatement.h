@@ -10,18 +10,19 @@
 #include <vector>
 
 #include "BaseNode.h"
+#include "BlockNode.h"
 
 class IfStatement final : public StatementNode {
 public:
     struct CondBranch {
         std::unique_ptr<ExpressionNode> cond;
-        std::vector<std::unique_ptr<BaseNode>> then;
+        std::unique_ptr<BlockNode> then;
     };
 
     IfStatement(
-        CondBranch ifBranch,
-        std::vector<CondBranch> elseIfBranches,
-        std::optional<std::vector<std::unique_ptr<BaseNode>>> elseBranch);
+            CondBranch ifBranch,
+            std::vector<CondBranch> elseIfBranches,
+            std::optional<std::unique_ptr<BlockNode>> elseBranch);
 
     [[nodiscard]] std::string toString() const override;
 
@@ -29,7 +30,7 @@ public:
 
     const CondBranch ifBranch;
     const std::vector<CondBranch> elseIfBranches;
-    const std::optional<std::vector<std::unique_ptr<BaseNode>>> elseBranch;
+    const std::optional<std::unique_ptr<BlockNode>> elseBranch;
 };
 
 #endif //IFSTATEMENT_H

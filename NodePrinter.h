@@ -37,6 +37,9 @@ public:
     void visit(const UnaryOpNode *node) override;
 
     void visit(const LoopCondNode *node) override;
+
+    void visit(const BlockNode *node) override;
+
 private:
     std::ostream &ostream;
 };

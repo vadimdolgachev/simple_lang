@@ -100,3 +100,7 @@ void NodePrinter::visit(const UnaryOpNode *node) {
 void NodePrinter::visit(const LoopCondNode *node) {
     ostream << "WhileLoop";
 }
+
+void NodePrinter::visit(const BlockNode *node) {
+    ostream << "Block";
+}

@@ -44,4 +44,16 @@ std::tuple<std::unique_ptr<To>, std::unique_ptr<From>> tryCast(std::unique_ptr<F
     return res;
 }
 
+template<class T>
+std::vector<std::unique_ptr<T>> makeVectorUnique() {
+    return {};
+}
+
+template<class T, class... Args>
+std::vector<std::unique_ptr<T>> makeVectorUnique(Args &&... args) {
+    std::vector<std::unique_ptr<T>> vector;
+    (vector.emplace_back(std::forward<Args>(args)), ...);
+    return vector;
+}
+
 #endif //UTIL_H
