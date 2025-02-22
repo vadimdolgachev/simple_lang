@@ -227,6 +227,8 @@ public:
 
     [[nodiscard]] bool hasNextToken() const;
 
+    [[nodiscard]] std::string readText() const;
+
 private:
     void pushToken(Token token);
 
@@ -243,6 +245,7 @@ private:
     std::unique_ptr<std::istream> stream;
     int lastChar;
     std::deque<Token> tokenQueue;
+    std::deque<char> charQueue;
     size_t currTokIndex = 0;
 };
 

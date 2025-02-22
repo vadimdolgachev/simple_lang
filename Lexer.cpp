@@ -6,10 +6,19 @@
 
 #include <iostream>
 
+constexpr uint32_t MAX_HISTORY_READ_CHARS = 1024;
+
 void Lexer::readNextChar() {
     do {
         lastChar = stream->get();
-        if (lastChar == '\n' || !stream->eof()) {
+        if (!stream->eof()) {
+            while (charQueue.size() > MAX_HISTORY_READ_CHARS) {
+                if (const auto it = std::ranges::find(charQueue, '\n');
+                    it != charQueue.end()) {
+                    charQueue.erase(charQueue.begin(), it);
+                }
+            }
+            charQueue.push_back(lastChar);
             break;
         }
     } while (hasNextToken());
@@ -208,6 +217,10 @@ bool Lexer::hasNextToken() const {
         return true;
     }
     return false;
+}
+
+std::string Lexer::readText() const {
+    return {charQueue.begin(), charQueue.end()};
 }
 
 Token Lexer::prevToken() {

@@ -41,8 +41,8 @@ private:
     [[nodiscard]] std::unique_ptr<BaseNode> parseWhileStatement();
     [[nodiscard]] std::unique_ptr<BaseNode> parseDoWhileStatement();
     [[nodiscard]] std::unique_ptr<BlockNode> parseBlock();
-
     void consumeSemicolon() const;
+    std::string makeErrorMsg(const std::string &msg) const;
 
     std::unique_ptr<Lexer> lexer;
 };

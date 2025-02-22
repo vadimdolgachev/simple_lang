@@ -90,22 +90,22 @@ std::unique_ptr<BaseNode> Parser::tryParseAssignment(const bool needConsumeSemic
 
 std::unique_ptr<BaseNode> Parser::parseForStatement() {
     if (lexer->currToken().type != TokenType::LeftParenthesis) {
-        throw std::runtime_error("Expected '(' after 'for'");
+        throw std::runtime_error(makeErrorMsg("Expected '(' after 'for'"));
     }
     lexer->nextToken(); // '('
     auto initExpr = tryParseAssignment(false);
     if (lexer->currToken().type != TokenType::Semicolon) {
-        throw std::runtime_error("Expected ';' after init statement");
+        throw std::runtime_error(makeErrorMsg("Expected ';' after init statement"));
     }
     lexer->nextToken(); // ';'
     auto condition = parseExpr();
     if (lexer->currToken().type != TokenType::Semicolon) {
-        throw std::runtime_error("Expected ';' after condition");
+        throw std::runtime_error(makeErrorMsg("Expected ';' after condition"));
     }
     lexer->nextToken(); // ';'
     auto nextExpr = parseExpr();
     if (lexer->currToken().type != TokenType::RightParenthesis) {
-        throw std::runtime_error("Expected ')'");
+        throw std::runtime_error(makeErrorMsg("Expected ')'"));
     }
     lexer->nextToken(); // ')'
     auto forBody = parseBlock();
@@ -118,12 +118,12 @@ std::unique_ptr<BaseNode> Parser::parseForStatement() {
 
 std::unique_ptr<BaseNode> Parser::parseWhileStatement() {
     if (lexer->currToken().type != TokenType::LeftParenthesis) {
-        throw std::runtime_error("Expected '(' after 'while'");
+        throw std::runtime_error(makeErrorMsg("Expected '(' after 'while'"));
     }
     lexer->nextToken(); // '('
     auto condition = parseExpr();
     if (lexer->currToken().type != TokenType::RightParenthesis) {
-        throw std::runtime_error("Expected ')' after condition");
+        throw std::runtime_error(makeErrorMsg("Expected ')' after condition"));
     }
     lexer->nextToken(); // ')'
     auto body = parseBlock();
@@ -132,20 +132,20 @@ std::unique_ptr<BaseNode> Parser::parseWhileStatement() {
 
 std::unique_ptr<BaseNode> Parser::parseDoWhileStatement() {
     if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
-        throw std::runtime_error("Expected '{' after 'do'");
+        throw std::runtime_error(makeErrorMsg("Expected '{' after 'do'"));
     }
     auto body = parseCurlyBracketBlock();
     if (lexer->currToken().type != TokenType::WhileLoop) {
-        throw std::runtime_error("Expected 'while' keyword");
+        throw std::runtime_error(makeErrorMsg("Expected 'while' keyword"));
     }
     lexer->nextToken();
     if (lexer->currToken().type != TokenType::LeftParenthesis) {
-        throw std::runtime_error("Expected '(' after 'while'");
+        throw std::runtime_error(makeErrorMsg("Expected '(' after 'while'"));
     }
     lexer->nextToken(); // '('
     auto condition = parseExpr();
     if (lexer->currToken().type != TokenType::RightParenthesis) {
-        throw std::runtime_error("Expected ')' after condition");
+        throw std::runtime_error(makeErrorMsg("Expected ')' after condition"));
     }
     lexer->nextToken(); // ')'
     return std::make_unique<LoopCondNode>(std::move(condition), std::move(body), LoopCondNode::LoopType::DoWhile);
@@ -153,7 +153,7 @@ std::unique_ptr<BaseNode> Parser::parseDoWhileStatement() {
 
 void Parser::consumeSemicolon() const {
     if (lexer->currToken().type != TokenType::Semicolon) {
-        throw std::runtime_error("Expected ';'");
+        throw std::runtime_error(makeErrorMsg("Expected ';' character"));
     }
     lexer->nextToken();
 }
@@ -169,7 +169,7 @@ std::unique_ptr<BaseNode> Parser::parseIfStatement() {
             break;
         }
         if (lexer->currToken().type != TokenType::If) {
-            throw std::runtime_error("If condition does not exist");
+            throw std::runtime_error(makeErrorMsg("If condition does not exist"));
         }
         lexer->nextToken(); // if
         elseIfBranches.emplace_back(parseCondBranch());
@@ -180,7 +180,7 @@ std::unique_ptr<BaseNode> Parser::parseIfStatement() {
 std::unique_ptr<BlockNode> Parser::parseCurlyBracketBlock() {
     BlockNode::BlockCode body;
     if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
-        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+        throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
     }
     lexer->nextToken(); // {
     while (lexer->currToken().type != TokenType::RightCurlyBracket) {
@@ -205,7 +205,7 @@ std::unique_ptr<ExpressionNode> Parser::parseExpr() {
         || tokenType == TokenType::LogicalNegation) {
         return parseBoolLogic();
     }
-    throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+    throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseBoolLogic() {
@@ -308,7 +308,7 @@ std::unique_ptr<ExpressionNode> Parser::tryParseIdentifier() {
 
 std::unique_ptr<BooleanNode> Parser::parseBoolean() const {
     if (lexer->currToken().type != TokenType::Boolean && lexer->currToken().value.has_value()) {
-        throw std::runtime_error("Invalid boolean expression");
+        throw std::runtime_error(makeErrorMsg("Invalid boolean expression"));
     }
     auto result = std::make_unique<BooleanNode>(lexer->currToken().value == "true");
     lexer->nextToken();
@@ -331,9 +331,12 @@ std::unique_ptr<ExpressionNode> Parser::tryParseLiteral() const {
 
 std::unique_ptr<ExpressionNode> Parser::parseFactor() {
     if (lexer->currToken().type == TokenType::LeftParenthesis) {
-        lexer->nextToken();
+        lexer->nextToken(); // "("
         auto expr = parseExpr();
-        lexer->nextToken();
+        if (lexer->currToken().type != TokenType::RightParenthesis) {
+            throw std::runtime_error(makeErrorMsg("Expected ')' character"));
+        }
+        lexer->nextToken(); // ")"
         return expr;
     }
     if (auto expr = tryParseLiteral()) {
@@ -348,7 +351,7 @@ std::unique_ptr<ExpressionNode> Parser::parseFactor() {
     if (auto expr = tryParsePrefixOp()) {
         return expr;
     }
-    throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+    throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
 }
 
 std::unique_ptr<IdentNode> Parser::parseIdent() const {
@@ -368,7 +371,7 @@ std::unique_ptr<NumberNode> Parser::parseNumber() const {
         lexer->nextToken();
     }
     if (!lexer->currToken().value.has_value()) {
-        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+        throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
     }
     auto number = std::make_unique<NumberNode>(sign * strtod(lexer->currToken().value.value().c_str(), nullptr));
     lexer->nextToken();
@@ -383,7 +386,7 @@ std::unique_ptr<StringNode> Parser::parseString() const {
 
 std::unique_ptr<ExpressionNode> Parser::parseFunctionCall(std::unique_ptr<IdentNode> ident) {
     if (lexer->currToken().type != TokenType::LeftParenthesis) {
-        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+        throw std::runtime_error(makeErrorMsg("Expected '(' character"));
     }
     lexer->nextToken(); // '('
     std::vector<std::unique_ptr<ExpressionNode>> args;
@@ -397,7 +400,7 @@ std::unique_ptr<ExpressionNode> Parser::parseFunctionCall(std::unique_ptr<IdentN
     } while (lexer->currToken().type == TokenType::Comma);
 
     if (lexer->currToken().type != TokenType::RightParenthesis) {
-        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+        throw std::runtime_error(makeErrorMsg("Expected ')' character"));
     }
     lexer->nextToken(); // ')'
     return std::make_unique<FunctionCallNode>(std::move(ident), std::move(args));
@@ -405,7 +408,7 @@ std::unique_ptr<ExpressionNode> Parser::parseFunctionCall(std::unique_ptr<IdentN
 
 std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
     if (lexer->currToken().type != TokenType::Identifier) {
-        throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+        throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
     }
     auto fnName = parseIdent();
     lexer->nextToken();
@@ -413,7 +416,7 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
     while (lexer->currToken().type != TokenType::RightParenthesis) {
         params.emplace_back(parseIdent());
         if (lexer->currToken().type != TokenType::Comma && lexer->currToken().type != TokenType::RightParenthesis) {
-            throw std::runtime_error("Unexpected token: " + lexer->currToken().toString());
+            throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
         }
         if (lexer->currToken().type == TokenType::Comma) {
             lexer->nextToken();
@@ -434,4 +437,8 @@ std::unique_ptr<BlockNode> Parser::parseBlock() {
         consumeSemicolon();
     }
     return block;
+}
+
+std::string Parser::makeErrorMsg(const std::string &msg) const {
+    return std::format("{}\n{}", lexer->readText(), msg);
 }
