@@ -6,13 +6,24 @@
 
 #include <algorithm>
 #include <iostream>
+#include <unordered_map>
 
 namespace {
     constexpr uint32_t MAX_READ_LINES = 2;
     const auto isLineSepPred = [](const auto &v) {
         return v.val == '\n';
     };
-}
+    const std::unordered_map<std::string, TokenType> KEYWORDS = {
+        {"fn", TokenType::FunctionDefinition},
+        {"if", TokenType::If},
+        {"else", TokenType::Else},
+        {"for", TokenType::ForLoop},
+        {"while", TokenType::WhileLoop},
+        {"do", TokenType::DoLoop},
+        {"true", TokenType::Boolean},
+        {"false", TokenType::Boolean}
+    };
+}  // namespace
 
 void Lexer::readNextChar() {
     do {
@@ -138,7 +149,7 @@ Token Lexer::fetchNextToken() {
                 return isStringLiteral ? c != '"' : std::isalnum(c);
             };
             while (isAllowChar(currChar.val)) {
-                tokenValue.value().push_back(static_cast<char>(currChar.val));
+                tokenValue.value().push_back(currChar.val);
                 if (const int peekChar = getPeekChar(); !isAllowChar(peekChar)) {
                     break;
                 }
@@ -147,20 +158,8 @@ Token Lexer::fetchNextToken() {
             if (isStringLiteral) {
                 readNextChar();
             }
-            if (tokenValue == "fn") {
-                resultToken = TokenType::FunctionDefinition;
-            } else if (tokenValue == "if") {
-                resultToken = TokenType::If;
-            } else if (tokenValue == "else") {
-                resultToken = TokenType::Else;
-            } else if (tokenValue == "for") {
-                resultToken = TokenType::ForLoop;
-            } else if (tokenValue == "while") {
-                resultToken = TokenType::WhileLoop;
-            } else if (tokenValue == "do") {
-                resultToken = TokenType::DoLoop;
-            } else if (tokenValue == "true" || tokenValue == "false") {
-                resultToken = TokenType::Boolean;
+            if (const auto it = KEYWORDS.find(tokenValue.value()); it != KEYWORDS.end()) {
+                resultToken = it->second;
             } else if (isStringLiteral) {
                 resultToken = TokenType::String;
             } else {
