@@ -205,6 +205,8 @@ inline std::string toString(const TokenType token) {
 struct Token final {
     TokenType type = TokenType::Unknown;
     std::optional<std::string> value;
+    int32_t startPosition = 0;
+    int32_t endPosition = 0;
 
     [[nodiscard]] std::string toString() const {
         return value
@@ -215,6 +217,11 @@ struct Token final {
 
 class Lexer {
 public:
+    struct Character final {
+        char val;
+        int32_t pos;
+    };
+
     explicit Lexer(std::unique_ptr<std::istream> stream);
 
     Token nextToken();
@@ -227,7 +234,7 @@ public:
 
     [[nodiscard]] bool hasNextToken() const;
 
-    [[nodiscard]] std::string readText() const;
+    [[nodiscard]] std::deque<Character> readText() const;
 
 private:
     void pushToken(Token token);
@@ -243,9 +250,9 @@ private:
     [[nodiscard]] std::string parseNumber();
 
     std::unique_ptr<std::istream> stream;
-    int lastChar;
+    Character currChar = {EOF, 0};
     std::deque<Token> tokenQueue;
-    std::deque<char> charQueue;
+    std::deque<Character> textQueue;
     size_t currTokIndex = 0;
 };
 

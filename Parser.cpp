@@ -72,11 +72,11 @@ IfStatement::CondBranch Parser::parseCondBranch() {
 }
 
 std::unique_ptr<BaseNode> Parser::tryParseAssignment(const bool needConsumeSemicolon) {
-    if (const auto [token, value] = lexer->currToken(); token == TokenType::Identifier) {
+    if (const auto &token = lexer->currToken(); token.type == TokenType::Identifier) {
         lexer->nextToken();
-        if (lexer->currToken().type == TokenType::Assignment && value.has_value()) {
+        if (lexer->currToken().type == TokenType::Assignment && token.value.has_value()) {
             lexer->nextToken();
-            auto result = parseAssignment(value.value());
+            auto result = parseAssignment(token.value.value());
             if (needConsumeSemicolon) {
                 consumeSemicolon();
             }
@@ -193,16 +193,16 @@ std::unique_ptr<BlockNode> Parser::parseCurlyBracketBlock() {
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseExpr() {
-    if (const auto [tokenType, value] = lexer->currToken();
-        isSign(tokenType)
-        || tokenType == TokenType::Number
-        || tokenType == TokenType::String
-        || tokenType == TokenType::Boolean
-        || tokenType == TokenType::LeftParenthesis
-        || tokenType == TokenType::Identifier
-        || tokenType == TokenType::IncrementOperator
-        || tokenType == TokenType::DecrementOperator
-        || tokenType == TokenType::LogicalNegation) {
+    if (const auto &token = lexer->currToken();
+        isSign(token.type)
+        || token.type == TokenType::Number
+        || token.type == TokenType::String
+        || token.type == TokenType::Boolean
+        || token.type == TokenType::LeftParenthesis
+        || token.type == TokenType::Identifier
+        || token.type == TokenType::IncrementOperator
+        || token.type == TokenType::DecrementOperator
+        || token.type == TokenType::LogicalNegation) {
         return parseBoolLogic();
     }
     throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
@@ -440,5 +440,17 @@ std::unique_ptr<BlockNode> Parser::parseBlock() {
 }
 
 std::string Parser::makeErrorMsg(const std::string &msg) const {
-    return std::format("{}\n{}", lexer->readText(), msg);
+    std::string lines;
+    uint32_t startLinePos = 0;
+    for (const auto &[ch, pos]: lexer->readText()) {
+        if (ch == '\n') {
+            startLinePos = pos + 1;
+        }
+        lines.push_back(ch);
+    }
+    const auto padding = lexer->currToken().startPosition - startLinePos;
+    lines.push_back('\n');
+    lines.insert(lines.end(), padding, '-');
+    lines.insert(lines.end(), lexer->currToken().endPosition - lexer->currToken().startPosition + 1, '^');
+    return std::format("{}\n{}", lines, msg);
 }
