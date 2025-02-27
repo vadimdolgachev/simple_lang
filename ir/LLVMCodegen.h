@@ -12,9 +12,9 @@
 
 class LLVMCodegen final : public NodeVisitor {
 public:
-    LLVMCodegen(const std::unique_ptr<llvm::LLVMContext> &llvmContext,
-                const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
-                const std::unique_ptr<llvm::Module> &llvmModule,
+    LLVMCodegen(const std::unique_ptr<llvm::LLVMContext> &context,
+                const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
+                const std::unique_ptr<llvm::Module> &module,
                 std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
                 std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos,
                 std::unordered_map<std::string, llvm::Value *> &namedValues);
@@ -64,9 +64,9 @@ public:
 
 private:
     llvm::Value *value_ = nullptr;
-    const std::unique_ptr<llvm::LLVMContext> &llvmContext;
-    const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder;
-    const std::unique_ptr<llvm::Module> &llvmModule;
+    const std::unique_ptr<llvm::LLVMContext> &context;
+    const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder;
+    const std::unique_ptr<llvm::Module> &module;
     std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues;
     std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos;
     std::unordered_map<std::string, llvm::Value *> &namedValues;
