@@ -1,5 +1,12 @@
 # SimpleASTParser
 
+## Simple program
+```
+    fn main() {
+        message = "Hello, World";
+        println(message);
+    }
+```
 
 ## BNF grammar:
 ```text
