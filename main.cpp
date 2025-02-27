@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <unordered_map>
+#include <cstdarg>
 
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/MemoryDependenceAnalysis.h"
@@ -123,9 +124,11 @@ namespace {
         llvm::outs() << '\n';
     }
 
-    void println(const char *fmt) {
-        std::printf(fmt);
-        std::printf("\n");
+    void println(const char *fmt...) {
+        va_list (args);
+        va_start(args, fmt);
+        vprintf(fmt, args);
+        va_end(args);
     }
 
     void executeMain(const std::unique_ptr<Parser> &parser) {
@@ -157,7 +160,7 @@ namespace {
         llvm::orc::SymbolMap symbols;
 
         constexpr const char *const name = "println";
-        auto printProto = std::make_unique<ProtoFunctionStatement>(name, std::vector<std::string>{"fmt"});
+        auto printProto = std::make_unique<ProtoFunctionStatement>(name, std::vector<std::string>{"fmt"}, true);
         functionProtos[name] = std::move(printProto);
         symbols[mangle(name)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(println)>(&println),
@@ -178,8 +181,8 @@ int main() {
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
         fn main() {
-            message = "Hello, World";
-            println(message);
+            message = "Hello, World%s";
+            println(message, "!");
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();

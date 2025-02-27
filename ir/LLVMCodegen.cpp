@@ -48,14 +48,14 @@ namespace {
         return nullptr;
     }
 
-    llvm::Function *getFunction(const std::string &name,
-                                const std::unique_ptr<llvm::LLVMContext> &llvmContext,
-                                const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
-                                const std::unique_ptr<llvm::Module> &llvmModule,
-                                std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
-                                std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &
-                                functionProtos,
-                                std::unordered_map<std::string, llvm::Value *> &namedValues) {
+    llvm::Function *getModuleFunction(const std::string &name,
+                                      const std::unique_ptr<llvm::LLVMContext> &llvmContext,
+                                      const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
+                                      const std::unique_ptr<llvm::Module> &llvmModule,
+                                      std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
+                                      std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &
+                                      functionProtos,
+                                      std::unordered_map<std::string, llvm::Value *> &namedValues) {
         // First, see if the function has already been added to the current module.
         if (auto *const function = llvmModule->getFunction(name)) {
             return function;
@@ -99,7 +99,8 @@ void LLVMCodegen::visit(const IdentNode *node) {
                                            globalValues[node->name],
                                            node->name + ".global");
     } else {
-        value_ = llvmIRBuilder->CreateLoad(namedValues[node->name]->getType(), namedValues[node->name]);
+        auto *const variable = dyn_cast<llvm::AllocaInst>(namedValues[node->name]);
+        value_ = llvmIRBuilder->CreateLoad(variable->getAllocatedType(), variable);
     }
 }
 
@@ -107,13 +108,13 @@ void LLVMCodegen::visit(const FunctionNode *const node) {
     assert(llvmContext != nullptr);
     const auto &proto = *node->proto;
     functionProtos[proto.name] = std::make_unique<ProtoFunctionStatement>(node->proto->name, node->proto->params);
-    auto *const function = getFunction(proto.name,
-                                       llvmContext,
-                                       llvmIRBuilder,
-                                       llvmModule,
-                                       globalValues,
-                                       functionProtos,
-                                       namedValues);
+    auto *const function = getModuleFunction(proto.name,
+                                             llvmContext,
+                                             llvmIRBuilder,
+                                             llvmModule,
+                                             globalValues,
+                                             functionProtos,
+                                             namedValues);
     if (function == nullptr) {
         return;
     }
@@ -214,9 +215,10 @@ void LLVMCodegen::visit(const BinOpNode *node) {
 
 void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
     assert(llvmContext != nullptr);
-    const std::vector functionParams(node->params.size(), llvm::Type::getVoidTy(*llvmContext));
-    auto *const functionType = llvm::FunctionType::get(llvm::Type::getVoidTy(*llvmContext), functionParams,
-                                                       false);
+    const std::vector functionParams(node->params.size(), llvmIRBuilder->getVoidTy());
+    auto *const functionType = llvm::FunctionType::get(llvmIRBuilder->getVoidTy(),
+                                                       functionParams,
+                                                       functionProtos[node->name]->isVarArgs);
     auto *const function = llvm::Function::Create(functionType,
                                                   llvm::Function::ExternalLinkage,
                                                   node->name,
@@ -245,7 +247,7 @@ void LLVMCodegen::visit(const AssignmentNode *const node) {
                 llvm::GlobalValue::ExternalLinkage,
                 nullptr,
                 node->name);
-        variable->setInitializer(static_cast<llvm::Constant *>(init));
+        variable->setInitializer(dyn_cast<llvm::Constant>(init));
         globalValues[node->name] = variable;
         value_ = variable;
     } else {
@@ -261,19 +263,19 @@ void LLVMCodegen::visit(const AssignmentNode *const node) {
 void LLVMCodegen::visit(const FunctionCallNode *const node) {
     assert(llvmContext != nullptr);
     // Look up the name in the global module table.
-    auto *calleeFunc = getFunction(node->ident->name,
-                                   llvmContext,
-                                   llvmIRBuilder,
-                                   llvmModule,
-                                   globalValues,
-                                   functionProtos,
-                                   namedValues);
+    auto *calleeFunc = getModuleFunction(node->ident->name,
+                                         llvmContext,
+                                         llvmIRBuilder,
+                                         llvmModule,
+                                         globalValues,
+                                         functionProtos,
+                                         namedValues);
     if (calleeFunc == nullptr) {
         return;
     }
 
     // If argument mismatch error.
-    if (calleeFunc->arg_size() != node->args.size()) {
+    if (!functionProtos[node->ident->name]->isVarArgs && calleeFunc->arg_size() != node->args.size()) {
         return;
     }
 

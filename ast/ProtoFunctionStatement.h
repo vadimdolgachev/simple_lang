@@ -12,7 +12,8 @@
 class ProtoFunctionStatement final : public StatementNode {
 public:
     ProtoFunctionStatement(std::string name,
-                           std::vector<std::string> params);
+                           std::vector<std::string> params,
+                           bool isVarArgs = false);
 
     [[nodiscard]] std::string toString() const override;
 
@@ -20,6 +21,7 @@ public:
 
     std::string name;
     std::vector<std::string> params;
+    const bool isVarArgs;
 };
 
 #endif //PROTOFUNCTIONAST_H
