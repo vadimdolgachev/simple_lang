@@ -6,23 +6,20 @@
 #define FUNCTIONAST_H
 
 #include <memory>
-#include <vector>
 
 #include "BaseNode.h"
 #include "BlockNode.h"
 
 class FunctionNode final : public StatementNode {
 public:
-    FunctionNode(std::unique_ptr<IdentNode> name,
-                 std::vector<std::unique_ptr<IdentNode>> params,
+    FunctionNode(std::unique_ptr<ProtoFunctionStatement> proto,
                  std::unique_ptr<BlockNode> body);
 
     [[nodiscard]] std::string toString() const override;
 
     void visit(NodeVisitor *visitor) const override;
 
-    const std::unique_ptr<IdentNode> name;
-    const std::vector<std::unique_ptr<IdentNode>> params;
+    const std::unique_ptr<ProtoFunctionStatement> proto;
     const std::unique_ptr<BlockNode> body;
 };
 

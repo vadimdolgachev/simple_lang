@@ -11,7 +11,7 @@ class Parser {
 public:
     explicit Parser(std::unique_ptr<Lexer> lexer);
 
-    explicit operator bool() const;
+    [[nodiscard]] bool hasNextNode() const;
 
     [[nodiscard]] std::unique_ptr<BaseNode> nextNode();
 
@@ -42,7 +42,7 @@ private:
     [[nodiscard]] std::unique_ptr<BaseNode> parseDoWhileStatement();
     [[nodiscard]] std::unique_ptr<BlockNode> parseBlock();
     void consumeSemicolon() const;
-    std::string makeErrorMsg(const std::string &msg) const;
+    [[nodiscard]] std::string makeErrorMsg(const std::string &msg) const;
 
     std::unique_ptr<Lexer> lexer;
 };

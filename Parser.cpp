@@ -1,7 +1,5 @@
 #include "Parser.h"
 
-#include <complex>
-
 #include "Util.h"
 #include "ast/BinOpNode.h"
 #include "ast/FunctionCallNode.h"
@@ -16,6 +14,7 @@
 #include "ast/NumberNode.h"
 #include "ast/LoopCondNode.h"
 #include "ast/BlockNode.h"
+#include "ast/ProtoFunctionStatement.h"
 
 namespace {
     bool isSign(const TokenType token) {
@@ -28,7 +27,7 @@ Parser::Parser(std::unique_ptr<Lexer> lexer_) :
     lexer->nextToken();
 }
 
-Parser::operator bool() const {
+bool Parser::hasNextNode() const {
     return lexer->hasNextToken();
 }
 
@@ -412,9 +411,9 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
     }
     auto fnName = parseIdent();
     lexer->nextToken();
-    std::vector<std::unique_ptr<IdentNode>> params;
+    std::vector<std::string> params;
     while (lexer->currToken().type != TokenType::RightParenthesis) {
-        params.emplace_back(parseIdent());
+        params.emplace_back(parseIdent()->name);
         if (lexer->currToken().type != TokenType::Comma && lexer->currToken().type != TokenType::RightParenthesis) {
             throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
         }
@@ -422,10 +421,13 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
             lexer->nextToken();
         }
     }
-    lexer->nextToken(); // {
-    return std::make_unique<FunctionNode>(std::move(fnName),
-                                          std::move(params),
-                                          parseCurlyBracketBlock());
+    lexer->nextToken(); // ")"
+    auto proto = std::make_unique<ProtoFunctionStatement>(fnName->name, params);
+    if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
+        return std::make_unique<FunctionNode>(std::move(proto), parseCurlyBracketBlock());
+    }
+    consumeSemicolon();
+    return proto;
 }
 
 std::unique_ptr<BlockNode> Parser::parseBlock() {
@@ -452,5 +454,5 @@ std::string Parser::makeErrorMsg(const std::string &msg) const {
     lines.push_back('\n');
     lines.insert(lines.end(), padding, '-');
     lines.insert(lines.end(), lexer->currToken().endPosition - lexer->currToken().startPosition + 1, '^');
-    return std::format("{}\n{}", lines, msg);
+    return std::format("\n{}\n{}", lines, msg);
 }

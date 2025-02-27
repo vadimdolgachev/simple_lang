@@ -10,6 +10,9 @@
 #include "ast/UnaryOpNode.h"
 #include "ast/IdentNode.h"
 #include "ast/AssignmentNode.h"
+#include "ast/BooleanNode.h"
+#include "ast/ProtoFunctionStatement.h"
+#include "ast/StringNode.h"
 
 namespace {
     std::ostream &operator<<(std::ostream &os, const TokenType token) {
@@ -48,11 +51,11 @@ void NodePrinter::visit(const IdentNode *node) {
 }
 
 void NodePrinter::visit(const NumberNode *node) {
-    ostream << node->value;
+    ostream << "Number value=" << node->value;
 }
 
 void NodePrinter::visit(const StringNode *node) {
-    throw std::runtime_error("not implemented");
+    ostream << "String value=" << node->str;
 }
 
 void NodePrinter::visit(const BinOpNode *node) {
@@ -66,11 +69,11 @@ void NodePrinter::visit(const BinOpNode *node) {
 }
 
 void NodePrinter::visit(const BooleanNode *node) {
-    throw std::runtime_error("not implemented");
+    ostream << "Boolean value=" << node->value;
 }
 
 void NodePrinter::visit(const FunctionNode *node) {
-    ostream << "Function: name=" << node->proto->name;
+    ostream << "Function: name=" << node->proto->toString();
 }
 
 void NodePrinter::visit(const ProtoFunctionStatement *node) {
@@ -82,7 +85,7 @@ void NodePrinter::visit(const AssignmentNode *node) {
 }
 
 void NodePrinter::visit(const FunctionCallNode *node) {
-    ostream << "CallFunctionNode: name=" << node->name;
+    ostream << "CallFunctionNode: name=" << node->ident;
 }
 
 void NodePrinter::visit(const IfStatement *node) {

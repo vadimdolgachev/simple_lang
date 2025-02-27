@@ -31,8 +31,8 @@ add_executable(simple_ast_parser
         ast/IdentNode.cpp
         ast/BinOpNode.h
         ast/BinOpNode.cpp
-        ir/IRCodegen.cpp
-        ir/IRCodegen.h
+        ir/LLVMCodegen.cpp
+        ir/LLVMCodegen.h
         ast/FunctionNode.h
         ast/FunctionNode.cpp
         ast/ProtoFunctionStatement.h

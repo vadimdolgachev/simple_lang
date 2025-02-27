@@ -24,6 +24,7 @@
 #include "ast/NumberNode.h"
 #include "ast/StringNode.h"
 #include "ast/LoopCondNode.h"
+#include "ast/ProtoFunctionStatement.h"
 
 namespace {
     class VarDefinitionTest : public testing::Test {};
@@ -502,9 +503,30 @@ namespace {
                            "var");
     }
 
-    class FunctionCallTest : public testing::Test {};
+    class FunctionTest : public testing::Test {};
 
-    TEST_F(FunctionCallTest, ComplexFunctionCall) {
+    TEST_F(FunctionTest, ProtoFunction) {
+        const std::string input = "fn foo(arg1, arg2, arg3, arg4);";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse input: " << input;
+
+        auto [protoFn, orig] = tryCast<ProtoFunctionStatement>(std::move(node));
+        ASSERT_NE(protoFn, nullptr) << "Not a function call node: " << input;
+
+        EXPECT_EQ(protoFn->name, "foo") << "Wrong function name in: " << input;
+
+        ASSERT_EQ(protoFn->params.size(), 4) << "Wrong number of arguments in: " << input;
+
+        EXPECT_EQ(protoFn->params[0], "arg1") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[1], "arg2") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[2], "arg3") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[3], "arg4") << "Wrong identifier name in: " << input;
+    }
+
+    TEST_F(FunctionTest, ComplexFunctionCall) {
         const std::string input = "foo(1, 2.1, var, 1 + 2);";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
@@ -545,7 +567,7 @@ namespace {
         EXPECT_EQ(rhs->value, 2) << "Wrong right operand value in: " << input;
     }
 
-    TEST_F(FunctionCallTest, MultipleFunctionCall) {
+    TEST_F(FunctionTest, MultipleFunctionCall) {
         const std::string input = "foo1(1);foo2(2);";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
@@ -579,9 +601,7 @@ namespace {
         EXPECT_EQ(fn2Arg1->value, 2) << "Wrong value for argument 1 in: " << input;
     }
 
-    class FunctionDefTest : public testing::Test {};
-
-    TEST_F(FunctionDefTest, ComplexFunctionDefinition) {
+    TEST_F(FunctionTest, ComplexFunctionDefinition) {
         const std::string input = R"(
         fn foo(arg1, arg2, arg3, arg4) {
             v = 1;
@@ -598,13 +618,13 @@ namespace {
         auto [fnNode, orig] = tryCast<FunctionNode>(std::move(node));
         ASSERT_NE(fnNode, nullptr) << "Parsed node is not a function";
 
-        EXPECT_EQ(fnNode->name->name, "foo") << "Wrong function name";
+        EXPECT_EQ(fnNode->proto->name, "foo") << "Wrong function name";
 
-        ASSERT_EQ(fnNode->params.size(), 4) << "Wrong number of parameters";
-        EXPECT_EQ(fnNode->params[0]->name, "arg1") << "Wrong parameter 1 name";
-        EXPECT_EQ(fnNode->params[1]->name, "arg2") << "Wrong parameter 2 name";
-        EXPECT_EQ(fnNode->params[2]->name, "arg3") << "Wrong parameter 3 name";
-        EXPECT_EQ(fnNode->params[3]->name, "arg4") << "Wrong parameter 4 name";
+        ASSERT_EQ(fnNode->proto->params.size(), 4) << "Wrong number of parameters";
+        EXPECT_EQ(fnNode->proto->params[0], "arg1") << "Wrong parameter 1 name";
+        EXPECT_EQ(fnNode->proto->params[1], "arg2") << "Wrong parameter 2 name";
+        EXPECT_EQ(fnNode->proto->params[2], "arg3") << "Wrong parameter 3 name";
+        EXPECT_EQ(fnNode->proto->params[3], "arg4") << "Wrong parameter 4 name";
 
         ASSERT_FALSE(fnNode->body->statements.empty()) << "Function body should not be empty";
         ASSERT_EQ(fnNode->body->statements.size(), 2) << "Wrong number of body statements";

@@ -1,9 +1,11 @@
 #include "ProtoFunctionStatement.h"
 
-ProtoFunctionStatement::ProtoFunctionStatement(std::string name, std::vector<std::string> args)
-    : name(std::move(name)),
-      args(std::move(args)) {
-}
+#include "IdentNode.h"
+
+ProtoFunctionStatement::ProtoFunctionStatement(std::string name,
+                                               std::vector<std::string> params) :
+    name(std::move(name)),
+    params(std::move(params)) {}
 
 std::string ProtoFunctionStatement::toString() const {
     return "proto func:" + name;
