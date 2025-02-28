@@ -12,8 +12,8 @@
             "cppStandard": "${default}",
             "configurationProvider": "${default}",
             "compileCommands": "${default}",
-            "mergeConfigurations": true,
-            
+            "mergeConfigurations": true
+
         }
     ],
     "version": 4,
