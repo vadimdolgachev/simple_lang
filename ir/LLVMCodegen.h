@@ -12,12 +12,11 @@
 
 class LLVMCodegen final : public NodeVisitor {
 public:
-    LLVMCodegen(const std::unique_ptr<llvm::LLVMContext> &context,
-                const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
+    LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
                 const std::unique_ptr<llvm::Module> &module,
                 std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
                 std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos,
-                std::unordered_map<std::string, llvm::Value *> &namedValues);
+                std::unordered_map<std::string, llvm::AllocaInst *> &namedValues);
 
     void visit(const IdentNode *node) override;
 
@@ -50,26 +49,24 @@ public:
     [[nodiscard]] llvm::Value *value() const;
 
     static llvm::Value *generate(const BaseNode *const node,
-                                 const std::unique_ptr<llvm::LLVMContext> &llvmContext,
                                  const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
                                  const std::unique_ptr<llvm::Module> &llvmModule,
                                  std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
                                  std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &
                                  functionProtos,
-                                 std::unordered_map<std::string, llvm::Value *> &namedValues) {
-        LLVMCodegen codegen(llvmContext, llvmIRBuilder, llvmModule, globalValues, functionProtos, namedValues);
+                                 std::unordered_map<std::string, llvm::AllocaInst *> &namedValues) {
+        LLVMCodegen codegen(llvmIRBuilder, llvmModule, globalValues, functionProtos, namedValues);
         node->visit(&codegen);
         return codegen.value();
     }
 
 private:
     llvm::Value *value_ = nullptr;
-    const std::unique_ptr<llvm::LLVMContext> &context;
     const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder;
     const std::unique_ptr<llvm::Module> &module;
     std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues;
     std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos;
-    std::unordered_map<std::string, llvm::Value *> &namedValues;
+    std::unordered_map<std::string, llvm::AllocaInst *> &namedValues;
 };
 
 #endif //LLVMCODEGEN_H

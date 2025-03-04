@@ -23,6 +23,7 @@
 #include "llvm/Transforms/Scalar/Reassociate.h"
 #include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include <llvm/IR/Verifier.h>
+#include <llvm/Transforms/Utils/Mem2Reg.h>
 
 #include "KaleidoscopeJIT.h"
 #include "Lexer.h"
@@ -36,7 +37,7 @@ namespace {
     std::unique_ptr<llvm::Module> llvmModule;
     std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
     std::unique_ptr<llvm::orc::KaleidoscopeJIT> llvmJit;
-    std::unordered_map<std::string, llvm::Value *> namedValues;
+    std::unordered_map<std::string, llvm::AllocaInst *> namedValues;
     std::unique_ptr<llvm::FunctionPassManager> functionPassManager;
     std::unique_ptr<llvm::LoopAnalysisManager> loopAnalysisManager;
     std::unique_ptr<llvm::FunctionAnalysisManager> functionAnalysisManager;
@@ -49,7 +50,7 @@ namespace {
     void initLlvmModules() {
         llvmContext = std::make_unique<llvm::LLVMContext>();
         llvmModule = std::make_unique<llvm::Module>("my cool jit", *llvmContext);
-        llvmModule->setDataLayout(llvmJit->getDataLayout().getStringRepresentation());
+        llvmModule->setDataLayout(llvmJit->getDataLayout());
 
         llvmIRBuilder = std::make_unique<llvm::IRBuilder<>>(*llvmContext);
 
@@ -72,6 +73,9 @@ namespace {
         functionPassManager->addPass(llvm::GVNPass());
         // Simplify the control flow graph (deleting unreachable blocks, etc).
         functionPassManager->addPass(llvm::SimplifyCFGPass());
+        functionPassManager->addPass(llvm::PromotePass());
+        functionPassManager->addPass(llvm::InstCombinePass());
+        functionPassManager->addPass(llvm::ReassociatePass());
 
         // Register analysis passes used in these transform passes.
         llvm::PassBuilder passBuilder;
@@ -117,7 +121,6 @@ namespace {
         while (parser->hasNextNode()) {
             auto node = parser->nextNode();
             [[maybe_unused]] const auto *const llvmIR = LLVMCodegen::generate(node.get(),
-                                                                              llvmContext,
                                                                               llvmIRBuilder,
                                                                               llvmModule,
                                                                               globalValues,
@@ -172,9 +175,14 @@ int main() {
     defineEmbeddedFunctions();
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
+        fn foo(arg) {
+            localVar = 2;
+            println("foo(arg) arg=%f, localVar=%f", arg, localVar);
+        }
         fn main() {
             message = "Hello, World%s";
             println(message, "!");
+            foo(1);
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();

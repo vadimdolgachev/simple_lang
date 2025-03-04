@@ -25,17 +25,15 @@
 
 namespace {
     llvm::Value *codegenBlock(const std::unique_ptr<BlockNode> &block,
-                              const std::unique_ptr<llvm::LLVMContext> &context,
                               const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
                               const std::unique_ptr<llvm::Module> &module,
                               std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
                               std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &
                               functionProtos,
-                              std::unordered_map<std::string, llvm::Value *> &namedValues) {
+                              std::unordered_map<std::string, llvm::AllocaInst *> &namedValues) {
 
         for (auto it = block->statements.begin(); it != block->statements.end(); ++it) {
             auto *const ir = LLVMCodegen::generate(it->get(),
-                                                   context,
                                                    iRBuilder,
                                                    module,
                                                    globalValues,
@@ -49,13 +47,12 @@ namespace {
     }
 
     llvm::Function *getModuleFunction(const std::string &name,
-                                      const std::unique_ptr<llvm::LLVMContext> &context,
                                       const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
                                       const std::unique_ptr<llvm::Module> &module,
                                       std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
                                       std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &
                                       functionProtos,
-                                      std::unordered_map<std::string, llvm::Value *> &namedValues) {
+                                      std::unordered_map<std::string, llvm::AllocaInst *> &namedValues) {
         // First, see if the function has already been added to the current module.
         if (auto *const function = module->getFunction(name)) {
             return function;
@@ -65,28 +62,31 @@ namespace {
         // prototype.
         if (const auto proto = functionProtos.find(name); proto != functionProtos.end()) {
             auto *const ir = LLVMCodegen::generate(proto->second.get(),
-                                                   context,
                                                    iRBuilder,
                                                    module,
                                                    globalValues,
                                                    functionProtos,
                                                    namedValues);
-            return reinterpret_cast<llvm::Function *>(ir);
+            return llvm::dyn_cast<llvm::Function>(ir);
         }
 
         // If no existing prototype exists, return null.
         return nullptr;
     }
+
+    llvm::AllocaInst *createEntryBlockAlloca(llvm::Type *type,
+                                             llvm::Function *function,
+                                             const llvm::StringRef varName) {
+        llvm::IRBuilder tmpBuilder(&function->getEntryBlock(), function->getEntryBlock().begin());
+        return tmpBuilder.CreateAlloca(type, nullptr, varName);
+    }
 } // namespace
 
-LLVMCodegen::LLVMCodegen(
-        const std::unique_ptr<llvm::LLVMContext> &context,
-        const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
-        const std::unique_ptr<llvm::Module> &module,
-        std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
-        std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos,
-        std::unordered_map<std::string, llvm::Value *> &namedValues):
-    context(context),
+LLVMCodegen::LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
+                         const std::unique_ptr<llvm::Module> &module,
+                         std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
+                         std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos,
+                         std::unordered_map<std::string, llvm::AllocaInst *> &namedValues):
     iRBuilder(iRBuilder),
     module(module),
     globalValues(globalValues),
@@ -99,17 +99,18 @@ void LLVMCodegen::visit(const IdentNode *node) {
                                        globalValues[node->name],
                                        node->name + ".global");
     } else {
-        auto *const variable = dyn_cast<llvm::AllocaInst>(namedValues[node->name]);
-        value_ = iRBuilder->CreateLoad(variable->getAllocatedType(), variable);
+        auto *const alloc = namedValues[node->name];
+        if (alloc == nullptr) {
+            throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
+        }
+        value_ = iRBuilder->CreateLoad(alloc->getAllocatedType(), alloc, node->name);
     }
 }
 
 void LLVMCodegen::visit(const FunctionNode *const node) {
-    assert(context != nullptr);
     const auto &proto = *node->proto;
     functionProtos[proto.name] = std::make_unique<ProtoFunctionStatement>(node->proto->name, node->proto->params);
     auto *const function = getModuleFunction(proto.name,
-                                             context,
                                              iRBuilder,
                                              module,
                                              globalValues,
@@ -120,17 +121,19 @@ void LLVMCodegen::visit(const FunctionNode *const node) {
     }
 
     // Create a new basic block to start insertion into.
-    auto *const basicBlock = llvm::BasicBlock::Create(*context, "entry", function);
+    auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(), "entry", function);
     iRBuilder->SetInsertPoint(basicBlock);
 
     // Record the function arguments in the namedValues map.
     namedValues.clear();
     for (auto &arg: function->args()) {
-        namedValues[std::string(arg.getName())] = &arg;
+        auto *const alloca = createEntryBlockAlloca(llvm::Type::getDoubleTy(module->getContext()), function,
+                                                    arg.getName());
+        iRBuilder->CreateStore(&arg, alloca);
+        namedValues[std::string(arg.getName())] = alloca;
     }
 
     if ([[maybe_unused]] auto *const returnValue = codegenBlock(node->body,
-                                                                context,
                                                                 iRBuilder,
                                                                 module,
                                                                 globalValues,
@@ -146,12 +149,11 @@ void LLVMCodegen::visit(const FunctionNode *const node) {
 }
 
 void LLVMCodegen::visit(const NumberNode *node) {
-    assert(context != nullptr);
-    value_ = llvm::ConstantFP::get(*context, llvm::APFloat(node->value));
+    value_ = llvm::ConstantFP::get(module->getContext(), llvm::APFloat(node->value));
 }
 
 void LLVMCodegen::visit(const StringNode *node) {
-    auto *strConstant = llvm::ConstantDataArray::getString(*context, node->str);
+    auto *strConstant = llvm::ConstantDataArray::getString(module->getContext(), node->str);
     auto *var = new llvm::GlobalVariable(
             *module, strConstant->getType(), true,
             llvm::GlobalValue::ExternalLinkage, strConstant, "str");
@@ -166,16 +168,13 @@ void LLVMCodegen::visit(const BooleanNode *node) {
 }
 
 void LLVMCodegen::visit(const BinOpNode *node) {
-    assert(context != nullptr);
     auto *lhsValue = generate(node->lhs.get(),
-                              context,
                               iRBuilder,
                               module,
                               globalValues,
                               functionProtos,
                               namedValues);
     auto *rhsValue = generate(node->rhs.get(),
-                              context,
                               iRBuilder,
                               module,
                               globalValues,
@@ -185,10 +184,10 @@ void LLVMCodegen::visit(const BinOpNode *node) {
         return;
     }
     if (lhsValue->getType()->isPointerTy()) {
-        lhsValue = iRBuilder->CreateLoad(llvm::Type::getDoubleTy(*context), lhsValue);
+        lhsValue = iRBuilder->CreateLoad(llvm::Type::getDoubleTy(module->getContext()), lhsValue);
     }
     if (rhsValue->getType()->isPointerTy()) {
-        rhsValue = iRBuilder->CreateLoad(llvm::Type::getDoubleTy(*context), rhsValue);
+        rhsValue = iRBuilder->CreateLoad(llvm::Type::getDoubleTy(module->getContext()), rhsValue);
     }
 
     switch (node->binOp) {
@@ -207,15 +206,17 @@ void LLVMCodegen::visit(const BinOpNode *node) {
         case TokenType::LeftAngleBracket:
             lhsValue = iRBuilder->CreateFCmpULT(lhsValue, rhsValue, "cmp_tmp");
         // Convert bool 0/1 to double 0.0 or 1.0
-            value_ = iRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(*context), "bool_tmp");
+            value_ = iRBuilder->CreateUIToFP(lhsValue, llvm::Type::getDoubleTy(module->getContext()), "bool_tmp");
         default:
             break;
     }
 }
 
 void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
-    assert(context != nullptr);
-    const std::vector functionParams(node->params.size(), iRBuilder->getVoidTy());
+    const std::vector functionParams(node->params.size(),
+                                     node->name.starts_with("print")
+                                         ? iRBuilder->getVoidTy()
+                                         : iRBuilder->getDoubleTy());
     auto *const functionType = llvm::FunctionType::get(iRBuilder->getVoidTy(),
                                                        functionParams,
                                                        functionProtos[node->name]->isVarArgs);
@@ -231,9 +232,7 @@ void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
 }
 
 void LLVMCodegen::visit(const AssignmentNode *const node) {
-    assert(context != nullptr);
     auto *const init = generate(node->rvalue.get(),
-                                context,
                                 iRBuilder,
                                 module,
                                 globalValues,
@@ -261,10 +260,8 @@ void LLVMCodegen::visit(const AssignmentNode *const node) {
 }
 
 void LLVMCodegen::visit(const FunctionCallNode *const node) {
-    assert(context != nullptr);
     // Look up the name in the global module table.
     auto *calleeFunc = getModuleFunction(node->ident->name,
-                                         context,
                                          iRBuilder,
                                          module,
                                          globalValues,
@@ -283,7 +280,6 @@ void LLVMCodegen::visit(const FunctionCallNode *const node) {
     for (const auto &arg: node->args) {
         argsFunc.push_back(
                 generate(arg.get(),
-                         context,
                          iRBuilder,
                          module,
                          globalValues,
@@ -298,14 +294,14 @@ void LLVMCodegen::visit(const FunctionCallNode *const node) {
 }
 
 void LLVMCodegen::visit(const IfStatement *node) {
-    auto *condValue = generate(node->ifBranch.cond.get(), context, iRBuilder, module, globalValues,
+    auto *condValue = generate(node->ifBranch.cond.get(), iRBuilder, module, globalValues,
                                functionProtos,
                                namedValues);
     if (condValue == nullptr) {
         return;
     }
     condValue = iRBuilder->CreateFCmpONE(condValue,
-                                         llvm::ConstantFP::get(*context,
+                                         llvm::ConstantFP::get(module->getContext(),
                                                                llvm::APFloat(0.0)),
                                          "if_cond");
     auto *const insertBlock = iRBuilder->GetInsertBlock();
@@ -313,9 +309,9 @@ void LLVMCodegen::visit(const IfStatement *node) {
         return;
     }
     auto *const function = insertBlock->getParent();
-    auto *thenBasicBlock = llvm::BasicBlock::Create(*context, "thenBasicBlock", function);
-    auto *elseBasicBlock = llvm::BasicBlock::Create(*context, "elseBasicBlock");
-    auto *const finishBasicBlock = llvm::BasicBlock::Create(*context, "finishBasicBlock");
+    auto *thenBasicBlock = llvm::BasicBlock::Create(module->getContext(), "thenBasicBlock", function);
+    auto *elseBasicBlock = llvm::BasicBlock::Create(module->getContext(), "elseBasicBlock");
+    auto *const finishBasicBlock = llvm::BasicBlock::Create(module->getContext(), "finishBasicBlock");
 
     // if condition
     iRBuilder->CreateCondBr(condValue, thenBasicBlock, elseBasicBlock);
@@ -323,7 +319,6 @@ void LLVMCodegen::visit(const IfStatement *node) {
     // then base block
     iRBuilder->SetInsertPoint(thenBasicBlock);
     auto *const thenValue = codegenBlock(node->ifBranch.then,
-                                         context,
                                          iRBuilder,
                                          module,
                                          globalValues,
@@ -340,7 +335,6 @@ void LLVMCodegen::visit(const IfStatement *node) {
     iRBuilder->SetInsertPoint(elseBasicBlock);
     auto *const elseValue = node->elseBranch.has_value()
                                 ? codegenBlock(node->elseBranch.value(),
-                                               context,
                                                iRBuilder,
                                                module,
                                                globalValues,
@@ -356,10 +350,10 @@ void LLVMCodegen::visit(const IfStatement *node) {
 
     // phi node
     auto *const phiNode =
-            iRBuilder->CreatePHI(llvm::Type::getDoubleTy(*context), 2, "if_tmp");
+            iRBuilder->CreatePHI(llvm::Type::getDoubleTy(module->getContext()), 2, "if_tmp");
     phiNode->addIncoming(thenValue, thenBasicBlock);
     phiNode->addIncoming(
-            elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(*context)),
+            elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(module->getContext())),
             elseBasicBlock);
     value_ = phiNode;
 }
@@ -368,7 +362,7 @@ void LLVMCodegen::visit(const ForLoopNode *node) {
     assert(iRBuilder->GetInsertBlock());
     auto *const currFunction = iRBuilder->GetInsertBlock()->getParent();
     auto *const beforeLoopBB = iRBuilder->GetInsertBlock();
-    auto *const loopBB = llvm::BasicBlock::Create(*context,
+    auto *const loopBB = llvm::BasicBlock::Create(module->getContext(),
                                                   "for_loop",
                                                   currFunction);
     iRBuilder->CreateBr(loopBB);
@@ -378,14 +372,13 @@ void LLVMCodegen::visit(const ForLoopNode *node) {
     if (initVarAst == nullptr) {
         return;
     }
-    auto *const loopVarValue = iRBuilder->CreatePHI(llvm::Type::getDoubleTy(*context),
+    auto *const loopVarValue = iRBuilder->CreatePHI(llvm::Type::getDoubleTy(module->getContext()),
                                                     2,
                                                     initVarAst->name);
     auto *const OldVar = namedValues[initVarAst->name];
-    namedValues[initVarAst->name] = loopVarValue;
+    // namedValues[initVarAst->name] = loopVarValue;
 
     auto *const initValue = generate(initVarAst->rvalue.get(),
-                                     context,
                                      iRBuilder,
                                      module,
                                      globalValues,
@@ -396,7 +389,6 @@ void LLVMCodegen::visit(const ForLoopNode *node) {
     }
     loopVarValue->addIncoming(initValue, beforeLoopBB);
     if (codegenBlock(node->body,
-                     context,
                      iRBuilder,
                      module,
                      globalValues,
@@ -409,7 +401,6 @@ void LLVMCodegen::visit(const ForLoopNode *node) {
     llvm::Value *nextValue;
     if (node->next) {
         nextValue = generate(node->next.get(),
-                             context,
                              iRBuilder,
                              module,
                              globalValues,
@@ -420,12 +411,11 @@ void LLVMCodegen::visit(const ForLoopNode *node) {
         }
     } else {
         nextValue = iRBuilder->CreateFAdd(loopVarValue,
-                                          llvm::ConstantFP::get(*context, llvm::APFloat(1.0)),
+                                          llvm::ConstantFP::get(module->getContext(), llvm::APFloat(1.0)),
                                           "next_var");
     }
 
     auto *condExprValue = generate(node->conditional.get(),
-                                   context,
                                    iRBuilder,
                                    module,
                                    globalValues,
@@ -435,13 +425,13 @@ void LLVMCodegen::visit(const ForLoopNode *node) {
         return;
     }
     condExprValue = iRBuilder->CreateFCmpONE(
-            condExprValue, llvm::ConstantFP::get(*context, llvm::APFloat(0.0)),
+            condExprValue, llvm::ConstantFP::get(module->getContext(), llvm::APFloat(0.0)),
             "loop_cond");
 
     auto *const loopEndBB = iRBuilder->GetInsertBlock();
     loopVarValue->addIncoming(nextValue, loopEndBB);
 
-    auto *const afterLoopBB = llvm::BasicBlock::Create(*context,
+    auto *const afterLoopBB = llvm::BasicBlock::Create(module->getContext(),
                                                        "after_loop",
                                                        currFunction);
     iRBuilder->CreateCondBr(condExprValue, loopBB, afterLoopBB);
@@ -452,29 +442,27 @@ void LLVMCodegen::visit(const ForLoopNode *node) {
     } else {
         namedValues.erase(initVarAst->name);
     }
-    value_ = llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*context));
+    value_ = llvm::Constant::getNullValue(llvm::Type::getDoubleTy(module->getContext()));
 }
 
 void LLVMCodegen::visit(const UnaryOpNode *node) {
     if (node->operatorType == TokenType::IncrementOperator) {
         value_ = iRBuilder->CreateFAdd(generate(node->expr.get(),
-                                                context,
                                                 iRBuilder,
                                                 module,
                                                 globalValues,
                                                 functionProtos,
                                                 namedValues),
-                                       llvm::ConstantFP::get(*context, llvm::APFloat(1.0)), "increment");
+                                       llvm::ConstantFP::get(module->getContext(), llvm::APFloat(1.0)), "increment");
     } else if (node->operatorType == TokenType::DecrementOperator) {
         value_ = iRBuilder->CreateFSub(
                 generate(node->expr.get(),
-                         context,
                          iRBuilder,
                          module,
                          globalValues,
                          functionProtos,
                          namedValues),
-                llvm::ConstantFP::get(*context, llvm::APFloat(1.0)), "decrement");
+                llvm::ConstantFP::get(module->getContext(), llvm::APFloat(1.0)), "decrement");
     }
 }
 
