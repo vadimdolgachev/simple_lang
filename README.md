@@ -3,8 +3,8 @@
 ## Simple program
 ```
     fn main() {
-        message = "Hello, World";
-        println(message);
+        message: str = "Hello, World%s";
+        println(message, "!");
     }
 ```
 
