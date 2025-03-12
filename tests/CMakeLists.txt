@@ -46,6 +46,10 @@ add_executable(tests main.cpp
         ../ast/UnaryOpNode.cpp
         ../ast/BlockNode.h
         ../ast/BlockNode.cpp
+        ../ast/DeclarationNode.cpp
+        ../ast/DeclarationNode.h
+        ../ast/TypeNode.cpp
+        ../ast/TypeNode.h
         ../Lexer.cpp
         ../Lexer.h
         ../Parser.h

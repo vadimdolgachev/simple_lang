@@ -20,6 +20,7 @@
 #include "ast/BooleanNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/StringNode.h"
+#include "ast/TypeNode.h"
 
 #include "LLVMCodegen.h"
 
@@ -61,13 +62,13 @@ namespace {
         // If not, check whether we can codegen the declaration from some existing
         // prototype.
         if (const auto proto = functionProtos.find(name); proto != functionProtos.end()) {
-            auto *const ir = LLVMCodegen::generate(proto->second.get(),
-                                                   iRBuilder,
-                                                   module,
-                                                   globalValues,
-                                                   functionProtos,
-                                                   namedValues);
-            return llvm::dyn_cast<llvm::Function>(ir);
+            auto *const fun = LLVMCodegen::generate(proto->second.get(),
+                                                    iRBuilder,
+                                                    module,
+                                                    globalValues,
+                                                    functionProtos,
+                                                    namedValues);
+            return llvm::dyn_cast<llvm::Function>(fun);
         }
 
         // If no existing prototype exists, return null.
@@ -79,6 +80,63 @@ namespace {
                                              const llvm::StringRef varName) {
         llvm::IRBuilder tmpBuilder(&function->getEntryBlock(), function->getEntryBlock().begin());
         return tmpBuilder.CreateAlloca(type, nullptr, varName);
+    }
+
+    llvm::Type *generateType(const std::unique_ptr<PrimitiveType> &typeNode,
+                             llvm::LLVMContext &context) {
+        llvm::Type *llvmType = nullptr;
+        switch (typeNode->type) {
+                using enum PrimitiveTypeKind;
+            case Boolean: {
+                llvmType = llvm::Type::getInt8Ty(context);
+                break;
+            }
+            case Byte: {
+                llvmType = llvm::Type::getInt8Ty(context);
+                break;
+            }
+            case Char: {
+                llvmType = llvm::Type::getInt8Ty(context);
+                break;
+            }
+            case Double: {
+                llvmType = llvm::Type::getDoubleTy(context);
+                break;
+            }
+            case Integer: {
+                llvmType = llvm::Type::getInt32Ty(context);
+                break;
+            }
+            case Void: {
+                llvmType = llvm::Type::getVoidTy(context);
+                break;
+            }
+            case Str: {
+                llvmType = llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
+                break;
+            }
+            default: {
+                throw std::logic_error("Unknown type");
+            }
+        }
+        if (typeNode->isPointer) {
+            llvmType = llvm::PointerType::get(llvmType, 0);
+        }
+
+        return llvmType;
+    }
+
+    llvm::Value *tryCastValue(const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
+                              llvm::Value *value,
+                              llvm::Type *destType) {
+        if (destType != value->getType()) {
+            if (value->getType() == llvm::Type::getDoubleTy(iRBuilder->getContext())
+                && destType == llvm::Type::getInt32Ty(iRBuilder->getContext())) {
+                return iRBuilder->CreateFPToSI(value, destType);
+            }
+            throw std::logic_error("Type cast error");
+        }
+        return value;
     }
 } // namespace
 
@@ -108,29 +166,27 @@ void LLVMCodegen::visit(const IdentNode *node) {
 }
 
 void LLVMCodegen::visit(const FunctionNode *const node) {
-    const auto &proto = *node->proto;
-    functionProtos[proto.name] = std::make_unique<ProtoFunctionStatement>(node->proto->name, node->proto->params);
-    auto *const function = getModuleFunction(proto.name,
-                                             iRBuilder,
-                                             module,
-                                             globalValues,
-                                             functionProtos,
-                                             namedValues);
-    if (function == nullptr) {
-        return;
-    }
+    auto *const proto = dyn_cast<llvm::Function>(generate(node->proto.get(),
+                                                          iRBuilder,
+                                                          module,
+                                                          globalValues,
+                                                          functionProtos,
+                                                          namedValues));
 
     // Create a new basic block to start insertion into.
-    auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(), "entry", function);
+    auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(), "entry", proto);
     iRBuilder->SetInsertPoint(basicBlock);
 
     // Record the function arguments in the namedValues map.
     namedValues.clear();
-    for (auto &arg: function->args()) {
-        auto *const alloca = createEntryBlockAlloca(llvm::Type::getDoubleTy(module->getContext()), function,
-                                                    arg.getName());
-        iRBuilder->CreateStore(&arg, alloca);
-        namedValues[std::string(arg.getName())] = alloca;
+
+    for (size_t i = 0; i < proto->arg_size(); ++i) {
+        auto *const alloca = createEntryBlockAlloca(
+                generateType(node->proto->params[i].type, module->getContext()),
+                proto,
+                proto->getArg(i)->getName());
+        iRBuilder->CreateStore(proto->getArg(i), alloca);
+        namedValues[std::string(proto->getArg(i)->getName())] = alloca;
     }
 
     if ([[maybe_unused]] auto *const returnValue = codegenBlock(node->body,
@@ -140,11 +196,10 @@ void LLVMCodegen::visit(const FunctionNode *const node) {
                                                                 functionProtos,
                                                                 namedValues)) {
         iRBuilder->CreateRetVoid();
-        verifyFunction(*function);
-        value_ = function;
+        verifyFunction(*proto);
+        value_ = proto;
     } else {
-        // Error reading body, remove function.
-        function->eraseFromParent();
+        value_ = iRBuilder->CreateRetVoid();
     }
 }
 
@@ -213,20 +268,21 @@ void LLVMCodegen::visit(const BinOpNode *node) {
 }
 
 void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
-    const std::vector functionParams(node->params.size(),
-                                     node->name.starts_with("print")
-                                         ? iRBuilder->getVoidTy()
-                                         : iRBuilder->getDoubleTy());
-    auto *const functionType = llvm::FunctionType::get(iRBuilder->getVoidTy(),
+    std::vector<llvm::Type *> functionParams;
+    functionParams.reserve(node->params.size());
+    for (const auto &param: node->params) {
+        functionParams.push_back(generateType(param.type, module->getContext()));
+    }
+    auto *const functionType = llvm::FunctionType::get(generateType(node->returnType, module->getContext()),
                                                        functionParams,
-                                                       functionProtos[node->name]->isVarArgs);
+                                                       node->isVarArgs);
     auto *const function = llvm::Function::Create(functionType,
                                                   llvm::Function::ExternalLinkage,
                                                   node->name,
                                                   module.get());
     for (auto *it = function->arg_begin(); it != function->arg_end(); ++it) {
         const auto index = std::distance(function->arg_begin(), it);
-        it->setName(node->params[index]);
+        it->setName(node->params[index].ident->name);
     }
     value_ = function;
 }
@@ -250,17 +306,16 @@ void LLVMCodegen::visit(const AssignmentNode *const node) {
         globalValues[node->name] = variable;
         value_ = variable;
     } else {
-        auto *const variable = new llvm::AllocaInst(init->getType(), 0, node->name,
-                                                    iRBuilder->GetInsertBlock());
-
-        iRBuilder->CreateStore(init, variable);
+        auto *const variable = namedValues[node->name];
+        iRBuilder->CreateStore(
+                tryCastValue(iRBuilder, init, variable->getAllocatedType()),
+                variable);
         namedValues[node->name] = variable;
         value_ = variable;
     }
 }
 
 void LLVMCodegen::visit(const FunctionCallNode *const node) {
-    // Look up the name in the global module table.
     auto *calleeFunc = getModuleFunction(node->ident->name,
                                          iRBuilder,
                                          module,
@@ -268,26 +323,23 @@ void LLVMCodegen::visit(const FunctionCallNode *const node) {
                                          functionProtos,
                                          namedValues);
     if (calleeFunc == nullptr) {
-        return;
+        throw std::runtime_error(std::format("Undefined reference: '{}'", node->ident->name));
     }
 
     // If argument mismatch error.
-    if (!functionProtos[node->ident->name]->isVarArgs && calleeFunc->arg_size() != node->args.size()) {
-        return;
+    if (!calleeFunc->isVarArg() && calleeFunc->arg_size() != node->args.size()) {
+        throw std::logic_error("Argument mismatch error");
     }
 
     std::vector<llvm::Value *> argsFunc;
-    for (const auto &arg: node->args) {
-        argsFunc.push_back(
-                generate(arg.get(),
-                         iRBuilder,
-                         module,
-                         globalValues,
-                         functionProtos,
-                         namedValues));
-        if (!argsFunc.back()) {
-            return;
+    argsFunc.reserve(node->args.size());
+    const auto *const funcType = calleeFunc->getFunctionType();
+    for (size_t i = 0; i < node->args.size(); ++i) {
+        auto *argValue = generate(node->args[i].get(), iRBuilder, module, globalValues, functionProtos, namedValues);
+        if (i < funcType->getNumParams()) {
+            argValue = tryCastValue(iRBuilder, argValue, funcType->getParamType(i));
         }
+        argsFunc.push_back(argValue);
     }
 
     value_ = iRBuilder->CreateCall(calleeFunc, argsFunc);
@@ -472,6 +524,45 @@ void LLVMCodegen::visit(const LoopCondNode *node) {
 
 void LLVMCodegen::visit(const BlockNode *node) {
     throw std::runtime_error("not implemented");
+}
+
+void LLVMCodegen::visit(const DeclarationNode *node) {
+    llvm::Value *init = nullptr;
+    if (node->init.has_value()) {
+        init = generate(node->init.value().get(),
+                        iRBuilder,
+                        module,
+                        globalValues,
+                        functionProtos,
+                        namedValues);
+    }
+
+    auto *const type = generateType(node->type, module->getContext());
+
+    if (iRBuilder->GetInsertBlock() == nullptr) {
+        auto *const variable = new llvm::GlobalVariable(
+                *module,
+                type,
+                true,
+                llvm::GlobalValue::ExternalLinkage,
+                nullptr,
+                node->ident->name);
+        if (init != nullptr) {
+            variable->setInitializer(dyn_cast<llvm::Constant>(init));
+        }
+        globalValues[node->ident->name] = variable;
+        value_ = variable;
+    } else {
+        auto *const variable = new llvm::AllocaInst(type, 0, node->ident->name,
+                                                    iRBuilder->GetInsertBlock());
+        if (node->init.has_value()) {
+            iRBuilder->CreateStore(
+                    tryCastValue(iRBuilder, init, variable->getAllocatedType()),
+                    variable);
+        }
+        namedValues[node->ident->name] = variable;
+        value_ = variable;
+    }
 }
 
 llvm::Value *LLVMCodegen::value() const {

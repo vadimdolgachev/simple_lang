@@ -46,6 +46,8 @@ public:
 
     void visit(const BlockNode *node) override;
 
+    void visit(const DeclarationNode *node) override;
+
     [[nodiscard]] llvm::Value *value() const;
 
     static llvm::Value *generate(const BaseNode *const node,

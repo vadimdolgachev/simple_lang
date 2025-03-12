@@ -6,11 +6,7 @@
 #include <unordered_map>
 #include <cstdarg>
 
-#include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/MemorySSA.h"
-#include "llvm/Analysis/OptimizationRemarkEmitter.h"
-#include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -31,6 +27,7 @@
 #include "ir/LLVMCodegen.h"
 
 #include "Parser.h"
+#include "ast/TypeNode.h"
 
 namespace {
     std::unique_ptr<llvm::LLVMContext> llvmContext;
@@ -145,18 +142,29 @@ namespace {
         llvm::orc::SymbolMap symbols;
 
         constexpr auto printlnName = "println";
+        std::vector<DeclarationNode> params;
+        params.emplace_back(std::make_unique<IdentNode>("fmt"),
+                            std::make_unique<PrimitiveType>(PrimitiveTypeKind::Str, false),
+                            std::nullopt);
+
         functionProtos[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
-                                                                               std::vector<std::string>{"fmt"},
-                                                                               true);
+                                                              std::make_unique<PrimitiveType>(PrimitiveTypeKind::Void, false),
+                                                              std::move(params),
+                                                              true);
         symbols[mangle(printlnName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
                 llvm::JITSymbolFlags(llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
         };
 
         constexpr auto printName = "print";
-        functionProtos[printName] = std::make_unique<ProtoFunctionStatement>(printName,
-                                                                             std::vector<std::string>{"fmt"},
-                                                                             true);
+        params.emplace_back(std::make_unique<IdentNode>("fmt"),
+                            std::make_unique<PrimitiveType>(PrimitiveTypeKind::Str, false),
+                            std::nullopt);
+
+        functionProtos[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
+                                                              std::make_unique<PrimitiveType>(PrimitiveTypeKind::Void, false),
+                                                              std::move(params),
+                                                              true);
         symbols[mangle(printName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrint)>(&libPrint),
                 llvm::JITSymbolFlags(llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
@@ -175,12 +183,12 @@ int main() {
     defineEmbeddedFunctions();
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
-        fn foo(arg) {
-            localVar = 2;
-            println("foo(arg) arg=%f, localVar=%f", arg, localVar);
+        fn foo(arg: int) {
+            localVar: int = 2;
+            println("foo(arg) arg=%d, localVar=%d", arg, localVar);
         }
         fn main() {
-            message = "Hello, World%s";
+            message: str = "Hello, World%s";
             println(message, "!");
             foo(1);
         }

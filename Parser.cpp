@@ -1,5 +1,7 @@
 #include "Parser.h"
 
+#include <unordered_map>
+
 #include "Util.h"
 #include "ast/BinOpNode.h"
 #include "ast/FunctionCallNode.h"
@@ -15,11 +17,21 @@
 #include "ast/LoopCondNode.h"
 #include "ast/BlockNode.h"
 #include "ast/ProtoFunctionStatement.h"
+#include "ast/TypeNode.h"
 
 namespace {
     bool isSign(const TokenType token) {
         return token == TokenType::Plus || token == TokenType::Minus;
     }
+    const std::unordered_map<std::string, PrimitiveTypeKind> TYPES = {
+        {"bool", PrimitiveTypeKind::Boolean},
+        {"byte", PrimitiveTypeKind::Byte},
+        {"char", PrimitiveTypeKind::Char},
+        {"double", PrimitiveTypeKind::Double},
+        {"int", PrimitiveTypeKind::Integer},
+        {"void", PrimitiveTypeKind::Void},
+        {"str", PrimitiveTypeKind::Str},
+    };
 } // namespace
 
 Parser::Parser(std::unique_ptr<Lexer> lexer_) :
@@ -32,6 +44,15 @@ bool Parser::hasNextNode() const {
 }
 
 std::unique_ptr<BaseNode> Parser::nextNode() {
+    // Declaration
+    if (const auto &token = lexer->currToken(); token.type == TokenType::Identifier) {
+        lexer->nextToken();
+        if (lexer->currToken().type == TokenType::Colon && token.value.has_value()) {
+            lexer->prevToken();
+            return std::make_unique<DeclarationNode>(parseDeclarationNode());
+        }
+        lexer->prevToken();
+    }
     // Assignment
     if (auto assignment = tryParseAssignment()) {
         return assignment;
@@ -409,11 +430,11 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
     if (lexer->currToken().type != TokenType::Identifier) {
         throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
     }
-    auto fnName = parseIdent();
+    const auto fnName = parseIdent();
     lexer->nextToken();
-    std::vector<std::string> params;
+    std::vector<DeclarationNode> params;
     while (lexer->currToken().type != TokenType::RightParenthesis) {
-        params.emplace_back(parseIdent()->name);
+        params.emplace_back(parseDeclarationNode());
         if (lexer->currToken().type != TokenType::Comma && lexer->currToken().type != TokenType::RightParenthesis) {
             throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
         }
@@ -422,7 +443,20 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
         }
     }
     lexer->nextToken(); // ")"
-    auto proto = std::make_unique<ProtoFunctionStatement>(fnName->name, params);
+    auto retType = PrimitiveTypeKind::Void;
+    if (lexer->currToken().type == TokenType::Colon) {
+        lexer->nextToken();
+        const auto typeName = lexer->currToken().value.value();
+        const auto it = TYPES.find(typeName);
+        if (it == TYPES.end()) {
+            throw std::runtime_error(makeErrorMsg("Unexpected type: " + lexer->currToken().toString()));
+        }
+        lexer->nextToken();
+        retType = it->second;
+    }
+    auto proto = std::make_unique<ProtoFunctionStatement>(fnName->name,
+                                                          std::make_unique<PrimitiveType>(retType, false),
+                                                          std::move(params));
     if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
         return std::make_unique<FunctionNode>(std::move(proto), parseCurlyBracketBlock());
     }
@@ -439,6 +473,30 @@ std::unique_ptr<BlockNode> Parser::parseBlock() {
         consumeSemicolon();
     }
     return block;
+}
+
+DeclarationNode Parser::parseDeclarationNode() {
+    auto ident = std::make_unique<IdentNode>(lexer->currToken().value.value());
+    lexer->nextToken();
+    if (lexer->currToken().type != TokenType::Colon) {
+        throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
+    }
+    lexer->nextToken();
+    const auto typeName = lexer->currToken().value.value();
+    const auto it = TYPES.find(typeName);
+    if (it == TYPES.end()) {
+        throw std::runtime_error(makeErrorMsg("Unexpected type: " + lexer->currToken().toString()));
+    }
+    lexer->nextToken();
+    std::optional<std::unique_ptr<ExpressionNode>> init = std::nullopt;
+    if (lexer->currToken().type == TokenType::Assignment) {
+        lexer->nextToken();
+        init = parseExpr();
+        consumeSemicolon();
+    }
+    return {std::move(ident),
+         std::make_unique<PrimitiveType>(it->second, false),
+         std::move(init)};
 }
 
 std::string Parser::makeErrorMsg(const std::string &msg) const {

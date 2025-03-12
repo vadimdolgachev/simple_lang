@@ -40,6 +40,8 @@ public:
 
     void visit(const BlockNode *node) override;
 
+    void visit(const DeclarationNode *node) override;
+
 private:
     std::ostream &ostream;
 };

@@ -5,6 +5,7 @@
 
 #include "Lexer.h"
 #include "ast/BaseNode.h"
+#include "ast/DeclarationNode.h"
 #include "ast/IfStatement.h"
 
 class Parser {
@@ -41,6 +42,7 @@ private:
     [[nodiscard]] std::unique_ptr<BaseNode> parseWhileStatement();
     [[nodiscard]] std::unique_ptr<BaseNode> parseDoWhileStatement();
     [[nodiscard]] std::unique_ptr<BlockNode> parseBlock();
+    [[nodiscard]] DeclarationNode parseDeclarationNode();
     void consumeSemicolon() const;
     [[nodiscard]] std::string makeErrorMsg(const std::string &msg) const;
 

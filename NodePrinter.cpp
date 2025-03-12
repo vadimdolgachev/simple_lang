@@ -107,3 +107,7 @@ void NodePrinter::visit(const LoopCondNode *node) {
 void NodePrinter::visit(const BlockNode *node) {
     ostream << "Block";
 }
+
+void NodePrinter::visit(const DeclarationNode *node) {
+    ostream << "DeclarationNode";
+}

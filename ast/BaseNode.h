@@ -22,6 +22,8 @@ class StringNode;
 class BooleanNode;
 class LoopCondNode;
 class BlockNode;
+class DeclarationNode;
+class PrimitiveType;
 
 class NodeVisitor {
 public:
@@ -33,7 +35,7 @@ public:
 
     virtual void visit(const StringNode *node) = 0;
 
-    virtual void visit(const BooleanNode* node) = 0;
+    virtual void visit(const BooleanNode *node) = 0;
 
     virtual void visit(const BinOpNode *node) = 0;
 
@@ -54,6 +56,8 @@ public:
     virtual void visit(const LoopCondNode *node) = 0;
 
     virtual void visit(const BlockNode *node) = 0;
+
+    virtual void visit(const DeclarationNode *node) = 0;
 };
 
 class BaseNode {

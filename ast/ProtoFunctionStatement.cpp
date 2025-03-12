@@ -1,11 +1,13 @@
 #include "ProtoFunctionStatement.h"
 
-#include "IdentNode.h"
+#include <memory>
 
 ProtoFunctionStatement::ProtoFunctionStatement(std::string name,
-                                               std::vector<std::string> params,
+                                               std::unique_ptr<PrimitiveType> returnType,
+                                               std::vector<DeclarationNode> params,
                                                const bool isVarArgs) :
     name(std::move(name)),
+    returnType(std::move(returnType)),
     params(std::move(params)),
     isVarArgs(isVarArgs) {}
 

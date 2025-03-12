@@ -58,6 +58,7 @@ enum class TokenType : std::uint8_t {
 
     // Punctuation
     Comma,              // ,
+    Colon,              // :
     Semicolon,          // ;
     LeftParenthesis,    // (
     RightParenthesis,   // )

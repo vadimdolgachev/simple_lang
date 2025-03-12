@@ -2,7 +2,6 @@
 // Created by vadim on 14.12.24.
 //
 
-#include <functional>
 #include <memory>
 #include <sstream>
 #include <gtest/gtest.h>
@@ -25,9 +24,44 @@
 #include "ast/StringNode.h"
 #include "ast/LoopCondNode.h"
 #include "ast/ProtoFunctionStatement.h"
+#include "ast/TypeNode.h"
 
 namespace {
     class VarDefinitionTest : public testing::Test {};
+
+    TEST_F(VarDefinitionTest, DeclarationVar) {
+        const std::string input = "varName:int;";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [varDecl, orig] = tryCast<DeclarationNode>(std::move(node));
+        ASSERT_NE(varDecl, nullptr) << "Not a variable definition: " << input;
+
+        EXPECT_EQ(varDecl->ident->name, "varName") << "Wrong variable name: " << input;
+
+        EXPECT_FALSE(varDecl->init.has_value()) << "Variable has an initial value: " << input;
+    }
+
+    TEST_F(VarDefinitionTest, DeclarationBinExpr) {
+        const std::string input = "varName:int=2*(1-2);";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [varDecl, orig] = tryCast<DeclarationNode>(std::move(node));
+        ASSERT_NE(varDecl, nullptr) << "Not a variable definition: " << input;
+
+        EXPECT_EQ(varDecl->ident->name, "varName") << "Wrong variable name: " << input;
+
+        EXPECT_TRUE(varDecl->init.has_value()) << "Variable has no initial value: " << input;
+        const auto *binExpr = dynamic_cast<BinOpNode *>(varDecl->init.value().get());
+        ASSERT_NE(binExpr, nullptr) << "RHS is not a binary expression: " << input;
+    }
 
     TEST_F(VarDefinitionTest, AssignBinExpr) {
         const std::string input = "varName=2*(1-2);";
@@ -506,7 +540,7 @@ namespace {
     class FunctionTest : public testing::Test {};
 
     TEST_F(FunctionTest, ProtoFunction) {
-        const std::string input = "fn foo(arg1, arg2, arg3, arg4);";
+        const std::string input = "fn foo(arg1: int, arg2: char, arg3: byte, arg4: str): str;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
@@ -520,10 +554,14 @@ namespace {
 
         ASSERT_EQ(protoFn->params.size(), 4) << "Wrong number of arguments in: " << input;
 
-        EXPECT_EQ(protoFn->params[0], "arg1") << "Wrong identifier name in: " << input;
-        EXPECT_EQ(protoFn->params[1], "arg2") << "Wrong identifier name in: " << input;
-        EXPECT_EQ(protoFn->params[2], "arg3") << "Wrong identifier name in: " << input;
-        EXPECT_EQ(protoFn->params[3], "arg4") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[0].ident->name, "arg1") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[1].ident->name, "arg2") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[2].ident->name, "arg3") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[3].ident->name, "arg4") << "Wrong identifier name in: " << input;
+
+        if (const auto *retType = dynamic_cast<PrimitiveType *>(protoFn->returnType.get())) {
+            EXPECT_EQ(retType->type, PrimitiveTypeKind::Str) << "Wrong return type: " << input;
+        }
     }
 
     TEST_F(FunctionTest, ComplexFunctionCall) {
@@ -603,7 +641,7 @@ namespace {
 
     TEST_F(FunctionTest, ComplexFunctionDefinition) {
         const std::string input = R"(
-        fn foo(arg1, arg2, arg3, arg4) {
+        fn foo(arg1: int, arg2: int, arg3: int, arg4: int) {
             v = 1;
             ++v;
         }
@@ -621,10 +659,10 @@ namespace {
         EXPECT_EQ(fnNode->proto->name, "foo") << "Wrong function name";
 
         ASSERT_EQ(fnNode->proto->params.size(), 4) << "Wrong number of parameters";
-        EXPECT_EQ(fnNode->proto->params[0], "arg1") << "Wrong parameter 1 name";
-        EXPECT_EQ(fnNode->proto->params[1], "arg2") << "Wrong parameter 2 name";
-        EXPECT_EQ(fnNode->proto->params[2], "arg3") << "Wrong parameter 3 name";
-        EXPECT_EQ(fnNode->proto->params[3], "arg4") << "Wrong parameter 4 name";
+        EXPECT_EQ(fnNode->proto->params[0].ident->name, "arg1") << "Wrong parameter 1 name";
+        EXPECT_EQ(fnNode->proto->params[1].ident->name, "arg2") << "Wrong parameter 2 name";
+        EXPECT_EQ(fnNode->proto->params[2].ident->name, "arg3") << "Wrong parameter 3 name";
+        EXPECT_EQ(fnNode->proto->params[3].ident->name, "arg4") << "Wrong parameter 4 name";
 
         ASSERT_FALSE(fnNode->body->statements.empty()) << "Function body should not be empty";
         ASSERT_EQ(fnNode->body->statements.size(), 2) << "Wrong number of body statements";
@@ -643,6 +681,10 @@ namespace {
         const auto *operand = dynamic_cast<IdentNode *>(stmt2->expr.get());
         ASSERT_NE(operand, nullptr) << "Invalid operand type";
         EXPECT_EQ(operand->name, "v") << "Wrong operand identifier";
+
+        if (const auto *retType = dynamic_cast<PrimitiveType *>(fnNode->proto->returnType.get())) {
+            EXPECT_EQ(retType->type, PrimitiveTypeKind::Void) << "Wrong return type: " << input;
+        }
     }
 
     class IfStatementTest : public testing::Test {};

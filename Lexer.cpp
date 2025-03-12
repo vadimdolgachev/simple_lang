@@ -61,6 +61,8 @@ Token Lexer::fetchNextToken() {
 
     if (currChar.val == ';') {
         resultToken = TokenType::Semicolon;
+    } else if (currChar.val == ':') {
+        resultToken = TokenType::Colon;
     } else if (currChar.val == EOF) {
         resultToken = TokenType::Eos;
     } else if (isCharOfNumber(currChar.val)) {
@@ -155,7 +157,7 @@ Token Lexer::fetchNextToken() {
                 }
                 readNextChar();
             }
-            if (isStringLiteral) {
+            if (isStringLiteral && currChar.val != '"') {
                 readNextChar();
             }
             if (const auto it = KEYWORDS.find(tokenValue.value()); it != KEYWORDS.end()) {
