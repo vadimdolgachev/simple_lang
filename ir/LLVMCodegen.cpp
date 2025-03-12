@@ -130,9 +130,25 @@ namespace {
                               llvm::Value *value,
                               llvm::Type *destType) {
         if (destType != value->getType()) {
-            if (value->getType() == llvm::Type::getDoubleTy(iRBuilder->getContext())
-                && destType == llvm::Type::getInt32Ty(iRBuilder->getContext())) {
-                return iRBuilder->CreateFPToSI(value, destType);
+            std::optional<llvm::Instruction::CastOps> castOps;
+            if (value->getType() == llvm::Type::getDoubleTy(iRBuilder->getContext())) {
+                if (destType == llvm::Type::getInt32Ty(iRBuilder->getContext())
+                    || destType == llvm::Type::getInt8Ty(iRBuilder->getContext())) {
+                    castOps = llvm::Instruction::CastOps::FPToSI;
+                }
+            } else if (value->getType() == llvm::Type::getInt32Ty(iRBuilder->getContext())) {
+                if (destType == llvm::Type::getDoubleTy(iRBuilder->getContext())) {
+                    castOps = llvm::Instruction::CastOps::SIToFP;
+                }
+            } else if (value->getType() == llvm::Type::getInt8Ty(iRBuilder->getContext())) {
+                if (destType == llvm::Type::getDoubleTy(iRBuilder->getContext())) {
+                    castOps = llvm::Instruction::CastOps::SIToFP;
+                } else if (destType == llvm::Type::getInt32Ty(iRBuilder->getContext())) {
+                    castOps = llvm::Instruction::CastOps::SExt;
+                }
+            }
+            if (castOps.has_value()) {
+                return iRBuilder->CreateCast(*castOps, value, destType);
             }
             throw std::logic_error("Type cast error");
         }

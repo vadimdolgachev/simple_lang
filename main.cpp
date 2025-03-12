@@ -190,7 +190,8 @@ int main() {
         fn main() {
             message: str = "Hello, World%s";
             println(message, "!");
-            foo(1);
+            arg: char = -128;
+            foo(arg);
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();
