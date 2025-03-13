@@ -63,7 +63,9 @@ add_executable(simple_ast_parser
         ast/DeclarationNode.cpp
         ast/DeclarationNode.h
         ast/TypeNode.cpp
-        ast/TypeNode.h)
+        ast/TypeNode.h
+        ir/SymbolTable.cpp
+        ir/SymbolTable.h)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

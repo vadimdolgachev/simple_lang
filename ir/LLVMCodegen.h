@@ -8,15 +8,25 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
 
+#include "SymbolTable.h"
 #include "ast/BaseNode.h"
+
+struct ContextModule final {
+    ContextModule() = default;
+
+    ContextModule(const ContextModule &) = delete;
+    ContextModule &operator=(ContextModule &) = delete;
+
+    std::unordered_map<std::string, llvm::GlobalVariable *> gValues;
+    SymbolTable symTable;
+    std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> functions;
+};
 
 class LLVMCodegen final : public NodeVisitor {
 public:
     LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
                 const std::unique_ptr<llvm::Module> &module,
-                std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
-                std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos,
-                std::unordered_map<std::string, llvm::AllocaInst *> &namedValues);
+                ContextModule &cm);
 
     void visit(const IdentNode *node) override;
 
@@ -53,11 +63,8 @@ public:
     static llvm::Value *generate(const BaseNode *const node,
                                  const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
                                  const std::unique_ptr<llvm::Module> &llvmModule,
-                                 std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues,
-                                 std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &
-                                 functionProtos,
-                                 std::unordered_map<std::string, llvm::AllocaInst *> &namedValues) {
-        LLVMCodegen codegen(llvmIRBuilder, llvmModule, globalValues, functionProtos, namedValues);
+                                 ContextModule &cm) {
+        LLVMCodegen codegen(llvmIRBuilder, llvmModule, cm);
         node->visit(&codegen);
         return codegen.value();
     }
@@ -66,9 +73,7 @@ private:
     llvm::Value *value_ = nullptr;
     const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder;
     const std::unique_ptr<llvm::Module> &module;
-    std::unordered_map<std::string, llvm::GlobalVariable *> &globalValues;
-    std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> &functionProtos;
-    std::unordered_map<std::string, llvm::AllocaInst *> &namedValues;
+    ContextModule &cm;
 };
 
 #endif //LLVMCODEGEN_H

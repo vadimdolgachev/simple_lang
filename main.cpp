@@ -34,7 +34,6 @@ namespace {
     std::unique_ptr<llvm::Module> llvmModule;
     std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
     std::unique_ptr<llvm::orc::KaleidoscopeJIT> llvmJit;
-    std::unordered_map<std::string, llvm::AllocaInst *> namedValues;
     std::unique_ptr<llvm::FunctionPassManager> functionPassManager;
     std::unique_ptr<llvm::LoopAnalysisManager> loopAnalysisManager;
     std::unique_ptr<llvm::FunctionAnalysisManager> functionAnalysisManager;
@@ -84,9 +83,6 @@ namespace {
                                          *moduleAnalysisManager);
     }
 
-    std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> functionProtos;
-    std::unordered_map<std::string, llvm::GlobalVariable *> globalValues;
-
     void print(const llvm::Value *const llvmIR) {
         llvm::outs() << "IR: ";
         llvmIR->print(llvm::outs(), true);
@@ -114,15 +110,13 @@ namespace {
         putchar('\n');
     }
 
-    void executeMain(const std::unique_ptr<Parser> &parser) {
+    void executeMain(ContextModule &cm, const std::unique_ptr<Parser> &parser) {
         while (parser->hasNextNode()) {
             auto node = parser->nextNode();
             [[maybe_unused]] const auto *const llvmIR = LLVMCodegen::generate(node.get(),
                                                                               llvmIRBuilder,
                                                                               llvmModule,
-                                                                              globalValues,
-                                                                              functionProtos,
-                                                                              namedValues);
+                                                                              cm);
         }
 
         const auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
@@ -136,7 +130,7 @@ namespace {
         ExitOnError(resourceTracker->remove());
     }
 
-    void defineEmbeddedFunctions() {
+    void defineEmbeddedFunctions(ContextModule &cm) {
         llvm::orc::MangleAndInterner mangle(llvmJit->getMainJITDylib().getExecutionSession(),
                                             llvmJit->getDataLayout());
         llvm::orc::SymbolMap symbols;
@@ -147,7 +141,7 @@ namespace {
                             std::make_unique<PrimitiveType>(PrimitiveTypeKind::Str, false),
                             std::nullopt);
 
-        functionProtos[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
+        cm.functions[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
                                                               std::make_unique<PrimitiveType>(PrimitiveTypeKind::Void, false),
                                                               std::move(params),
                                                               true);
@@ -161,7 +155,7 @@ namespace {
                             std::make_unique<PrimitiveType>(PrimitiveTypeKind::Str, false),
                             std::nullopt);
 
-        functionProtos[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
+        cm.functions[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
                                                               std::make_unique<PrimitiveType>(PrimitiveTypeKind::Void, false),
                                                               std::move(params),
                                                               true);
@@ -180,11 +174,13 @@ int main() {
     llvm::InitializeNativeTargetAsmParser();
     llvmJit = ExitOnError(llvm::orc::KaleidoscopeJIT::Create());
     initLlvmModules();
-    defineEmbeddedFunctions();
+    ContextModule cm;
+    defineEmbeddedFunctions(cm);
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
         fn foo(arg: int) {
             localVar: int = 2;
+            localVar = 100;
             println("foo(arg) arg=%d, localVar=%d", arg, localVar);
         }
         fn main() {
@@ -198,6 +194,6 @@ int main() {
     stream->basic_ios::rdbuf(std::cin.rdbuf());
     const auto lexer = std::make_unique<Lexer>(std::move(stream));
 
-    executeMain(parser);
+    executeMain(cm, parser);
     return 0;
 }
