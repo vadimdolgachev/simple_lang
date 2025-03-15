@@ -1,7 +1,8 @@
 #include "NumberNode.h"
 
-NumberNode::NumberNode(const double v) :
-    value(v) {}
+NumberNode::NumberNode(const double value, const bool isFloat) :
+    value(value),
+    isFloat(isFloat) {}
 
 std::string NumberNode::toString() const {
     return "number=" + std::to_string(value);

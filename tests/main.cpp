@@ -80,7 +80,7 @@ namespace {
         ASSERT_NE(binExpr, nullptr) << "RHS is not a binary expression: " << input;
     }
 
-    TEST_F(VarDefinitionTest, AssignNumber) {
+    TEST_F(VarDefinitionTest, AssignIntNumber) {
         const std::string input = "varName=1;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
@@ -96,6 +96,26 @@ namespace {
         const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
         ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
         EXPECT_EQ(number->value, 1) << "Wrong number value: " << input;
+        EXPECT_EQ(number->isFloat, false) << "Wrong number type: " << input;
+    }
+
+    TEST_F(VarDefinitionTest, AssignFloatNumber) {
+        const std::string input = "varName=1.0;";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
+        ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
+
+        EXPECT_EQ(varDef->name, "varName") << "Wrong variable name: " << input;
+
+        const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
+        ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
+        EXPECT_FLOAT_EQ(number->value, 1.0) << "Wrong number value: " << input;
+        EXPECT_EQ(number->isFloat, true) << "Wrong number type: " << input;
     }
 
     TEST_F(VarDefinitionTest, MultipleAssigns) {

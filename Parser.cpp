@@ -23,14 +23,15 @@ namespace {
     bool isSign(const TokenType token) {
         return token == TokenType::Plus || token == TokenType::Minus;
     }
+
     const std::unordered_map<std::string, PrimitiveTypeKind> TYPES = {
-        {"bool", PrimitiveTypeKind::Boolean},
-        {"byte", PrimitiveTypeKind::Byte},
-        {"char", PrimitiveTypeKind::Char},
-        {"double", PrimitiveTypeKind::Double},
-        {"int", PrimitiveTypeKind::Integer},
-        {"void", PrimitiveTypeKind::Void},
-        {"str", PrimitiveTypeKind::Str},
+            {"bool", PrimitiveTypeKind::Boolean},
+            {"byte", PrimitiveTypeKind::Byte},
+            {"char", PrimitiveTypeKind::Char},
+            {"double", PrimitiveTypeKind::Double},
+            {"int", PrimitiveTypeKind::Integer},
+            {"void", PrimitiveTypeKind::Void},
+            {"str", PrimitiveTypeKind::Str},
     };
 } // namespace
 
@@ -393,9 +394,20 @@ std::unique_ptr<NumberNode> Parser::parseNumber() const {
     if (!lexer->currToken().value.has_value()) {
         throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
     }
-    auto number = std::make_unique<NumberNode>(sign * strtod(lexer->currToken().value.value().c_str(), nullptr));
+
+    const auto numberStr = lexer->currToken().value.value();
+    double number = 0.0;
+    auto [ptr, ec] = std::from_chars(
+            numberStr.data(),
+            numberStr.data() + numberStr.size(),
+            number);
+    if (ec != std::errc() || ptr != numberStr.data() + numberStr.size()) {
+        throw makeErrorMsg("Invalid numeric literal: " + numberStr);
+    }
+    const bool isFloat = numberStr.find_first_of(".eE") != std::string::npos;
+    auto node = std::make_unique<NumberNode>(sign * number, isFloat);
     lexer->nextToken();
-    return number;
+    return node;
 }
 
 std::unique_ptr<StringNode> Parser::parseString() const {
@@ -495,8 +507,8 @@ DeclarationNode Parser::parseDeclarationNode() {
         consumeSemicolon();
     }
     return {std::move(ident),
-         std::make_unique<PrimitiveType>(it->second, false),
-         std::move(init)};
+            std::make_unique<PrimitiveType>(it->second, false),
+            std::move(init)};
 }
 
 std::string Parser::makeErrorMsg(const std::string &msg) const {

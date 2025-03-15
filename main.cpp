@@ -110,7 +110,7 @@ namespace {
         putchar('\n');
     }
 
-    void executeMain(ContextModule &cm, const std::unique_ptr<Parser> &parser) {
+    void executeMain(ModuleContext &cm, const std::unique_ptr<Parser> &parser) {
         while (parser->hasNextNode()) {
             auto node = parser->nextNode();
             [[maybe_unused]] const auto *const llvmIR = LLVMCodegen::generate(node.get(),
@@ -130,7 +130,7 @@ namespace {
         ExitOnError(resourceTracker->remove());
     }
 
-    void defineEmbeddedFunctions(ContextModule &cm) {
+    void defineEmbeddedFunctions(ModuleContext &cm) {
         llvm::orc::MangleAndInterner mangle(llvmJit->getMainJITDylib().getExecutionSession(),
                                             llvmJit->getDataLayout());
         llvm::orc::SymbolMap symbols;
@@ -142,9 +142,10 @@ namespace {
                             std::nullopt);
 
         cm.functions[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
-                                                              std::make_unique<PrimitiveType>(PrimitiveTypeKind::Void, false),
-                                                              std::move(params),
-                                                              true);
+                                                                             std::make_unique<PrimitiveType>(
+                                                                                     PrimitiveTypeKind::Void, false),
+                                                                             std::move(params),
+                                                                             true);
         symbols[mangle(printlnName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
                 llvm::JITSymbolFlags(llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
@@ -156,9 +157,10 @@ namespace {
                             std::nullopt);
 
         cm.functions[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
-                                                              std::make_unique<PrimitiveType>(PrimitiveTypeKind::Void, false),
-                                                              std::move(params),
-                                                              true);
+                                                                             std::make_unique<PrimitiveType>(
+                                                                                     PrimitiveTypeKind::Void, false),
+                                                                             std::move(params),
+                                                                             true);
         symbols[mangle(printName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrint)>(&libPrint),
                 llvm::JITSymbolFlags(llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
@@ -174,7 +176,7 @@ int main() {
     llvm::InitializeNativeTargetAsmParser();
     llvmJit = ExitOnError(llvm::orc::KaleidoscopeJIT::Create());
     initLlvmModules();
-    ContextModule cm;
+    ModuleContext cm;
     defineEmbeddedFunctions(cm);
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(

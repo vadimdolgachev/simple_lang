@@ -9,13 +9,14 @@
 
 class NumberNode final : public ExpressionNode {
 public:
-  explicit NumberNode(double v);
+    explicit NumberNode(double value, bool isFloat);
 
-  [[nodiscard]] std::string toString() const override;
+    [[nodiscard]] std::string toString() const override;
 
-  void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) const override;
 
-  double value;
+    const double value;
+    const bool isFloat;
 };
 
 #endif //NUMBER_NODE_H

@@ -1,6 +1,9 @@
 ---
 Language: Cpp
 BasedOnStyle: LLVM
+AlignAfterOpenBracket: Align
+BinPackParameters: true
+AllowAllParametersOfDeclarationOnNextLine: false
 AccessModifierOffset: -4
 AlignConsecutiveAssignments: false
 AlignConsecutiveDeclarations: false
@@ -8,7 +11,7 @@ AlignOperands: true
 AlignTrailingComments: false
 AllowShortIfStatementsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: Yes
-BraceWrapping: 
+BraceWrapping:
   AfterCaseLabel: false
   AfterClass: false
   AfterControlStatement: false
@@ -31,7 +34,7 @@ BreakConstructorInitializersBeforeComma: false
 ColumnLimit: 120
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 ContinuationIndentWidth: 8
-IncludeCategories: 
+IncludeCategories:
   - Regex: '^<.*'
     Priority: 1
   - Regex: '^".*'

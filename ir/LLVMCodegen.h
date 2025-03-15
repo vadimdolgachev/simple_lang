@@ -11,11 +11,11 @@
 #include "SymbolTable.h"
 #include "ast/BaseNode.h"
 
-struct ContextModule final {
-    ContextModule() = default;
+struct ModuleContext final {
+    ModuleContext() = default;
 
-    ContextModule(const ContextModule &) = delete;
-    ContextModule &operator=(ContextModule &) = delete;
+    ModuleContext(const ModuleContext &) = delete;
+    ModuleContext &operator=(ModuleContext &) = delete;
 
     std::unordered_map<std::string, llvm::GlobalVariable *> gValues;
     SymbolTable symTable;
@@ -26,7 +26,7 @@ class LLVMCodegen final : public NodeVisitor {
 public:
     LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
                 const std::unique_ptr<llvm::Module> &module,
-                ContextModule &cm);
+                ModuleContext &mc);
 
     void visit(const IdentNode *node) override;
 
@@ -63,8 +63,8 @@ public:
     static llvm::Value *generate(const BaseNode *const node,
                                  const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
                                  const std::unique_ptr<llvm::Module> &llvmModule,
-                                 ContextModule &cm) {
-        LLVMCodegen codegen(llvmIRBuilder, llvmModule, cm);
+                                 ModuleContext &mc) {
+        LLVMCodegen codegen(llvmIRBuilder, llvmModule, mc);
         node->visit(&codegen);
         return codegen.value();
     }
@@ -73,7 +73,7 @@ private:
     llvm::Value *value_ = nullptr;
     const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder;
     const std::unique_ptr<llvm::Module> &module;
-    ContextModule &cm;
+    ModuleContext &mc;
 };
 
 #endif //LLVMCODEGEN_H
