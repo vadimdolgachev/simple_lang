@@ -4,12 +4,10 @@
 
 #include "BlockNode.h"
 
-BlockNode::BlockNode(BlockCode statements) :
+BlockNode::BlockNode(Statements statements) :
     statements(std::move(statements)) {}
 
-void BlockNode::visit(NodeVisitor *visitor) const {
-    visitor->visit(this);
-}
+void BlockNode::visit(NodeVisitor *visitor) const {}
 
 std::string BlockNode::toString() const {
     return "BlockNode";

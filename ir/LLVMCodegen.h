@@ -24,7 +24,7 @@ struct ModuleContext final {
 
 class LLVMCodegen final : public NodeVisitor {
 public:
-    LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder,
+    LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &builder,
                 const std::unique_ptr<llvm::Module> &module,
                 ModuleContext &mc);
 
@@ -71,7 +71,7 @@ public:
 
 private:
     llvm::Value *value_ = nullptr;
-    const std::unique_ptr<llvm::IRBuilder<>> &iRBuilder;
+    const std::unique_ptr<llvm::IRBuilder<>> &builder;
     const std::unique_ptr<llvm::Module> &module;
     ModuleContext &mc;
 };

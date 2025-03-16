@@ -185,11 +185,9 @@ int main() {
             localVar = 100;
             println("foo(arg) arg=%d, localVar=%d", arg, localVar);
         }
+        globalVar: int = 0;
         fn main() {
-            message: str = "Hello, World%s";
-            println(message, "!");
-            arg: char = -128;
-            foo(arg);
+            println("globalVar=%d", globalVar);
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();

@@ -12,15 +12,15 @@
 
 class BlockNode final : public BaseNode {
 public:
-    using BlockCode = std::vector<std::unique_ptr<BaseNode>>;
+    using Statements = std::vector<std::unique_ptr<BaseNode>>;
 
-    explicit BlockNode(BlockCode statements);
+    explicit BlockNode(Statements statements);
 
     void visit(NodeVisitor *visitor) const override;
 
     [[nodiscard]] std::string toString() const override;
 
-    BlockCode statements;
+    Statements statements;
 };
 
 #endif //BLOCKNODE_H

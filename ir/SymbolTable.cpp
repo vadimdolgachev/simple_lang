@@ -4,8 +4,6 @@
 
 #include "SymbolTable.h"
 
-#include <ranges>
-
 void SymbolTable::enterScope() {
     scopes.emplace_back();
 }

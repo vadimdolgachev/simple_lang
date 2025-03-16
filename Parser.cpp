@@ -199,7 +199,7 @@ std::unique_ptr<BaseNode> Parser::parseIfStatement() {
 }
 
 std::unique_ptr<BlockNode> Parser::parseCurlyBracketBlock() {
-    BlockNode::BlockCode body;
+    BlockNode::Statements body;
     if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
         throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
     }
