@@ -26,6 +26,8 @@
 
 #include "LLVMCodegen.h"
 
+#include "ast/ReturnNode.h"
+
 namespace {
     llvm::Function *getModuleFunction(const std::string &name,
                                       const std::unique_ptr<llvm::IRBuilder<>> &builder,
@@ -262,36 +264,36 @@ namespace {
                                                           "entry",
                                                           parentFunction);
         mc.symTable.enterScope();
-        {
-            llvm::IRBuilderBase::InsertPointGuard guard(*builder);
-            builder->SetInsertPoint(basicBlock);
-            if (prologue.has_value()) {
-                (*prologue)(basicBlock);
-            }
 
-            bool hasTerminator = false;
-            for (const auto &stmt: statements) {
-                llvm::Value *val = LLVMCodegen::generate(stmt.get(), builder, module, mc);
-                if (auto *inst = llvm::dyn_cast<llvm::Instruction>(val)) {
-                    if (inst->isTerminator()) {
-                        hasTerminator = true;
-                        break;
-                    }
-                }
-            }
+        llvm::IRBuilderBase::InsertPointGuard guard(*builder);
+        builder->SetInsertPoint(basicBlock);
+        if (prologue.has_value()) {
+            (*prologue)(basicBlock);
+        }
 
-            if (!hasTerminator) {
-                llvm::IRBuilder tmpBuilder(basicBlock);
-                if (parentFunction->getReturnType()->isVoidTy()) {
-                    tmpBuilder.CreateRetVoid();
-                } else {
-                    tmpBuilder.CreateUnreachable();
-                    throw std::logic_error("Warning: Missing return in non-void function '"
-                                           + std::string(parentFunction->getName())
-                                           + "'");
+        bool hasTerminator = false;
+        for (const auto &stmt: statements) {
+            llvm::Value *val = LLVMCodegen::generate(stmt.get(), builder, module, mc);
+            if (const auto *inst = llvm::dyn_cast<llvm::Instruction>(val)) {
+                if (inst->isTerminator()) {
+                    hasTerminator = true;
+                    break;
                 }
             }
         }
+
+        if (!hasTerminator) {
+            llvm::IRBuilder tmpBuilder(basicBlock);
+            if (parentFunction->getReturnType()->isVoidTy()) {
+                tmpBuilder.CreateRetVoid();
+            } else {
+                tmpBuilder.CreateUnreachable();
+                throw std::logic_error("Warning: Missing return in non-void function '"
+                                       + std::string(parentFunction->getName())
+                                       + "'");
+            }
+        }
+
         mc.symTable.exitScope();
     }
 
@@ -784,6 +786,14 @@ void LLVMCodegen::visit(const DeclarationNode *node) {
         value_ = genGlobalDeclaration(node, varType, initValue, module, mc);
     } else {
         value_ = genLocalDeclaration(node, varType, initValue, builder, mc);
+    }
+}
+
+void LLVMCodegen::visit(const ReturnNode *node) {
+    if (node->expr != nullptr) {
+        value_ = builder->CreateRet(generate(node->expr.get(), builder, module, mc));
+    } else {
+        value_ = builder->CreateRetVoid();
     }
 }
 

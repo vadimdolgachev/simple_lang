@@ -111,3 +111,7 @@ void NodePrinter::visit(const BlockNode *node) {
 void NodePrinter::visit(const DeclarationNode *node) {
     ostream << "DeclarationNode";
 }
+
+void NodePrinter::visit(const ReturnNode *node) {
+    ostream << "ReturnNode";
+}

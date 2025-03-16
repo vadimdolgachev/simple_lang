@@ -8,7 +8,7 @@ ReturnNode::ReturnNode(std::unique_ptr<ExpressionNode> expr):
     expr(std::move(expr)) {}
 
 void ReturnNode::visit(NodeVisitor *visitor) const {
-
+    visitor->visit(this);
 }
 
 std::string ReturnNode::toString() const {

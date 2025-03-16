@@ -21,7 +21,8 @@ namespace {
         {"while", TokenType::WhileLoop},
         {"do", TokenType::DoLoop},
         {"true", TokenType::Boolean},
-        {"false", TokenType::Boolean}
+        {"false", TokenType::Boolean},
+        {"return", TokenType::Return}
     };
 }  // namespace
 

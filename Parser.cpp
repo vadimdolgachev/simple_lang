@@ -17,6 +17,7 @@
 #include "ast/LoopCondNode.h"
 #include "ast/BlockNode.h"
 #include "ast/ProtoFunctionStatement.h"
+#include "ast/ReturnNode.h"
 #include "ast/TypeNode.h"
 
 namespace {
@@ -79,6 +80,10 @@ std::unique_ptr<BaseNode> Parser::nextNode() {
     if (token == TokenType::DoLoop) {
         lexer->nextToken();
         return parseDoWhileStatement();
+    }
+    if (token == TokenType::Return) {
+        lexer->nextToken();
+        return parseReturnStatement();
     }
     // Expressions
     auto result = parseExpr();
@@ -509,6 +514,15 @@ DeclarationNode Parser::parseDeclarationNode() {
     return {std::move(ident),
             std::make_unique<PrimitiveType>(it->second, false),
             std::move(init)};
+}
+
+std::unique_ptr<BaseNode> Parser::parseReturnStatement() {
+    std::unique_ptr<ExpressionNode> expr;
+    if (lexer->currToken().type != TokenType::Semicolon) {
+        expr = parseExpr();
+    }
+    consumeSemicolon();
+    return std::make_unique<ReturnNode>(std::move(expr));
 }
 
 std::string Parser::makeErrorMsg(const std::string &msg) const {

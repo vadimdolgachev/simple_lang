@@ -43,6 +43,7 @@ private:
     [[nodiscard]] std::unique_ptr<BaseNode> parseDoWhileStatement();
     [[nodiscard]] std::unique_ptr<BlockNode> parseBlock();
     [[nodiscard]] DeclarationNode parseDeclarationNode();
+    [[nodiscard]] std::unique_ptr<BaseNode> parseReturnStatement();
     void consumeSemicolon() const;
     [[nodiscard]] std::string makeErrorMsg(const std::string &msg) const;
 

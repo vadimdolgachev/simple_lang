@@ -50,6 +50,8 @@ add_executable(tests main.cpp
         ../ast/DeclarationNode.h
         ../ast/TypeNode.cpp
         ../ast/TypeNode.h
+        ../ast/ReturnNode.h
+        ../ast/ReturnNode.cpp
         ../Lexer.cpp
         ../Lexer.h
         ../Parser.h

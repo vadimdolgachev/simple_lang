@@ -24,6 +24,7 @@
 #include "ast/StringNode.h"
 #include "ast/LoopCondNode.h"
 #include "ast/ProtoFunctionStatement.h"
+#include "ast/ReturnNode.h"
 #include "ast/TypeNode.h"
 
 namespace {
@@ -890,6 +891,50 @@ namespace {
             << "Condition operator is not '<' as expected: " << input;
 
         ASSERT_TRUE(loopNode->body->statements.empty()) << "Expected empty body for for loop: " << input;
+    }
+
+    class ReturnStatementTest : public testing::Test {};
+
+    TEST_F(ReturnStatementTest, ReturnEmpty) {
+        const std::string input = R"(return;)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->nextNode();
+
+        ASSERT_NE(node, nullptr) << "Failed to parse the return statement";
+
+        const auto *const retNode = dynamic_cast<ReturnNode *>(node.get());
+        ASSERT_NE(retNode, nullptr) << "Parsed node is not a ReturnNode";
+        ASSERT_EQ(retNode->expr, nullptr) << "Expression in ReturnNode is not null";
+    }
+
+    TEST_F(ReturnStatementTest, ReturnIdent) {
+        const std::string input = R"(return var;)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->nextNode();
+
+        ASSERT_NE(node, nullptr) << "Failed to parse the return statement";
+
+        const auto *const retNode = dynamic_cast<ReturnNode *>(node.get());
+        ASSERT_NE(retNode, nullptr) << "Parsed node is not a ReturnNode";
+        const auto *const identNode = dynamic_cast<IdentNode *>(retNode->expr.get());
+        ASSERT_NE(identNode, nullptr) << "IdentNode is null";
+        ASSERT_EQ(identNode->name, "var") << "Wrong variable name in condition: " << input;
+    }
+
+    TEST_F(ReturnStatementTest, ReturnBinExpr) {
+        const std::string input = R"(return 1+2;)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->nextNode();
+
+        ASSERT_NE(node, nullptr) << "Failed to parse the return statement";
+
+        const auto *const retNode = dynamic_cast<ReturnNode *>(node.get());
+        ASSERT_NE(retNode, nullptr) << "Parsed node is not a ReturnNode";
+        const auto *const binOp = dynamic_cast<BinOpNode *>(retNode->expr.get());
+        ASSERT_NE(binOp, nullptr) << "BinOpNode is null";
     }
 
 } // namespace

@@ -42,6 +42,8 @@ public:
 
     void visit(const DeclarationNode *node) override;
 
+    void visit(const ReturnNode *node) override;
+
 private:
     std::ostream &ostream;
 };

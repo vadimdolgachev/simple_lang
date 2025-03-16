@@ -58,6 +58,8 @@ public:
 
     void visit(const DeclarationNode *node) override;
 
+    void visit(const ReturnNode *node) override;
+
     [[nodiscard]] llvm::Value *value() const;
 
     static llvm::Value *generate(const BaseNode *const node,

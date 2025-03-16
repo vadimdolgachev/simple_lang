@@ -180,14 +180,15 @@ int main() {
     defineEmbeddedFunctions(cm);
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
-        fn foo(arg: int) {
+        fn foo(arg: int): int {
             localVar: int = 2;
             localVar = 100;
             println("foo(arg) arg=%d, localVar=%d", arg, localVar);
+            return arg * 10;
         }
         globalVar: int = 0;
         fn main() {
-            println("globalVar=%d", globalVar);
+            println("globalVar=%d, foo()=%d", globalVar, foo(1));
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();
