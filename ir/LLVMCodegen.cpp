@@ -254,44 +254,21 @@ namespace {
         return builder->CreateICmp(pred, lhs, rhs, "icmp");
     }
 
-    void generateBasicBlock(const BlockNode::Statements &statements,
+    void generateBasicBlock(llvm::BasicBlock *const basicBlock,
+                            const BlockNode::Statements &statements,
                             const std::unique_ptr<llvm::IRBuilder<>> &builder,
                             const std::unique_ptr<llvm::Module> &module,
                             ModuleContext &mc,
-                            const std::optional<std::function<void(llvm::BasicBlock *)>> &prologue = std::nullopt,
-                            llvm::Function *const parentFunction = nullptr) {
-        auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(),
-                                                          "entry",
-                                                          parentFunction);
+                            const std::optional<std::function<void()>> &prologue = std::nullopt) {
         mc.symTable.enterScope();
 
-        llvm::IRBuilderBase::InsertPointGuard guard(*builder);
         builder->SetInsertPoint(basicBlock);
         if (prologue.has_value()) {
-            (*prologue)(basicBlock);
+            (*prologue)();
         }
 
-        bool hasTerminator = false;
         for (const auto &stmt: statements) {
-            llvm::Value *val = LLVMCodegen::generate(stmt.get(), builder, module, mc);
-            if (const auto *inst = llvm::dyn_cast<llvm::Instruction>(val)) {
-                if (inst->isTerminator()) {
-                    hasTerminator = true;
-                    break;
-                }
-            }
-        }
-
-        if (!hasTerminator) {
-            llvm::IRBuilder tmpBuilder(basicBlock);
-            if (parentFunction->getReturnType()->isVoidTy()) {
-                tmpBuilder.CreateRetVoid();
-            } else {
-                tmpBuilder.CreateUnreachable();
-                throw std::logic_error("Warning: Missing return in non-void function '"
-                                       + std::string(parentFunction->getName())
-                                       + "'");
-            }
+            [[maybe_unused]] llvm::Value *val = LLVMCodegen::generate(stmt.get(), builder, module, mc);
         }
 
         mc.symTable.exitScope();
@@ -330,7 +307,6 @@ namespace {
                                           llvm::Value *init,
                                           const std::unique_ptr<llvm::IRBuilder<>> &builder,
                                           ModuleContext &mc) {
-        llvm::IRBuilderBase::InsertPointGuard guard(*builder);
         auto *const entryBB = &builder->GetInsertBlock()->getParent()->getEntryBlock();
         builder->SetInsertPoint(entryBB, entryBB->getFirstInsertionPt());
 
@@ -405,15 +381,22 @@ void LLVMCodegen::visit(const FunctionNode *const node) {
     if (!func) {
         throw std::logic_error("Function prototype generation failed for: " + node->proto->name);
     }
+    auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(),
+                                                      "entry",
+                                                      func);
 
-    generateBasicBlock(node->body->statements,
+    generateBasicBlock(basicBlock,
+                       node->body->statements,
                        builder,
                        module,
                        mc,
-                       [&](llvm::BasicBlock *basicBlock) {
+                       [&]() {
                            processFunctionParameters(func, basicBlock, node, builder, module, mc);
-                       },
-                       func);
+                       });
+
+    if (func->getReturnType()->isVoidTy()) {
+        builder->CreateRetVoid();
+    }
 
     std::string verifyError;
     llvm::raw_string_ostream os(verifyError);
@@ -584,64 +567,76 @@ void LLVMCodegen::visit(const FunctionCallNode *const node) {
 }
 
 void LLVMCodegen::visit(const IfStatement *node) {
-    auto *condValue = generate(node->ifBranch.cond.get(), builder, module, mc);
-    if (condValue == nullptr) {
-        return;
+    auto *const firstCV = tryCastValue(builder, generate(node->ifBranch.cond.get(), builder, module, mc),
+                                       builder->getInt1Ty());
+    if (!firstCV) {
+        throw std::logic_error("Condition must be boolean type");
     }
-    condValue = builder->CreateFCmpONE(condValue,
-                                       llvm::ConstantFP::get(module->getContext(),
-                                                             llvm::APFloat(0.0)),
-                                       "if_cond");
-    auto *const insertBlock = builder->GetInsertBlock();
-    if (insertBlock == nullptr) {
-        return;
+
+    auto *const parentFunc = builder->GetInsertBlock()->getParent();
+
+    auto *const firstIfBB = llvm::BasicBlock::Create(module->getContext(), "if", parentFunc);
+    auto *lastElseBB = llvm::BasicBlock::Create(module->getContext(), "else");
+    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "merge");
+
+    value_ = builder->CreateCondBr(firstCV, firstIfBB, lastElseBB);
+
+    generateBasicBlock(firstIfBB,
+                       node->ifBranch.then->statements,
+                       builder,
+                       module,
+                       mc);
+
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(mergeBB);
     }
-    auto *const function = insertBlock->getParent();
-    auto *thenBasicBlock = llvm::BasicBlock::Create(module->getContext(), "thenBasicBlock", function);
-    auto *elseBasicBlock = llvm::BasicBlock::Create(module->getContext(), "elseBasicBlock");
-    auto *const finishBasicBlock = llvm::BasicBlock::Create(module->getContext(), "finishBasicBlock");
 
-    // if condition
-    builder->CreateCondBr(condValue, thenBasicBlock, elseBasicBlock);
+    for (size_t i = 0; i < node->elseIfBranches.size(); ++i) {
+        lastElseBB->insertInto(parentFunc);
+        builder->SetInsertPoint(lastElseBB);
 
-    throw std::runtime_error("not implemented");
+        const auto &[cond, then] = node->elseIfBranches[i];
+        auto *const value = tryCastValue(builder, generate(cond.get(), builder, module, mc), builder->getInt1Ty());
+        if (!value) {
+            throw std::logic_error("Condition must be boolean type");
+        }
+        auto *const ifBB = llvm::BasicBlock::Create(module->getContext(), "elif_" + std::to_string(i));
+        lastElseBB = llvm::BasicBlock::Create(module->getContext(), "else_" + std::to_string(i));
+        builder->CreateCondBr(value, ifBB, lastElseBB);
 
-    // // then base block
-    // generateBasicBlock(node->ifBranch.then->statements,
-    //                    thenBasicBlock,
-    //                    builder,
-    //                    module,
-    //                    mc);
-    // if (thenValue == nullptr) {
-    //     return;
-    // }
-    // builder->CreateBr(finishBasicBlock);
-    // thenBasicBlock = builder->GetInsertBlock();
-    //
-    // // else base block
-    // function->insert(function->end(), elseBasicBlock);
-    // auto *const elseValue = node->elseBranch.has_value()
-    //                             ? generateStatements(node->elseBranch.value()->statements,
-    //                                                  elseBasicBlock,
-    //                                                  builder,
-    //                                                  module,
-    //                                                  mc)
-    //                             : nullptr;
-    // builder->CreateBr(finishBasicBlock);
-    // elseBasicBlock = builder->GetInsertBlock();
-    //
-    // // merge base block
-    // function->insert(function->end(), finishBasicBlock);
-    // builder->SetInsertPoint(finishBasicBlock);
-    //
-    // // phi node
-    // auto *const phiNode =
-    //         builder->CreatePHI(llvm::Type::getDoubleTy(module->getContext()), 2, "if_tmp");
-    // phiNode->addIncoming(thenValue, thenBasicBlock);
-    // phiNode->addIncoming(
-    //         elseValue ? elseValue : llvm::ConstantFP::getNullValue(llvm::Type::getDoubleTy(module->getContext())),
-    //         elseBasicBlock);
-    // value_ = phiNode;
+        ifBB->insertInto(parentFunc);
+        builder->SetInsertPoint(ifBB);
+
+        generateBasicBlock(ifBB,
+                           then->statements,
+                           builder,
+                           module,
+                           mc);
+        if (!builder->GetInsertBlock()->getTerminator()) {
+            builder->CreateBr(mergeBB);
+        }
+    }
+
+    lastElseBB->insertInto(parentFunc);
+    builder->SetInsertPoint(lastElseBB);
+    if (node->elseBranch.has_value()) {
+        generateBasicBlock(lastElseBB,
+                           node->elseBranch.value()->statements,
+                           builder,
+                           module,
+                           mc);
+    }
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(mergeBB);
+    }
+
+    mergeBB->insertInto(parentFunc);
+    builder->SetInsertPoint(mergeBB);
+    auto *const postBB = llvm::BasicBlock::Create(module->getContext(), "post_if");
+    builder->CreateBr(postBB);
+
+    postBB->insertInto(parentFunc);
+    builder->SetInsertPoint(postBB);
 }
 
 void LLVMCodegen::visit(const ForLoopNode *node) {
@@ -752,12 +747,14 @@ void LLVMCodegen::visit(const BlockNode *node) {
     }
 
     auto *const parentFunc = builder->GetInsertBlock()->getParent();
-    generateBasicBlock(node->statements,
+    auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(),
+                                                      "entry",
+                                                      parentFunc);
+    generateBasicBlock(basicBlock,
+                       node->statements,
                        builder,
                        module,
-                       mc,
-                       std::nullopt,
-                       parentFunc);
+                       mc);
 }
 
 void LLVMCodegen::visit(const DeclarationNode *node) {

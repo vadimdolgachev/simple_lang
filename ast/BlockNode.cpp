@@ -7,7 +7,9 @@
 BlockNode::BlockNode(Statements statements) :
     statements(std::move(statements)) {}
 
-void BlockNode::visit(NodeVisitor *visitor) const {}
+void BlockNode::visit(NodeVisitor *visitor) const {
+    visitor->visit(this);
+}
 
 std::string BlockNode::toString() const {
     return "BlockNode";

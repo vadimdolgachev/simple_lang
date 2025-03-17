@@ -181,14 +181,26 @@ int main() {
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
         fn foo(arg: int): int {
-            localVar: int = 2;
-            localVar = 100;
-            println("foo(arg) arg=%d, localVar=%d", arg, localVar);
-            return arg * 10;
+            if (arg > 0) {
+                return arg;
+            } else if (arg < 0) {
+                return -1 * arg;
+            }
+            return 0;
         }
-        globalVar: int = 0;
         fn main() {
-            println("globalVar=%d, foo()=%d", globalVar, foo(1));
+            v: int = 0;
+            if (false) {
+                println("if cond");
+            } else if (true) {
+                v = 1;
+                println("elseif1");
+            } else if (true) {
+                println("elseif2");
+            } else {
+                println("Else");
+            }
+            println("foo=%d", foo(0));
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();
