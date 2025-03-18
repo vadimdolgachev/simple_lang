@@ -44,6 +44,7 @@ private:
     [[nodiscard]] std::unique_ptr<BlockNode> parseBlock();
     [[nodiscard]] DeclarationNode parseDeclarationNode();
     [[nodiscard]] std::unique_ptr<BaseNode> parseReturnStatement();
+    [[nodiscard]] std::unique_ptr<ExpressionNode> parseTernaryOperator(std::unique_ptr<ExpressionNode> cond);
     void consumeSemicolon() const;
     [[nodiscard]] std::string makeErrorMsg(const std::string &msg) const;
 

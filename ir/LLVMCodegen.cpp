@@ -27,6 +27,7 @@
 #include "LLVMCodegen.h"
 
 #include "ast/ReturnNode.h"
+#include "ast/TernaryOperatorNode.h"
 
 namespace {
     llvm::Function *getModuleFunction(const std::string &name,
@@ -307,8 +308,8 @@ namespace {
                                           llvm::Value *init,
                                           const std::unique_ptr<llvm::IRBuilder<>> &builder,
                                           ModuleContext &mc) {
-        auto *const entryBB = &builder->GetInsertBlock()->getParent()->getEntryBlock();
-        builder->SetInsertPoint(entryBB, entryBB->getFirstInsertionPt());
+        // auto *const entryBB = &builder->GetInsertBlock()->getParent()->getEntryBlock();
+        // builder->SetInsertPoint(entryBB, entryBB->getFirstInsertionPt());
 
         auto *alloca = builder->CreateAlloca(type, nullptr, node->ident->name);
 
@@ -577,15 +578,12 @@ void LLVMCodegen::visit(const IfStatement *node) {
 
     auto *const firstIfBB = llvm::BasicBlock::Create(module->getContext(), "if", parentFunc);
     auto *lastElseBB = llvm::BasicBlock::Create(module->getContext(), "else");
-    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "merge");
+    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "merge_if");
 
     value_ = builder->CreateCondBr(firstCV, firstIfBB, lastElseBB);
 
-    generateBasicBlock(firstIfBB,
-                       node->ifBranch.then->statements,
-                       builder,
-                       module,
-                       mc);
+    builder->SetInsertPoint(firstIfBB);
+    generate(node->ifBranch.then.get(), builder, module, mc);
 
     if (!builder->GetInsertBlock()->getTerminator()) {
         builder->CreateBr(mergeBB);
@@ -600,18 +598,13 @@ void LLVMCodegen::visit(const IfStatement *node) {
         if (!value) {
             throw std::logic_error("Condition must be boolean type");
         }
-        auto *const ifBB = llvm::BasicBlock::Create(module->getContext(), "elif_" + std::to_string(i));
+        auto *const ifBB = llvm::BasicBlock::Create(module->getContext(), "elif_" + std::to_string(i), parentFunc);
         lastElseBB = llvm::BasicBlock::Create(module->getContext(), "else_" + std::to_string(i));
         builder->CreateCondBr(value, ifBB, lastElseBB);
 
-        ifBB->insertInto(parentFunc);
         builder->SetInsertPoint(ifBB);
+        generate(then.get(), builder, module, mc);
 
-        generateBasicBlock(ifBB,
-                           then->statements,
-                           builder,
-                           module,
-                           mc);
         if (!builder->GetInsertBlock()->getTerminator()) {
             builder->CreateBr(mergeBB);
         }
@@ -620,11 +613,7 @@ void LLVMCodegen::visit(const IfStatement *node) {
     lastElseBB->insertInto(parentFunc);
     builder->SetInsertPoint(lastElseBB);
     if (node->elseBranch.has_value()) {
-        generateBasicBlock(lastElseBB,
-                           node->elseBranch.value()->statements,
-                           builder,
-                           module,
-                           mc);
+        generate(node->elseBranch.value().get(), builder, module, mc);
     }
     if (!builder->GetInsertBlock()->getTerminator()) {
         builder->CreateBr(mergeBB);
@@ -632,11 +621,6 @@ void LLVMCodegen::visit(const IfStatement *node) {
 
     mergeBB->insertInto(parentFunc);
     builder->SetInsertPoint(mergeBB);
-    auto *const postBB = llvm::BasicBlock::Create(module->getContext(), "post_if");
-    builder->CreateBr(postBB);
-
-    postBB->insertInto(parentFunc);
-    builder->SetInsertPoint(postBB);
 }
 
 void LLVMCodegen::visit(const ForLoopNode *node) {
@@ -734,6 +718,18 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
                          module,
                          mc),
                 llvm::ConstantFP::get(module->getContext(), llvm::APFloat(1.0)), "decrement");
+    } else if (node->operatorType == TokenType::Minus) {
+        value_ = builder->CreateNeg(generate(node->expr.get(),
+                                             builder,
+                                             module,
+                                             mc));
+    } else if (node->operatorType == TokenType::Plus) {
+        value_ = generate(node->expr.get(),
+                          builder,
+                          module,
+                          mc);
+    } else {
+        throw std::logic_error("Not supported unary operator");
     }
 }
 
@@ -746,11 +742,11 @@ void LLVMCodegen::visit(const BlockNode *node) {
         throw std::logic_error("Block generation outside of function context");
     }
 
-    auto *const parentFunc = builder->GetInsertBlock()->getParent();
-    auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(),
-                                                      "entry",
-                                                      parentFunc);
-    generateBasicBlock(basicBlock,
+    // auto *const parentFunc = builder->GetInsertBlock()->getParent();
+    // auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(),
+    //                                                   "entry",
+    //                                                   parentFunc);
+    generateBasicBlock(builder->GetInsertBlock(),
                        node->statements,
                        builder,
                        module,
@@ -792,6 +788,37 @@ void LLVMCodegen::visit(const ReturnNode *node) {
     } else {
         value_ = builder->CreateRetVoid();
     }
+}
+
+void LLVMCodegen::visit(const TernaryOperatorNode *node) {
+    auto *const parentFunc = builder->GetInsertBlock()->getParent();
+
+    auto *const thenBB = llvm::BasicBlock::Create(module->getContext(), "tern_then", parentFunc);
+    auto *const elseBB = llvm::BasicBlock::Create(module->getContext(), "tern_else");
+    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "tern_merge");
+
+    builder->CreateCondBr(generate(node->cond.get(), builder, module, mc), thenBB, elseBB);
+
+    builder->SetInsertPoint(thenBB);
+    auto *const trueVal = generate(node->trueExpr.get(), builder, module, mc);
+    builder->CreateBr(mergeBB);
+
+    elseBB->insertInto(parentFunc);
+    builder->SetInsertPoint(elseBB);
+    auto *const falseVal = generate(node->falseExpr.get(), builder, module, mc);
+    builder->CreateBr(mergeBB);
+
+    mergeBB->insertInto(parentFunc);
+    builder->SetInsertPoint(mergeBB);
+
+    if (trueVal->getType() != falseVal->getType()) {
+        throw std::logic_error("Ternary expressions must be of the same type");
+    }
+
+    llvm::PHINode *phi = builder->CreatePHI(trueVal->getType(), 2, "tern_result");
+    phi->addIncoming(trueVal, thenBB);
+    phi->addIncoming(falseVal, elseBB);
+    value_ = phi;
 }
 
 llvm::Value *LLVMCodegen::value() const {

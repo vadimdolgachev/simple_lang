@@ -66,6 +66,7 @@ enum class TokenType : std::uint8_t {
     RightCurlyBracket,  // }
     LeftSquareBracket,  // [
     RightSquareBracket, // ]
+    Question,           // ?
 
     // Special
     Eos,       // End of Stream

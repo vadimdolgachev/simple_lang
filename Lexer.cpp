@@ -80,6 +80,8 @@ Token Lexer::fetchNextToken() {
         resultToken = TokenType::RightCurlyBracket;
     } else if (currChar.val == ',') {
         resultToken = TokenType::Comma;
+    } else if (currChar.val == '?') {
+        resultToken = TokenType::Question;
     } else if (currChar.val == '=') {
         if (getPeekChar() == '=') {
             readNextChar();

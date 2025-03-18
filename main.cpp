@@ -180,27 +180,12 @@ int main() {
     defineEmbeddedFunctions(cm);
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
-        fn foo(arg: int): int {
-            if (arg > 0) {
-                return arg;
-            } else if (arg < 0) {
-                return -1 * arg;
-            }
-            return 0;
-        }
         fn main() {
-            v: int = 0;
-            if (false) {
-                println("if cond");
-            } else if (true) {
-                v = 1;
-                println("elseif1");
-            } else if (true) {
-                println("elseif2");
-            } else {
-                println("Else");
+            init: double = 2.0;
+            if (true) {
+                v: double = (1 < 0) ? init : init+10;
+                println("v=%f", v);
             }
-            println("foo=%d", foo(0));
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();

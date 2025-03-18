@@ -25,6 +25,7 @@
 #include "ast/LoopCondNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
+#include "ast/TernaryOperatorNode.h"
 #include "ast/TypeNode.h"
 
 namespace {
@@ -935,6 +936,43 @@ namespace {
         ASSERT_NE(retNode, nullptr) << "Parsed node is not a ReturnNode";
         const auto *const binOp = dynamic_cast<BinOpNode *>(retNode->expr.get());
         ASSERT_NE(binOp, nullptr) << "BinOpNode is null";
+    }
+
+    class TernaryOperatorTest : public testing::Test {};
+    TEST_F(TernaryOperatorTest, TernaryOperatorExpr) {
+        const std::string input = R"(true ? 10 : 100;)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->nextNode();
+
+        ASSERT_NE(node, nullptr) << "Failed to parse the ternary operator";
+
+        const auto *const ternaryNode = dynamic_cast<TernaryOperatorNode *>(node.get());
+        ASSERT_NE(ternaryNode, nullptr) << "Parsed node is not a TernaryOperatorNode";
+
+        const auto *const cond = dynamic_cast<BooleanNode *>(ternaryNode->cond.get());
+        ASSERT_TRUE(cond->value) << "Invalid ternary operator value";
+
+        const auto *const trueExpr = dynamic_cast<NumberNode *>(ternaryNode->trueExpr.get());
+        ASSERT_FLOAT_EQ(trueExpr->value, 10) << "Invalid ternary operator value";
+
+        const auto *const falseExpr = dynamic_cast<NumberNode *>(ternaryNode->falseExpr.get());
+        ASSERT_FLOAT_EQ(falseExpr->value, 100) << "Invalid ternary operator value";
+    }
+
+    TEST_F(TernaryOperatorTest, TernaryOperatorInitVar) {
+        const std::string input = R"(var: int = true ? 1O : 100;)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        const auto node = parser->nextNode();
+
+        ASSERT_NE(node, nullptr) << "Failed to parse the declaration";
+
+        const auto *const declNode = dynamic_cast<DeclarationNode *>(node.get());
+        ASSERT_NE(declNode, nullptr) << "Parsed node is not a DeclarationNode";
+
+        const auto *const ternary = dynamic_cast<TernaryOperatorNode *>(declNode->init.value().get());
+        ASSERT_NE(ternary, nullptr) << "The value of Init must be of type TernaryOperatorNode";
     }
 
 } // namespace

@@ -44,6 +44,8 @@ public:
 
     void visit(const ReturnNode *node) override;
 
+    void visit(const TernaryOperatorNode *node) override;
+
 private:
     std::ostream &ostream;
 };

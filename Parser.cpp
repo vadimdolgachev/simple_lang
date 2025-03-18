@@ -18,6 +18,7 @@
 #include "ast/BlockNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
+#include "ast/TernaryOperatorNode.h"
 #include "ast/TypeNode.h"
 
 namespace {
@@ -229,7 +230,11 @@ std::unique_ptr<ExpressionNode> Parser::parseExpr() {
         || token.type == TokenType::IncrementOperator
         || token.type == TokenType::DecrementOperator
         || token.type == TokenType::LogicalNegation) {
-        return parseBoolLogic();
+        auto expr = parseBoolLogic();
+        if (lexer->currToken().type == TokenType::Question) {
+            expr = parseTernaryOperator(std::move(expr));
+        }
+        return expr;
     }
     throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
 }
@@ -523,6 +528,22 @@ std::unique_ptr<BaseNode> Parser::parseReturnStatement() {
     }
     consumeSemicolon();
     return std::make_unique<ReturnNode>(std::move(expr));
+}
+
+std::unique_ptr<ExpressionNode> Parser::parseTernaryOperator(std::unique_ptr<ExpressionNode> cond) {
+    if (lexer->currToken().type != TokenType::Question) {
+        throw std::runtime_error(makeErrorMsg("Expected '?' symbol"));
+    }
+    lexer->nextToken();
+    auto trueExpr = parseExpr();
+    if (lexer->currToken().type != TokenType::Colon) {
+        throw std::runtime_error(makeErrorMsg("Expected ':' symbol"));
+    }
+    lexer->nextToken();
+    auto falseExpr = parseExpr();
+    return std::make_unique<TernaryOperatorNode>(std::move(cond),
+                                                 std::move(trueExpr),
+                                                 std::move(falseExpr));
 }
 
 std::string Parser::makeErrorMsg(const std::string &msg) const {
