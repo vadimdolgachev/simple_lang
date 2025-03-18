@@ -181,10 +181,15 @@ int main() {
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
         fn main() {
-            init: double = 2.0;
-            if (true) {
-                v: double = (1 < 0) ? init : init+10;
-                println("v=%f", v);
+            sum: int = 0;
+            max: int = 10;
+            for (i: int = 0; i < max; ++i) {
+                sum = sum + i;
+            }
+            if (sum == (max * (max - 1)) / 2) {
+                println("Success");
+            } else {
+                println("Fail");
             }
         }
     )")));

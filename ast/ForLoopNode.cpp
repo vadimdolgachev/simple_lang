@@ -1,6 +1,6 @@
 #include "ForLoopNode.h"
 
-ForLoopNode::ForLoopNode(std::unique_ptr<BaseNode> initExpr,
+ForLoopNode::ForLoopNode(std::unique_ptr<DeclarationNode> initExpr,
                          std::unique_ptr<ExpressionNode> nextExpr,
                          std::unique_ptr<ExpressionNode> endExpr,
                          std::unique_ptr<BlockNode> body) :

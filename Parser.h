@@ -42,7 +42,7 @@ private:
     [[nodiscard]] std::unique_ptr<BaseNode> parseWhileStatement();
     [[nodiscard]] std::unique_ptr<BaseNode> parseDoWhileStatement();
     [[nodiscard]] std::unique_ptr<BlockNode> parseBlock();
-    [[nodiscard]] DeclarationNode parseDeclarationNode();
+    [[nodiscard]] DeclarationNode parseDeclarationNode(bool needConsumeSemicolon);
     [[nodiscard]] std::unique_ptr<BaseNode> parseReturnStatement();
     [[nodiscard]] std::unique_ptr<ExpressionNode> parseTernaryOperator(std::unique_ptr<ExpressionNode> cond);
     void consumeSemicolon() const;

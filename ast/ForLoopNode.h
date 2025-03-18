@@ -7,12 +7,12 @@
 
 #include <memory>
 
-#include "BaseNode.h"
+#include "DeclarationNode.h"
 #include "BlockNode.h"
 
 class ForLoopNode final : public StatementNode {
 public:
-    ForLoopNode(std::unique_ptr<BaseNode> initExpr,
+    ForLoopNode(std::unique_ptr<DeclarationNode> initExpr,
                 std::unique_ptr<ExpressionNode> nextExpr,
                 std::unique_ptr<ExpressionNode> endExpr,
                 std::unique_ptr<BlockNode> body);
@@ -21,7 +21,7 @@ public:
 
     void visit(NodeVisitor *visitor) const override;
 
-    const std::unique_ptr<BaseNode> init;
+    const std::unique_ptr<DeclarationNode> init;
     const std::unique_ptr<ExpressionNode> next;
     const std::unique_ptr<ExpressionNode> conditional;
     const std::unique_ptr<BlockNode> body;

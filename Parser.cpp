@@ -52,7 +52,7 @@ std::unique_ptr<BaseNode> Parser::nextNode() {
         lexer->nextToken();
         if (lexer->currToken().type == TokenType::Colon && token.value.has_value()) {
             lexer->prevToken();
-            return std::make_unique<DeclarationNode>(parseDeclarationNode());
+            return std::make_unique<DeclarationNode>(parseDeclarationNode(true));
         }
         lexer->prevToken();
     }
@@ -120,7 +120,7 @@ std::unique_ptr<BaseNode> Parser::parseForStatement() {
         throw std::runtime_error(makeErrorMsg("Expected '(' after 'for'"));
     }
     lexer->nextToken(); // '('
-    auto initExpr = tryParseAssignment(false);
+    auto initExpr = std::make_unique<DeclarationNode>(parseDeclarationNode(false));
     if (lexer->currToken().type != TokenType::Semicolon) {
         throw std::runtime_error(makeErrorMsg("Expected ';' after init statement"));
     }
@@ -456,7 +456,7 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
     lexer->nextToken();
     std::vector<DeclarationNode> params;
     while (lexer->currToken().type != TokenType::RightParenthesis) {
-        params.emplace_back(parseDeclarationNode());
+        params.emplace_back(parseDeclarationNode(false));
         if (lexer->currToken().type != TokenType::Comma && lexer->currToken().type != TokenType::RightParenthesis) {
             throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
         }
@@ -497,7 +497,7 @@ std::unique_ptr<BlockNode> Parser::parseBlock() {
     return block;
 }
 
-DeclarationNode Parser::parseDeclarationNode() {
+DeclarationNode Parser::parseDeclarationNode(const bool needConsumeSemicolon) {
     auto ident = std::make_unique<IdentNode>(lexer->currToken().value.value());
     lexer->nextToken();
     if (lexer->currToken().type != TokenType::Colon) {
@@ -514,6 +514,8 @@ DeclarationNode Parser::parseDeclarationNode() {
     if (lexer->currToken().type == TokenType::Assignment) {
         lexer->nextToken();
         init = parseExpr();
+    }
+    if (needConsumeSemicolon) {
         consumeSemicolon();
     }
     return {std::move(ident),

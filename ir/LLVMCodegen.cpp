@@ -9,6 +9,7 @@
 #include <llvm/IR/Verifier.h>
 #include <llvm/ADT/APSInt.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/DataLayout.h>
 
 #include "ast/FunctionNode.h"
 #include "ast/IdentNode.h"
@@ -308,9 +309,6 @@ namespace {
                                           llvm::Value *init,
                                           const std::unique_ptr<llvm::IRBuilder<>> &builder,
                                           ModuleContext &mc) {
-        // auto *const entryBB = &builder->GetInsertBlock()->getParent()->getEntryBlock();
-        // builder->SetInsertPoint(entryBB, entryBB->getFirstInsertionPt());
-
         auto *alloca = builder->CreateAlloca(type, nullptr, node->ident->name);
 
         if (init) {
@@ -624,100 +622,76 @@ void LLVMCodegen::visit(const IfStatement *node) {
 }
 
 void LLVMCodegen::visit(const ForLoopNode *node) {
-    assert(builder->GetInsertBlock());
     auto *const currFunction = builder->GetInsertBlock()->getParent();
-    auto *const beforeLoopBB = builder->GetInsertBlock();
     auto *const loopBB = llvm::BasicBlock::Create(module->getContext(),
-                                                  "for_loop",
+                                                  "for_loop_body",
                                                   currFunction);
-    builder->CreateBr(loopBB);
+    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "merge_for");
+
+    generate(node->init.get(), builder, module, mc);
+
+    auto *cond = tryCastValue(builder, generate(node->conditional.get(), builder, module, mc),
+                              builder->getInt1Ty());
+
+    value_ = builder->CreateCondBr(cond, loopBB, mergeBB);
+
     builder->SetInsertPoint(loopBB);
+    generate(node->body.get(), builder, module, mc);
+    generate(node->next.get(), builder, module, mc);
+    cond = tryCastValue(builder, generate(node->conditional.get(), builder, module, mc),
+                        builder->getInt1Ty());
+    builder->CreateCondBr(cond, loopBB, mergeBB);
 
-    const auto *const initVarAst = dynamic_cast<const AssignmentNode *>(node->init.get());
-    if (initVarAst == nullptr) {
-        return;
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(mergeBB);
     }
-    auto *const loopVarValue = builder->CreatePHI(llvm::Type::getDoubleTy(module->getContext()),
-                                                  2,
-                                                  initVarAst->name);
-    auto *const OldVar = mc.symTable.lookup(initVarAst->name);
-    // namedValues[initVarAst->name] = loopVarValue;
 
-    auto *const initValue = generate(initVarAst->rvalue.get(),
-                                     builder,
-                                     module,
-                                     mc);
-    if (initValue == nullptr) {
-        return;
-    }
-    throw std::runtime_error("not implemented");
-
-    // loopVarValue->addIncoming(initValue, beforeLoopBB);
-    // if (generateStatements(node->body->statements,
-    //                        loopBB,
-    //                        builder,
-    //                        module,
-    //                        mc) == nullptr) {
-    //     return;
-    // }
-    //
-    // llvm::Value *nextValue;
-    // if (node->next) {
-    //     nextValue = generate(node->next.get(),
-    //                          builder,
-    //                          module,
-    //                          mc);
-    //     if (nextValue == nullptr) {
-    //         return;
-    //     }
-    // } else {
-    //     nextValue = builder->CreateFAdd(loopVarValue,
-    //                                     llvm::ConstantFP::get(module->getContext(), llvm::APFloat(1.0)),
-    //                                     "next_var");
-    // }
-    //
-    // auto *condExprValue = generate(node->conditional.get(),
-    //                                builder,
-    //                                module,
-    //                                mc);
-    // if (condExprValue == nullptr) {
-    //     return;
-    // }
-    // condExprValue = builder->CreateFCmpONE(
-    //         condExprValue, llvm::ConstantFP::get(module->getContext(), llvm::APFloat(0.0)),
-    //         "loop_cond");
-    //
-    // auto *const loopEndBB = builder->GetInsertBlock();
-    // loopVarValue->addIncoming(nextValue, loopEndBB);
-    //
-    // auto *const afterLoopBB = llvm::BasicBlock::Create(module->getContext(),
-    //                                                    "after_loop",
-    //                                                    currFunction);
-    // builder->CreateCondBr(condExprValue, loopBB, afterLoopBB);
-    // builder->SetInsertPoint(afterLoopBB);
-    //
-    // if (OldVar != nullptr) {
-    //     mc.symTable.insert(initVarAst->name, OldVar);
-    // } else {
-    //     // namedValues.erase(initVarAst->name);
-    // }
-    // value_ = llvm::Constant::getNullValue(llvm::Type::getDoubleTy(module->getContext()));
+    mergeBB->insertInto(currFunction);
+    builder->SetInsertPoint(mergeBB);
 }
 
 void LLVMCodegen::visit(const UnaryOpNode *node) {
-    if (node->operatorType == TokenType::IncrementOperator) {
-        value_ = builder->CreateFAdd(generate(node->expr.get(),
-                                              builder,
-                                              module,
-                                              mc),
-                                     llvm::ConstantFP::get(module->getContext(), llvm::APFloat(1.0)), "increment");
-    } else if (node->operatorType == TokenType::DecrementOperator) {
-        value_ = builder->CreateFSub(
-                generate(node->expr.get(),
-                         builder,
-                         module,
-                         mc),
-                llvm::ConstantFP::get(module->getContext(), llvm::APFloat(1.0)), "decrement");
+    if (node->operatorType == TokenType::IncrementOperator
+        || node->operatorType == TokenType::DecrementOperator) {
+        const auto *ident = dynamic_cast<IdentNode *>(node->expr.get());
+        if (ident == nullptr) {
+            throw std::logic_error("Increment/decrement requires lvalue variable");
+        }
+
+        auto *const var = mc.symTable.lookup(ident->name);
+        if (var == nullptr) {
+            throw std::logic_error("Undefined variable: " + ident->name);
+        }
+
+        auto *const varType = var->getAllocatedType();
+
+        if (!varType->isIntOrIntVectorTy() &&
+            !varType->isFPOrFPVectorTy() &&
+            !varType->isPointerTy()) {
+            throw std::logic_error("Invalid type for increment/decrement");
+        }
+
+        auto *const loadedVal = builder->CreateLoad(varType,
+                                                    var,
+                                                    ident->name + ".val");
+
+        llvm::Value *delta = nullptr;
+        if (varType->isIntegerTy()) {
+            delta = llvm::ConstantInt::get(varType, 1);
+        } else {
+            delta = llvm::ConstantFP::get(varType, 1.0);
+        }
+        if (node->operatorType == TokenType::DecrementOperator) {
+            delta = builder->CreateNeg(delta, "neg.tmp");
+        }
+
+        auto *const newVal = builder->CreateAdd(
+                loadedVal,
+                delta,
+                "incdec.tmp");
+
+        builder->CreateStore(newVal, var);
+        value_ = node->unaryPosType == UnaryOpNode::UnaryOpType::Prefix ? newVal : loadedVal;
     } else if (node->operatorType == TokenType::Minus) {
         value_ = builder->CreateNeg(generate(node->expr.get(),
                                              builder,
@@ -742,10 +716,6 @@ void LLVMCodegen::visit(const BlockNode *node) {
         throw std::logic_error("Block generation outside of function context");
     }
 
-    // auto *const parentFunc = builder->GetInsertBlock()->getParent();
-    // auto *const basicBlock = llvm::BasicBlock::Create(module->getContext(),
-    //                                                   "entry",
-    //                                                   parentFunc);
     generateBasicBlock(builder->GetInsertBlock(),
                        node->statements,
                        builder,

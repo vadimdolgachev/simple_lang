@@ -797,7 +797,7 @@ namespace {
     class LoopStatementTest : public testing::Test {};
 
     TEST_F(LoopStatementTest, ForEmpty) {
-        const std::string input = R"(for (var = 0; var < 10; ++var) {})";
+        const std::string input = R"(for (var: int = 0; var < 10; ++var) {})";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input))
                 );
@@ -809,11 +809,11 @@ namespace {
         ASSERT_NE(forNode, nullptr) << "Parsed node is not a for-loop node";
 
         ASSERT_NE(forNode->init, nullptr) << "For loop missing initialization expression";
-        const auto *varNode = dynamic_cast<AssignmentNode *>(forNode->init.get());
+        const auto *varNode = forNode->init.get();
         ASSERT_NE(varNode, nullptr) << "For loop initialization is not an assignment node";
-        EXPECT_EQ(varNode->name, "var") << "Wrong variable name in initialization: " << input;
+        EXPECT_EQ(varNode->ident->name, "var") << "Wrong variable name in initialization: " << input;
 
-        const auto *varNumber = dynamic_cast<NumberNode *>(varNode->rvalue.get());
+        const auto *varNumber = dynamic_cast<NumberNode *>(varNode->init->get());
         ASSERT_NE(varNumber, nullptr) << "For loop initialization value is not a number node";
         EXPECT_DOUBLE_EQ(varNumber->value, 0) << "Wrong initialization value for variable 'var': " << input;
 
