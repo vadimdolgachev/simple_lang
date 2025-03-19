@@ -63,10 +63,7 @@ namespace {
                 llvmType = llvm::Type::getInt1Ty(context);
                 break;
             }
-            case Byte: {
-                llvmType = llvm::Type::getInt8Ty(context);
-                break;
-            }
+            case Byte:
             case Char: {
                 llvmType = llvm::Type::getInt8Ty(context);
                 break;
@@ -785,7 +782,7 @@ void LLVMCodegen::visit(const TernaryOperatorNode *node) {
         throw std::logic_error("Ternary expressions must be of the same type");
     }
 
-    llvm::PHINode *phi = builder->CreatePHI(trueVal->getType(), 2, "tern_result");
+    auto *const phi = builder->CreatePHI(trueVal->getType(), 2, "tern_result");
     phi->addIncoming(trueVal, thenBB);
     phi->addIncoming(falseVal, elseBB);
     value_ = phi;

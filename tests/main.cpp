@@ -174,6 +174,41 @@ namespace {
         EXPECT_DOUBLE_EQ(rhs->value, 21.2) << "Wrong RHS value: " << input;
     }
 
+    TEST_F(BinExpressionsTest, BinOrder) {
+        const std::string input = "2 * (2 - 1) / 2;";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::Slash) << "Wrong operator: " << input;
+
+        const auto *lhs = dynamic_cast<BinOpNode *>(binOp->lhs.get());
+        ASSERT_NE(lhs, nullptr) << "Invalid LHS: " << input;
+        const auto *lhs1 = dynamic_cast<NumberNode *>(lhs->lhs.get());
+        ASSERT_NE(lhs1, nullptr) << "Invalid LHS: " << input;
+        ASSERT_DOUBLE_EQ(lhs1->value, 2) << "Wrong LHS value: " << input;
+        const auto *rhs1 = dynamic_cast<BinOpNode *>(lhs->rhs.get());
+        ASSERT_NE(rhs1, nullptr) << "Invalid RHS: " << input;
+
+        const auto *lhs2 = dynamic_cast<NumberNode *>(rhs1->lhs.get());
+        ASSERT_NE(lhs2, nullptr) << "Invalid LHS: " << input;
+        ASSERT_DOUBLE_EQ(lhs2->value, 2) << "Wrong LHS value: " << input;
+        const auto *rhs2 = dynamic_cast<NumberNode *>(rhs1->rhs.get());
+        ASSERT_NE(rhs2, nullptr) << "Invalid RHS: " << input;
+        ASSERT_DOUBLE_EQ(rhs2->value, 1) << "Wrong RHS value: " << input;
+
+        ASSERT_DOUBLE_EQ(lhs1->value, 2) << "Wrong LHS value: " << input;
+
+        const auto *rhs = dynamic_cast<NumberNode *>(binOp->rhs.get());
+        ASSERT_NE(rhs, nullptr) << "Invalid RHS: " << input;
+        EXPECT_DOUBLE_EQ(rhs->value, 2) << "Wrong RHS value: " << input;
+    }
+
     TEST_F(BinExpressionsTest, NestedOperations) {
         const std::string input = "(2*(1+2));";
         const auto parser = std::make_unique<Parser>(

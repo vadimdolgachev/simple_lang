@@ -186,7 +186,7 @@ int main() {
             for (i: int = 0; i < max; ++i) {
                 sum = sum + i;
             }
-            if (sum == (max * (max - 1)) / 2) {
+            if (sum == max * (max - 1) / 2) {
                 println("Success");
             } else {
                 println("Fail");

@@ -285,8 +285,7 @@ std::unique_ptr<ExpressionNode> Parser::parseTerm() {
            || lexer->currToken().type == TokenType::Slash) {
         const auto op = lexer->currToken().type;
         lexer->nextToken();
-        auto rhs = parseExpr();
-        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
+        lhs = std::make_unique<BinOpNode>(op, std::move(lhs), parseFactor());
     }
     return lhs;
 }
