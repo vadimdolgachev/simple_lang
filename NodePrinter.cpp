@@ -92,10 +92,6 @@ void NodePrinter::visit(const IfStatement *node) {
     ostream << "IfStatement";
 }
 
-void NodePrinter::visit(const ForLoopNode *node) {
-    ostream << "ForLoop";
-}
-
 void NodePrinter::visit(const UnaryOpNode *node) {
     ostream << "UnaryOp: name=" << node->operatorType;
 }

@@ -43,8 +43,6 @@ add_executable(simple_ast_parser
         ast/FunctionCallNode.cpp
         ast/IfStatement.h
         ast/IfStatement.cpp
-        ast/ForLoopNode.h
-        ast/ForLoopNode.cpp
         ast/UnaryOpNode.h
         ast/UnaryOpNode.cpp
         Lexer.cpp
@@ -69,7 +67,16 @@ add_executable(simple_ast_parser
         ast/ReturnNode.cpp
         ast/ReturnNode.h
         ast/TernaryOperatorNode.cpp
-        ast/TernaryOperatorNode.h)
+        ast/TernaryOperatorNode.h
+        ir/Type.cpp
+        ir/Type.h
+        ir/IntType.cpp
+        ir/IntType.h
+        ir/DoubleType.cpp
+        ir/DoubleType.h
+        ir/TypeManager.cpp
+        ir/TypeManager.h
+        ast/CondBranch.h)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

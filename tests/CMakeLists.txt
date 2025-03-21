@@ -38,8 +38,6 @@ add_executable(tests main.cpp
         ../ast/FunctionCallNode.cpp
         ../ast/IfStatement.h
         ../ast/IfStatement.cpp
-        ../ast/ForLoopNode.h
-        ../ast/ForLoopNode.cpp
         ../ast/LoopCondNode.h
         ../ast/LoopCondNode.cpp
         ../ast/UnaryOpNode.h

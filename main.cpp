@@ -183,11 +183,13 @@ int main() {
         fn main() {
             sum: int = 0;
             max: int = 10;
+
             for (i: int = 0; i < max; ++i) {
                 sum = sum + i;
             }
+
             if (sum == max * (max - 1) / 2) {
-                println("Success");
+                println("Success sum=%d", sum);
             } else {
                 println("Fail");
             }

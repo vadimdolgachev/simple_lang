@@ -4,15 +4,29 @@
 
 #include "LoopCondNode.h"
 
-LoopCondNode::LoopCondNode(std::unique_ptr<ExpressionNode> conditional,
-                           std::unique_ptr<BlockNode> body,
-                           const LoopType loopType):
-    conditional(std::move(conditional)),
-    body(std::move(body)),
-    loopType(loopType) {}
+LoopCondNode::LoopCondNode(const Type loopType,
+                           CondBranch condBranch,
+                           std::optional<std::unique_ptr<BaseNode>> init,
+                           std::optional<std::unique_ptr<ExpressionNode>> increment):
+    loopType(loopType),
+    condBranch(std::move(condBranch)),
+    init(std::move(init)),
+    increment(std::move(increment)) {}
 
 std::string LoopCondNode::toString() const {
-    return "WhileLoopNode";
+    std::string typeStr;
+    switch (loopType) {
+        case Type::For:
+            typeStr = "For";
+            break;
+        case Type::While:
+            typeStr = "While";
+            break;
+        case Type::DoWhile:
+            typeStr = "DoWhile";
+            break;
+    }
+    return "LoopCondNode (" + typeStr + ")";
 }
 
 void LoopCondNode::visit(NodeVisitor *visitor) const {

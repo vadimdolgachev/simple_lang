@@ -18,7 +18,6 @@
 #include "ast/FunctionCallNode.h"
 #include "ast/BinOpNode.h"
 #include "ast/UnaryOpNode.h"
-#include "ast/ForLoopNode.h"
 #include "ast/IfStatement.h"
 #include "ast/BooleanNode.h"
 #include "ast/ProtoFunctionStatement.h"
@@ -27,6 +26,7 @@
 
 #include "LLVMCodegen.h"
 
+#include "ast/LoopCondNode.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
 
@@ -618,35 +618,6 @@ void LLVMCodegen::visit(const IfStatement *node) {
     builder->SetInsertPoint(mergeBB);
 }
 
-void LLVMCodegen::visit(const ForLoopNode *node) {
-    auto *const currFunction = builder->GetInsertBlock()->getParent();
-    auto *const loopBB = llvm::BasicBlock::Create(module->getContext(),
-                                                  "for_loop_body",
-                                                  currFunction);
-    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "merge_for");
-
-    generate(node->init.get(), builder, module, mc);
-
-    auto *cond = tryCastValue(builder, generate(node->conditional.get(), builder, module, mc),
-                              builder->getInt1Ty());
-
-    value_ = builder->CreateCondBr(cond, loopBB, mergeBB);
-
-    builder->SetInsertPoint(loopBB);
-    generate(node->body.get(), builder, module, mc);
-    generate(node->next.get(), builder, module, mc);
-    cond = tryCastValue(builder, generate(node->conditional.get(), builder, module, mc),
-                        builder->getInt1Ty());
-    builder->CreateCondBr(cond, loopBB, mergeBB);
-
-    if (!builder->GetInsertBlock()->getTerminator()) {
-        builder->CreateBr(mergeBB);
-    }
-
-    mergeBB->insertInto(currFunction);
-    builder->SetInsertPoint(mergeBB);
-}
-
 void LLVMCodegen::visit(const UnaryOpNode *node) {
     if (node->operatorType == TokenType::IncrementOperator
         || node->operatorType == TokenType::DecrementOperator) {
@@ -705,7 +676,40 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
 }
 
 void LLVMCodegen::visit(const LoopCondNode *node) {
-    throw std::runtime_error("not implemented");
+    auto *const parent = builder->GetInsertBlock()->getParent();
+    auto *const loopBB = llvm::BasicBlock::Create(module->getContext(),
+                                                  "loop_body",
+                                                  parent);
+    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "merge_loop");
+
+    if (node->loopType == LoopCondNode::Type::For) {
+        generate(node->init->get(), builder, module, mc);
+        auto *const cond = tryCastValue(builder, generate(node->condBranch.cond.get(), builder, module, mc),
+                                  builder->getInt1Ty());
+        value_ = builder->CreateCondBr(cond, loopBB, mergeBB);
+    } else if (node->loopType == LoopCondNode::Type::While) {
+        auto *const cond = tryCastValue(builder, generate(node->condBranch.cond.get(), builder, module, mc),
+                                  builder->getInt1Ty());
+        value_ = builder->CreateCondBr(cond, loopBB, mergeBB);
+    } else {
+        builder->CreateBr(loopBB);
+    }
+
+    builder->SetInsertPoint(loopBB);
+    generate(node->condBranch.then.get(), builder, module, mc);
+    if (node->loopType == LoopCondNode::Type::For) {
+        generate(node->increment->get(), builder, module, mc);
+    }
+    auto *const cond = tryCastValue(builder, generate(node->condBranch.cond.get(), builder, module, mc),
+                              builder->getInt1Ty());
+    builder->CreateCondBr(cond, loopBB, mergeBB);
+
+    if (!builder->GetInsertBlock()->getTerminator()) {
+        builder->CreateBr(mergeBB);
+    }
+
+    mergeBB->insertInto(parent);
+    builder->SetInsertPoint(mergeBB);
 }
 
 void LLVMCodegen::visit(const BlockNode *node) {

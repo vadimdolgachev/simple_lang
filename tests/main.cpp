@@ -16,7 +16,6 @@
 #include "ast/BooleanNode.h"
 #include "ast/IdentNode.h"
 #include "ast/UnaryOpNode.h"
-#include "ast/ForLoopNode.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
 #include "ast/IfStatement.h"
@@ -840,11 +839,11 @@ namespace {
 
         ASSERT_NE(node, nullptr) << "Failed to parse the for-loop expression";
 
-        const auto *const forNode = dynamic_cast<ForLoopNode *>(node.get());
+        const auto *const forNode = dynamic_cast<LoopCondNode *>(node.get());
         ASSERT_NE(forNode, nullptr) << "Parsed node is not a for-loop node";
 
         ASSERT_NE(forNode->init, nullptr) << "For loop missing initialization expression";
-        const auto *varNode = forNode->init.get();
+        const auto *varNode = dynamic_cast<DeclarationNode *>(forNode->init->get());
         ASSERT_NE(varNode, nullptr) << "For loop initialization is not an assignment node";
         EXPECT_EQ(varNode->ident->name, "var") << "Wrong variable name in initialization: " << input;
 
@@ -852,8 +851,8 @@ namespace {
         ASSERT_NE(varNumber, nullptr) << "For loop initialization value is not a number node";
         EXPECT_DOUBLE_EQ(varNumber->value, 0) << "Wrong initialization value for variable 'var': " << input;
 
-        ASSERT_NE(forNode->conditional, nullptr) << "For loop missing condition expression";
-        const auto *condNode = dynamic_cast<BinOpNode *>(forNode->conditional.get());
+        ASSERT_NE(forNode->condBranch.cond, nullptr) << "For loop missing condition expression";
+        const auto *condNode = dynamic_cast<BinOpNode *>(forNode->condBranch.cond.get());
         ASSERT_NE(condNode, nullptr) << "Condition expression is not a binary operation node";
 
         const auto *condVar = dynamic_cast<IdentNode *>(condNode->lhs.get());
@@ -863,8 +862,8 @@ namespace {
         ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket)
             << "Condition operator is not '<' as expected: " << input;
 
-        ASSERT_NE(forNode->next, nullptr) << "For loop missing iteration expression";
-        const auto *nextOp = dynamic_cast<UnaryOpNode *>(forNode->next.get());
+        ASSERT_NE(forNode->increment->get(), nullptr) << "For loop missing iteration expression";
+        const auto *nextOp = dynamic_cast<UnaryOpNode *>(forNode->increment->get());
         ASSERT_NE(nextOp, nullptr) << "Iteration expression is not a unary operation node";
 
         ASSERT_EQ(nextOp->operatorType,
@@ -876,7 +875,7 @@ namespace {
         ASSERT_NE(nextIdent, nullptr) << "Iteration expression does not contain a valid identifier node";
         EXPECT_EQ(nextIdent->name, "var") << "Wrong variable name in iteration: " << input;
 
-        ASSERT_TRUE(forNode->body->statements.empty()) << "Expected empty body for for loop: " << input;
+        ASSERT_TRUE(forNode->condBranch.then->statements.empty()) << "Expected empty body for for loop: " << input;
     }
 
     TEST_F(LoopStatementTest, WhileEmpty) {
@@ -890,8 +889,8 @@ namespace {
         const auto *const loopNode = dynamic_cast<LoopCondNode *>(node.get());
         ASSERT_NE(loopNode, nullptr) << "Parsed node is not a while-loop node";
 
-        ASSERT_NE(loopNode->conditional, nullptr) << "While loop missing condition expression";
-        const auto *condNode = dynamic_cast<BinOpNode *>(loopNode->conditional.get());
+        ASSERT_NE(loopNode->condBranch.cond, nullptr) << "While loop missing condition expression";
+        const auto *condNode = dynamic_cast<BinOpNode *>(loopNode->condBranch.cond.get());
         ASSERT_NE(condNode, nullptr) << "Condition expression is not a binary operation node";
 
         const auto *condVar = dynamic_cast<IdentNode *>(condNode->lhs.get());
@@ -901,7 +900,7 @@ namespace {
         ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket)
             << "Condition operator is not '<' as expected: " << input;
 
-        ASSERT_TRUE(loopNode->body->statements.empty()) << "Expected empty body for for loop: " << input;
+        ASSERT_TRUE(loopNode->condBranch.then->statements.empty()) << "Expected empty body for for loop: " << input;
     }
 
     TEST_F(LoopStatementTest, DoWhileEmpty) {
@@ -915,8 +914,8 @@ namespace {
         const auto *const loopNode = dynamic_cast<LoopCondNode *>(node.get());
         ASSERT_NE(loopNode, nullptr) << "Parsed node is not a do-while-loop node";
 
-        ASSERT_NE(loopNode->conditional, nullptr) << "While loop missing condition expression";
-        const auto *condNode = dynamic_cast<BinOpNode *>(loopNode->conditional.get());
+        ASSERT_NE(loopNode->condBranch.cond, nullptr) << "While loop missing condition expression";
+        const auto *condNode = dynamic_cast<BinOpNode *>(loopNode->condBranch.cond.get());
         ASSERT_NE(condNode, nullptr) << "Condition expression is not a binary operation node";
 
         const auto *condVar = dynamic_cast<IdentNode *>(condNode->lhs.get());
@@ -926,7 +925,7 @@ namespace {
         ASSERT_EQ(condNode->binOp, TokenType::LeftAngleBracket)
             << "Condition operator is not '<' as expected: " << input;
 
-        ASSERT_TRUE(loopNode->body->statements.empty()) << "Expected empty body for for loop: " << input;
+        ASSERT_TRUE(loopNode->condBranch.then->statements.empty()) << "Expected empty body for for loop: " << input;
     }
 
     class ReturnStatementTest : public testing::Test {};

@@ -10,7 +10,6 @@
 #include "ast/IdentNode.h"
 #include "ast/AssignmentNode.h"
 #include "ast/BooleanNode.h"
-#include "ast/ForLoopNode.h"
 #include "ast/IfStatement.h"
 #include "ast/StringNode.h"
 #include "ast/NumberNode.h"
@@ -92,7 +91,7 @@ std::unique_ptr<BaseNode> Parser::nextNode() {
     return result;
 }
 
-IfStatement::CondBranch Parser::parseCondBranch() {
+CondBranch Parser::parseCondBranch() {
     auto condition = parseExpr();
     auto thenBranch = parseBlock();
     return {std::move(condition), std::move(thenBranch)};
@@ -120,7 +119,7 @@ std::unique_ptr<BaseNode> Parser::parseForStatement() {
         throw std::runtime_error(makeErrorMsg("Expected '(' after 'for'"));
     }
     lexer->nextToken(); // '('
-    auto initExpr = std::make_unique<DeclarationNode>(parseDeclarationNode(false));
+    auto init = std::make_unique<DeclarationNode>(parseDeclarationNode(false));
     if (lexer->currToken().type != TokenType::Semicolon) {
         throw std::runtime_error(makeErrorMsg("Expected ';' after init statement"));
     }
@@ -130,17 +129,17 @@ std::unique_ptr<BaseNode> Parser::parseForStatement() {
         throw std::runtime_error(makeErrorMsg("Expected ';' after condition"));
     }
     lexer->nextToken(); // ';'
-    auto nextExpr = parseExpr();
+    auto increment = parseExpr();
     if (lexer->currToken().type != TokenType::RightParenthesis) {
         throw std::runtime_error(makeErrorMsg("Expected ')'"));
     }
     lexer->nextToken(); // ')'
-    auto forBody = parseBlock();
-    return std::make_unique<ForLoopNode>(
-            std::move(initExpr),
-            std::move(nextExpr),
-            std::move(condition),
-            std::move(forBody));
+    auto then = parseBlock();
+    return std::make_unique<LoopCondNode>(
+            LoopCondNode::Type::For,
+            CondBranch{std::move(condition), std::move(then)},
+            std::move(init),
+            std::move(increment));
 }
 
 std::unique_ptr<BaseNode> Parser::parseWhileStatement() {
@@ -153,8 +152,10 @@ std::unique_ptr<BaseNode> Parser::parseWhileStatement() {
         throw std::runtime_error(makeErrorMsg("Expected ')' after condition"));
     }
     lexer->nextToken(); // ')'
-    auto body = parseBlock();
-    return std::make_unique<LoopCondNode>(std::move(condition), std::move(body), LoopCondNode::LoopType::While);
+    auto body = parseBlock();;
+    return std::make_unique<LoopCondNode>(LoopCondNode::Type::While,
+                                          CondBranch{std::move(condition),
+                                                     std::move(body)});
 }
 
 std::unique_ptr<BaseNode> Parser::parseDoWhileStatement() {
@@ -175,7 +176,10 @@ std::unique_ptr<BaseNode> Parser::parseDoWhileStatement() {
         throw std::runtime_error(makeErrorMsg("Expected ')' after condition"));
     }
     lexer->nextToken(); // ')'
-    return std::make_unique<LoopCondNode>(std::move(condition), std::move(body), LoopCondNode::LoopType::DoWhile);
+    consumeSemicolon();
+    return std::make_unique<LoopCondNode>(LoopCondNode::Type::DoWhile,
+                                          CondBranch{std::move(condition),
+                                                     std::move(body)});
 }
 
 void Parser::consumeSemicolon() const {
@@ -187,7 +191,7 @@ void Parser::consumeSemicolon() const {
 
 std::unique_ptr<BaseNode> Parser::parseIfStatement() {
     auto ifBranch = parseCondBranch();
-    std::vector<IfStatement::CondBranch> elseIfBranches;
+    std::vector<CondBranch> elseIfBranches;
     std::optional<std::unique_ptr<BlockNode>> elseBranch;
     while (lexer->currToken().type == TokenType::Else) {
         lexer->nextToken(); // else

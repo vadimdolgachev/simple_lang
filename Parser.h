@@ -5,8 +5,8 @@
 
 #include "Lexer.h"
 #include "ast/BaseNode.h"
+#include "ast/CondBranch.h"
 #include "ast/DeclarationNode.h"
-#include "ast/IfStatement.h"
 
 class Parser {
 public:
@@ -36,7 +36,7 @@ private:
     [[nodiscard]] std::unique_ptr<StatementNode> parseFunctionDef();
     [[nodiscard]] std::unique_ptr<BaseNode> parseIfStatement();
     [[nodiscard]] std::unique_ptr<BlockNode> parseCurlyBracketBlock();
-    [[nodiscard]] IfStatement::CondBranch parseCondBranch();
+    [[nodiscard]] CondBranch parseCondBranch();
     [[nodiscard]] std::unique_ptr<BaseNode> tryParseAssignment(bool needConsumeSemicolon = true);
     [[nodiscard]] std::unique_ptr<BaseNode> parseForStatement();
     [[nodiscard]] std::unique_ptr<BaseNode> parseWhileStatement();

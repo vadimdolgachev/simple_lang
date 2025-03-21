@@ -11,18 +11,13 @@
 
 #include "BaseNode.h"
 #include "BlockNode.h"
+#include "CondBranch.h"
 
 class IfStatement final : public StatementNode {
 public:
-    struct CondBranch {
-        std::unique_ptr<ExpressionNode> cond;
-        std::unique_ptr<BlockNode> then;
-    };
-
-    IfStatement(
-            CondBranch ifBranch,
-            std::vector<CondBranch> elseIfBranches,
-            std::optional<std::unique_ptr<BlockNode>> elseBranch);
+    IfStatement(CondBranch ifBranch,
+                std::vector<CondBranch> elseIfBranches,
+                std::optional<std::unique_ptr<BlockNode>> elseBranch);
 
     [[nodiscard]] std::string toString() const override;
 

@@ -32,8 +32,6 @@ public:
 
     void visit(const IfStatement *node) override;
 
-    void visit(const ForLoopNode *node) override;
-
     void visit(const UnaryOpNode *node) override;
 
     void visit(const LoopCondNode *node) override;

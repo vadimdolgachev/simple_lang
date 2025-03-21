@@ -9,7 +9,6 @@
 #include <string>
 
 class UnaryOpNode;
-class ForLoopNode;
 class IfStatement;
 class FunctionCallNode;
 class AssignmentNode;
@@ -50,8 +49,6 @@ public:
     virtual void visit(const FunctionCallNode *node) = 0;
 
     virtual void visit(const IfStatement *node) = 0;
-
-    virtual void visit(const ForLoopNode *node) = 0;
 
     virtual void visit(const UnaryOpNode *node) = 0;
 
