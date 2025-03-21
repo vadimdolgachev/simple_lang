@@ -676,39 +676,67 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
 }
 
 void LLVMCodegen::visit(const LoopCondNode *node) {
-    auto *const parent = builder->GetInsertBlock()->getParent();
-    auto *const loopBB = llvm::BasicBlock::Create(module->getContext(),
-                                                  "loop_body",
-                                                  parent);
-    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "merge_loop");
+    auto *const parentFunc = builder->GetInsertBlock()->getParent();
+    llvm::BasicBlock *condBB = nullptr;
+    auto *const loopBB = llvm::BasicBlock::Create(module->getContext(), "loop", parentFunc);
+    auto *const mergeBB = llvm::BasicBlock::Create(module->getContext(), "merge");
 
     if (node->loopType == LoopCondNode::Type::For) {
-        generate(node->init->get(), builder, module, mc);
-        auto *const cond = tryCastValue(builder, generate(node->condBranch.cond.get(), builder, module, mc),
-                                  builder->getInt1Ty());
-        value_ = builder->CreateCondBr(cond, loopBB, mergeBB);
-    } else if (node->loopType == LoopCondNode::Type::While) {
-        auto *const cond = tryCastValue(builder, generate(node->condBranch.cond.get(), builder, module, mc),
-                                  builder->getInt1Ty());
-        value_ = builder->CreateCondBr(cond, loopBB, mergeBB);
-    } else {
-        builder->CreateBr(loopBB);
+        if (node->init) {
+            generate(node->init->get(), builder, module, mc);
+        }
+        condBB = llvm::BasicBlock::Create(module->getContext(), "for.cond", parentFunc);
+        builder->CreateBr(condBB);
+    }
+
+    switch (node->loopType) {
+        case LoopCondNode::Type::For: {
+            builder->SetInsertPoint(condBB);
+            auto *const cond = generate(node->condBranch.cond.get(), builder, module, mc);
+            builder->CreateCondBr(cond, loopBB, mergeBB);
+            break;
+        }
+        case LoopCondNode::Type::While: {
+            condBB = llvm::BasicBlock::Create(module->getContext(), "while.cond", parentFunc);
+            builder->CreateBr(condBB);
+            builder->SetInsertPoint(condBB);
+            auto *const cond = generate(node->condBranch.cond.get(), builder, module, mc);
+            builder->CreateCondBr(cond, loopBB, mergeBB);
+            break;
+        }
+        case LoopCondNode::Type::DoWhile: {
+            builder->CreateBr(loopBB);
+            break;
+        }
     }
 
     builder->SetInsertPoint(loopBB);
     generate(node->condBranch.then.get(), builder, module, mc);
-    if (node->loopType == LoopCondNode::Type::For) {
-        generate(node->increment->get(), builder, module, mc);
-    }
-    auto *const cond = tryCastValue(builder, generate(node->condBranch.cond.get(), builder, module, mc),
-                              builder->getInt1Ty());
-    builder->CreateCondBr(cond, loopBB, mergeBB);
 
-    if (!builder->GetInsertBlock()->getTerminator()) {
+    switch (node->loopType) {
+        case LoopCondNode::Type::For: {
+            if (node->increment) {
+                generate(node->increment->get(), builder, module, mc);
+            }
+            builder->CreateBr(condBB);
+            break;
+        }
+        case LoopCondNode::Type::While: {
+            builder->CreateBr(condBB);
+            break;
+        }
+        case LoopCondNode::Type::DoWhile: {
+            auto *const cond = generate(node->condBranch.cond.get(), builder, module, mc);
+            builder->CreateCondBr(cond, loopBB, mergeBB);
+            break;
+        }
+    }
+
+    if (!loopBB->getTerminator()) {
         builder->CreateBr(mergeBB);
     }
 
-    mergeBB->insertInto(parent);
+    mergeBB->insertInto(parentFunc);
     builder->SetInsertPoint(mergeBB);
 }
 
