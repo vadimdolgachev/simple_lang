@@ -6,24 +6,28 @@
 #include <unordered_map>
 #include <cstdarg>
 
-#include "llvm/Analysis/MemorySSA.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/PassManager.h"
-#include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/StandardInstrumentations.h"
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "llvm/Transforms/Scalar/GVN.h"
-#include "llvm/Transforms/Scalar/Reassociate.h"
-#include "llvm/Transforms/Scalar/SimplifyCFG.h"
+#include <llvm/Analysis/MemorySSA.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/PassManager.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/StandardInstrumentations.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar/GVN.h>
+#include <llvm/Transforms/Scalar/Reassociate.h>
+#include <llvm/Transforms/Scalar/SimplifyCFG.h>
 #include <llvm/Transforms/Utils/Mem2Reg.h>
 
 #include "KaleidoscopeJIT.h"
 #include "Lexer.h"
+#include "Parser.h"
 #include "ast/ProtoFunctionStatement.h"
+#include "ast/TypeNode.h"
+#include "ir/DoubleType.h"
+#include "ir/IntType.h"
 #include "ir/LLVMCodegen.h"
 
 #include "Parser.h"

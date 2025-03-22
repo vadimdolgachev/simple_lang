@@ -2,8 +2,6 @@
 // Created by vadim on 06.10.24.
 //
 
-#include <iostream>
-
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
@@ -95,7 +93,9 @@ namespace {
         return llvmType;
     }
 
-    llvm::Type *getResultType(llvm::Type *lhsType, llvm::Type *rhsType, llvm::LLVMContext &context) {
+    llvm::Type *getResultType(llvm::Type *lhsType,
+                              llvm::Type *rhsType,
+                              llvm::LLVMContext &context) {
         if (lhsType == rhsType) {
             return lhsType;
         }
@@ -169,28 +169,36 @@ namespace {
                                typeToString(destType));
     }
 
-    llvm::Value *createAdd(const std::unique_ptr<llvm::IRBuilder<>> &builder, llvm::Value *lhs, llvm::Value *rhs,
+    llvm::Value *createAdd(const std::unique_ptr<llvm::IRBuilder<>> &builder,
+                           llvm::Value *lhs,
+                           llvm::Value *rhs,
                            const llvm::Type *type) {
         return type->isFloatingPointTy()
                    ? builder->CreateFAdd(lhs, rhs, "fadd_tmp")
                    : builder->CreateAdd(lhs, rhs, "iadd_tmp");
     }
 
-    llvm::Value *createSub(const std::unique_ptr<llvm::IRBuilder<>> &builder, llvm::Value *lhs, llvm::Value *rhs,
+    llvm::Value *createSub(const std::unique_ptr<llvm::IRBuilder<>> &builder,
+                           llvm::Value *lhs,
+                           llvm::Value *rhs,
                            const llvm::Type *type) {
         return type->isFloatingPointTy()
                    ? builder->CreateFSub(lhs, rhs, "fsub_tmp")
                    : builder->CreateSub(lhs, rhs, "isub_tmp");
     }
 
-    llvm::Value *createMul(const std::unique_ptr<llvm::IRBuilder<>> &builder, llvm::Value *lhs, llvm::Value *rhs,
+    llvm::Value *createMul(const std::unique_ptr<llvm::IRBuilder<>> &builder,
+                           llvm::Value *lhs,
+                           llvm::Value *rhs,
                            const llvm::Type *type) {
         return type->isFloatingPointTy()
                    ? builder->CreateFMul(lhs, rhs, "fmul_tmp")
                    : builder->CreateMul(lhs, rhs, "imul_tmp");
     }
 
-    llvm::Value *createDiv(const std::unique_ptr<llvm::IRBuilder<>> &builder, llvm::Value *lhs, llvm::Value *rhs,
+    llvm::Value *createDiv(const std::unique_ptr<llvm::IRBuilder<>> &builder,
+                           llvm::Value *lhs,
+                           llvm::Value *rhs,
                            const llvm::Type *type) {
         return type->isFloatingPointTy()
                    ? builder->CreateFDiv(lhs, rhs, "fdiv_tmp")
@@ -267,7 +275,8 @@ namespace {
         }
 
         for (const auto &stmt: statements) {
-            [[maybe_unused]] llvm::Value *val = LLVMCodegen::generate(stmt.get(), builder, module, mc);
+            [[maybe_unused]] auto *const val = LLVMCodegen::generate(
+                    stmt.get(), builder, module, mc);
         }
 
         mc.symTable.exitScope();
@@ -283,7 +292,8 @@ namespace {
         if (init) {
             constInit = llvm::dyn_cast<llvm::Constant>(init);
             if (!constInit) {
-                throw std::logic_error("Global variable initializer must be constant: " + node->ident->name);
+                throw std::logic_error(
+                        "Global variable initializer must be constant: " + node->ident->name);
             }
         }
 
@@ -448,7 +458,8 @@ void LLVMCodegen::visit(const BinOpNode *node) {
         throw std::logic_error("Unsupported operation");
     }
 
-    auto *resultType = getResultType(lhsValue->getType(), rhsValue->getType(), module->getContext());
+    auto *resultType = getResultType(lhsValue->getType(), rhsValue->getType(),
+                                     module->getContext());
     if (resultType == nullptr) {
         throw std::runtime_error("Type mismatch: " +
                                  typeToString(lhsValue->getType()) + " and " +
@@ -489,9 +500,10 @@ void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
     for (const auto &param: node->params) {
         functionParams.push_back(generateType(param.type, module->getContext()));
     }
-    auto *const functionType = llvm::FunctionType::get(generateType(node->returnType, module->getContext()),
-                                                       functionParams,
-                                                       node->isVarArgs);
+    auto *const functionType = llvm::FunctionType::get(
+            generateType(node->returnType, module->getContext()),
+            functionParams,
+            node->isVarArgs);
     auto *const function = llvm::Function::Create(functionType,
                                                   llvm::Function::ExternalLinkage,
                                                   node->name,
@@ -563,7 +575,8 @@ void LLVMCodegen::visit(const FunctionCallNode *const node) {
 }
 
 void LLVMCodegen::visit(const IfStatement *node) {
-    auto *const firstCV = tryCastValue(builder, generate(node->ifBranch.cond.get(), builder, module, mc),
+    auto *const firstCV = tryCastValue(builder,
+                                       generate(node->ifBranch.cond.get(), builder, module, mc),
                                        builder->getInt1Ty());
     if (!firstCV) {
         throw std::logic_error("Condition must be boolean type");
@@ -589,11 +602,14 @@ void LLVMCodegen::visit(const IfStatement *node) {
         builder->SetInsertPoint(lastElseBB);
 
         const auto &[cond, then] = node->elseIfBranches[i];
-        auto *const value = tryCastValue(builder, generate(cond.get(), builder, module, mc), builder->getInt1Ty());
+        auto *const value = tryCastValue(builder,
+                                         generate(cond.get(), builder, module, mc),
+                                         builder->getInt1Ty());
         if (!value) {
             throw std::logic_error("Condition must be boolean type");
         }
-        auto *const ifBB = llvm::BasicBlock::Create(module->getContext(), "elif_" + std::to_string(i), parentFunc);
+        auto *const ifBB = llvm::BasicBlock::Create(module->getContext(),
+                                                    "elif_" + std::to_string(i), parentFunc);
         lastElseBB = llvm::BasicBlock::Create(module->getContext(), "else_" + std::to_string(i));
         builder->CreateCondBr(value, ifBB, lastElseBB);
 
@@ -692,7 +708,10 @@ void LLVMCodegen::visit(const LoopCondNode *node) {
     switch (node->loopType) {
         case LoopCondNode::Type::For: {
             builder->SetInsertPoint(condBB);
-            auto *const cond = generate(node->condBranch.cond.get(), builder, module, mc);
+            auto *const cond = tryCastValue(builder,
+                                            generate(node->condBranch.cond.get(), builder, module,
+                                                     mc),
+                                            builder->getInt1Ty());
             builder->CreateCondBr(cond, loopBB, mergeBB);
             break;
         }
@@ -700,7 +719,10 @@ void LLVMCodegen::visit(const LoopCondNode *node) {
             condBB = llvm::BasicBlock::Create(module->getContext(), "while.cond", parentFunc);
             builder->CreateBr(condBB);
             builder->SetInsertPoint(condBB);
-            auto *const cond = generate(node->condBranch.cond.get(), builder, module, mc);
+            auto *const cond = tryCastValue(builder,
+                                            generate(node->condBranch.cond.get(), builder, module,
+                                                     mc),
+                                            builder->getInt1Ty());
             builder->CreateCondBr(cond, loopBB, mergeBB);
             break;
         }
