@@ -15,7 +15,7 @@
 class DeclarationNode final : public BaseNode {
 public:
     DeclarationNode(std::unique_ptr<IdentNode> ident,
-                    std::unique_ptr<PrimitiveType> type,
+                    TypeNode type,
                     std::optional<std::unique_ptr<ExpressionNode>> init);
 
     [[nodiscard]] std::string toString() const override;
@@ -23,7 +23,7 @@ public:
     void visit(NodeVisitor *visitor) const override;
 
     std::unique_ptr<IdentNode> ident;
-    std::unique_ptr<PrimitiveType> type;
+    TypeNode type;
     std::optional<std::unique_ptr<ExpressionNode>> init;
 };
 

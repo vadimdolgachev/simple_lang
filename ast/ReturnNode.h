@@ -9,7 +9,7 @@
 
 #include "BaseNode.h"
 
-class ReturnNode final : public BaseNode {
+class ReturnNode final : public StatementNode {
 public:
     explicit ReturnNode(std::unique_ptr<ExpressionNode> expr);
 

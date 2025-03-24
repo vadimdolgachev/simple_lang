@@ -81,7 +81,7 @@ void NodePrinter::visit(const ProtoFunctionStatement *node) {
 }
 
 void NodePrinter::visit(const AssignmentNode *node) {
-    ostream << "VariableDefinition: var=" << node->name;
+    ostream << "VariableDefinition: var=" << node->lvalue;
 }
 
 void NodePrinter::visit(const FunctionCallNode *node) {

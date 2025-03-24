@@ -6,23 +6,34 @@
 #define TYPENODE_H
 
 #include <cstdint>
+#include <optional>
+#include <string>
 
-enum class PrimitiveTypeKind : std::uint8_t {
+enum class TypeKind : std::uint8_t {
     Boolean,
     Byte,
     Char,
     Double,
     Integer,
     Void,
-    Str
+    Str,
+    Custom
 };
 
-class PrimitiveType final {
-public:
-    PrimitiveType(PrimitiveTypeKind fundamentalType, bool isPointer);
+struct TypeNode final {
+    TypeNode(TypeKind type,
+             bool isPointer,
+             std::optional<std::string> typeName);
 
-    PrimitiveTypeKind type;
+    TypeKind kind;
     bool isPointer;
+    std::optional<std::string> typeName;
+
+    bool operator==(const TypeNode &other) const;
+
+    static TypeNode makePrimitive(TypeKind kind, bool isPtr = false);
+
+    static TypeNode makeCustom(const std::string &name, bool isPtr = false);
 };
 
 #endif //TYPENODE_H

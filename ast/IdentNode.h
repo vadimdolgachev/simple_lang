@@ -11,13 +11,13 @@
 
 class IdentNode final : public ExpressionNode {
 public:
-  explicit IdentNode(std::string name);
+    explicit IdentNode(std::string name);
 
-  [[nodiscard]] std::string toString() const override;
+    [[nodiscard]] std::string toString() const override;
 
-  void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) const override;
 
-  const std::string name;
+    const std::string name;
 };
 
 #endif //VARIABLEACCESSAST_H

@@ -5,7 +5,6 @@
 #ifndef PROTOFUNCTIONAST_H
 #define PROTOFUNCTIONAST_H
 
-#include <memory>
 #include <vector>
 
 #include "BaseNode.h"
@@ -15,7 +14,7 @@
 class ProtoFunctionStatement final : public StatementNode {
 public:
     ProtoFunctionStatement(std::string name,
-                           std::unique_ptr<PrimitiveType> returnType,
+                           TypeNode returnType,
                            std::vector<DeclarationNode> params,
                            bool isVarArgs = false);
 
@@ -24,7 +23,7 @@ public:
     void visit(NodeVisitor *visitor) const override;
 
     std::string name;
-    std::unique_ptr<PrimitiveType> returnType;
+    TypeNode returnType;
     std::vector<DeclarationNode> params;
     const bool isVarArgs;
 };

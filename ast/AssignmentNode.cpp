@@ -1,12 +1,14 @@
 #include "AssignmentNode.h"
 
-AssignmentNode::AssignmentNode(std::string name,
+#include "IdentNode.h"
+
+AssignmentNode::AssignmentNode(std::unique_ptr<IdentNode> lvalue,
                                std::unique_ptr<ExpressionNode> rvalue) :
-    name(std::move(name)),
+    lvalue(std::move(lvalue)),
     rvalue(std::move(rvalue)) {}
 
 std::string AssignmentNode::toString() const {
-    return "var definition name=" + name + ", rvalue=" + rvalue->toString();
+    return lvalue->name + "=" + rvalue->toString();
 }
 
 void AssignmentNode::visit(NodeVisitor *const visitor) const {

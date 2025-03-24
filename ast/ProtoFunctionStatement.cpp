@@ -1,9 +1,9 @@
 #include "ProtoFunctionStatement.h"
 
-#include <memory>
+#include <utility>
 
 ProtoFunctionStatement::ProtoFunctionStatement(std::string name,
-                                               std::unique_ptr<PrimitiveType> returnType,
+                                               TypeNode returnType,
                                                std::vector<DeclarationNode> params,
                                                const bool isVarArgs) :
     name(std::move(name)),

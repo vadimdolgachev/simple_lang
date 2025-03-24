@@ -22,7 +22,6 @@ class BooleanNode;
 class LoopCondNode;
 class BlockNode;
 class DeclarationNode;
-class PrimitiveType;
 class ReturnNode;
 class TernaryOperatorNode;
 

@@ -75,7 +75,7 @@ namespace {
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef->name, "varName") << "Wrong variable name: " << input;
+        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
 
         const auto *binExpr = dynamic_cast<BinOpNode *>(varDef->rvalue.get());
         ASSERT_NE(binExpr, nullptr) << "RHS is not a binary expression: " << input;
@@ -92,7 +92,7 @@ namespace {
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef->name, "varName") << "Wrong variable name: " << input;
+        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
 
         const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
         ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
@@ -111,7 +111,7 @@ namespace {
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef->name, "varName") << "Wrong variable name: " << input;
+        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
 
         const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
         ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
@@ -130,7 +130,7 @@ namespace {
         auto [varDef1, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef1, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef1->name, "varName1") << "Wrong variable name: " << input;
+        EXPECT_EQ(varDef1->lvalue->name, "varName1") << "Wrong variable name: " << input;
 
         const auto *number1 = dynamic_cast<NumberNode *>(varDef1->rvalue.get());
         ASSERT_NE(number1, nullptr) << "RHS is not a number: " << input;
@@ -142,7 +142,7 @@ namespace {
         auto [varDef2, orig2] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef2, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef2->name, "varName2") << "Wrong variable name: " << input;
+        EXPECT_EQ(varDef2->lvalue->name, "varName2") << "Wrong variable name: " << input;
 
         const auto *number2 = dynamic_cast<NumberNode *>(varDef2->rvalue.get());
         ASSERT_NE(number2, nullptr) << "RHS is not a number: " << input;
@@ -615,9 +615,7 @@ namespace {
         EXPECT_EQ(protoFn->params[2].ident->name, "arg3") << "Wrong identifier name in: " << input;
         EXPECT_EQ(protoFn->params[3].ident->name, "arg4") << "Wrong identifier name in: " << input;
 
-        if (const auto *retType = dynamic_cast<PrimitiveType *>(protoFn->returnType.get())) {
-            EXPECT_EQ(retType->type, PrimitiveTypeKind::Str) << "Wrong return type: " << input;
-        }
+        EXPECT_EQ(protoFn->returnType.kind, TypeKind::Str) << "Wrong return type: " << input;
     }
 
     TEST_F(FunctionTest, ComplexFunctionCall) {
@@ -725,7 +723,7 @@ namespace {
 
         const auto *stmt1 = dynamic_cast<AssignmentNode *>(fnNode->body->statements[0].get());
         ASSERT_NE(stmt1, nullptr) << "First statement is not a variable definition";
-        EXPECT_EQ(stmt1->name, "v") << "Wrong identifier in first statement";
+        EXPECT_EQ(stmt1->lvalue->name, "v") << "Wrong identifier in first statement";
 
         const auto *stmt2 = dynamic_cast<UnaryOpNode *>(fnNode->body->statements[1].get());
         ASSERT_NE(stmt2, nullptr) << "Second statement is not a unary operation";
@@ -738,9 +736,7 @@ namespace {
         ASSERT_NE(operand, nullptr) << "Invalid operand type";
         EXPECT_EQ(operand->name, "v") << "Wrong operand identifier";
 
-        if (const auto *retType = dynamic_cast<PrimitiveType *>(fnNode->proto->returnType.get())) {
-            EXPECT_EQ(retType->type, PrimitiveTypeKind::Void) << "Wrong return type: " << input;
-        }
+        EXPECT_EQ(fnNode->proto->returnType.kind, TypeKind::Void) << "Wrong return type: " << input;
     }
 
     class IfStatementTest : public testing::Test {};
