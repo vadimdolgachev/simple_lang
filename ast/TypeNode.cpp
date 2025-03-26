@@ -4,12 +4,32 @@
 
 #include "TypeNode.h"
 
+#include <stdexcept>
+
 TypeNode::TypeNode(const TypeKind type,
                    const bool isPointer,
                    std::optional<std::string> typeName):
     kind(type),
     isPointer(isPointer),
     typeName(std::move(typeName)) {}
+
+bool TypeNode::isNumeric() const {
+    return kind == TypeKind::Byte ||
+           kind == TypeKind::Char ||
+           kind == TypeKind::Double ||
+           kind == TypeKind::Integer;
+}
+
+bool TypeNode::isVoid() const {
+    return kind == TypeKind::Void;
+}
+
+TypeNode TypeNode::dereference() const {
+    if (!isPointer) {
+        throw std::logic_error("Not a pointer type");
+    }
+    return {kind, false, typeName};
+}
 
 bool TypeNode::operator==(const TypeNode &other) const {
     return kind == other.kind && isPointer == other.isPointer;

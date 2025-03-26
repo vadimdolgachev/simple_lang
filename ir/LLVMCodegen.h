@@ -8,19 +8,8 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
 
-#include "SymbolTable.h"
+#include "ModuleContext.h"
 #include "ast/BaseNode.h"
-
-struct ModuleContext final {
-    ModuleContext() = default;
-
-    ModuleContext(const ModuleContext &) = delete;
-    ModuleContext &operator=(ModuleContext &) = delete;
-
-    std::unordered_map<std::string, llvm::GlobalVariable *> gValues;
-    SymbolTable symTable;
-    std::unordered_map<std::string, std::unique_ptr<ProtoFunctionStatement>> functions;
-};
 
 class LLVMCodegen final : public NodeVisitor {
 public:

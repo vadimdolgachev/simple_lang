@@ -26,12 +26,10 @@
 #include "Parser.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/TypeNode.h"
-#include "ir/DoubleType.h"
-#include "ir/IntType.h"
+#include "ir/DoubleIRType.h"
+#include "ir/IntIRType.h"
 #include "ir/LLVMCodegen.h"
-
-#include "Parser.h"
-#include "ast/TypeNode.h"
+#include "ir/TypeManager.h"
 
 namespace {
     std::unique_ptr<llvm::LLVMContext> llvmContext;
@@ -60,7 +58,8 @@ namespace {
         cGSCCAnalysisManager = std::make_unique<llvm::CGSCCAnalysisManager>();
         moduleAnalysisManager = std::make_unique<llvm::ModuleAnalysisManager>();
         passInstsCallbacks = std::make_unique<llvm::PassInstrumentationCallbacks>();
-        standardInsts = std::make_unique<llvm::StandardInstrumentations>(*llvmContext, /*DebugLogging*/ true);
+        standardInsts = std::make_unique<llvm::StandardInstrumentations>(
+                *llvmContext, /*DebugLogging*/ true);
         standardInsts->registerCallbacks(*passInstsCallbacks, moduleAnalysisManager.get());
 
         // Add transform passes.
@@ -117,10 +116,10 @@ namespace {
     void executeMain(ModuleContext &cm, const std::unique_ptr<Parser> &parser) {
         while (parser->hasNextNode()) {
             auto node = parser->nextNode();
-            [[maybe_unused]] const auto *const llvmIR = LLVMCodegen::generate(node.get(),
-                                                                              llvmIRBuilder,
-                                                                              llvmModule,
-                                                                              cm);
+            LLVMCodegen::generate(node.get(),
+                                  llvmIRBuilder,
+                                  llvmModule,
+                                  cm);
         }
 
         const auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
@@ -142,32 +141,32 @@ namespace {
         constexpr auto printlnName = "println";
         std::vector<DeclarationNode> params;
         params.emplace_back(std::make_unique<IdentNode>("fmt"),
-                            std::make_unique<PrimitiveType>(PrimitiveTypeKind::Str, false),
+                            TypeNode::makePrimitive(TypeKind::Str, true),
                             std::nullopt);
 
-        cm.functions[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
-                                                                             std::make_unique<PrimitiveType>(
-                                                                                     PrimitiveTypeKind::Void, false),
-                                                                             std::move(params),
-                                                                             true);
+        cm.symTable.insert(std::make_unique<ProtoFunctionStatement>(printlnName,
+            TypeNode::makePrimitive(TypeKind::Void, false),
+            std::move(params),
+            true));
         symbols[mangle(printlnName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
-                llvm::JITSymbolFlags(llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
+                llvm::JITSymbolFlags(
+                        llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
         };
 
         constexpr auto printName = "print";
         params.emplace_back(std::make_unique<IdentNode>("fmt"),
-                            std::make_unique<PrimitiveType>(PrimitiveTypeKind::Str, false),
+                            TypeNode::makePrimitive(TypeKind::Str, true),
                             std::nullopt);
 
-        cm.functions[printlnName] = std::make_unique<ProtoFunctionStatement>(printlnName,
-                                                                             std::make_unique<PrimitiveType>(
-                                                                                     PrimitiveTypeKind::Void, false),
-                                                                             std::move(params),
-                                                                             true);
+        cm.symTable.insert(std::make_unique<ProtoFunctionStatement>(printlnName,
+            TypeNode::makePrimitive(TypeKind::Void, false),
+            std::move(params),
+            true));
         symbols[mangle(printName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrint)>(&libPrint),
-                llvm::JITSymbolFlags(llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
+                llvm::JITSymbolFlags(
+                        llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
         };
 
         ExitOnError(llvmJit->getMainJITDylib().define(absoluteSymbols(std::move(symbols))));
@@ -183,7 +182,8 @@ int main() {
     ModuleContext cm;
     defineEmbeddedFunctions(cm);
 
-    const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(std::make_unique<std::istringstream>(R"(
+    const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
+            std::make_unique<std::istringstream>(R"(
         max: int = 10;
 
         fn validate(sum: int) {

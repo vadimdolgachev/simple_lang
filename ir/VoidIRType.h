@@ -1,28 +1,34 @@
 //
-// Created by vadim on 19.03.25.
+// Created by vadim on 25.03.25.
 //
 
-#ifndef FLOATTYPE_H
-#define FLOATTYPE_H
+#ifndef VOIDIRTYPE_H
+#define VOIDIRTYPE_H
 
-#include "Type.h"
+#include "IRType.h"
 
-class DoubleType final : public Type {
+class VoidIRType final : public IRType {
 public:
-    bool isOperationSupported(TokenType op, const Type *other) const override;
+    VoidIRType() :
+        IRType(false) {}
+
+    [[nodiscard]] bool isOperationSupported(TokenType op, const IRType *other) const override;
+
+    llvm::Type *getLLVMType(llvm::LLVMContext &context) const override;
+
     llvm::Value *createBinaryOp(llvm::IRBuilder<> &builder,
                                 TokenType op,
                                 llvm::Value *lhs,
                                 llvm::Value *rhs,
                                 const std::string &name) const override;
-    bool isUnaryOperationSupported(TokenType op) const override;
+
+    [[nodiscard]] bool isUnaryOperationSupported(TokenType op) const override;
+
     llvm::Value *createUnaryOp(llvm::IRBuilder<> &builder,
                                TokenType op,
                                llvm::Value *operand,
                                llvm::Value *storage,
                                const std::string &name) const override;
-    llvm::Type *getLLVMType(llvm::LLVMContext &context) const override;
 };
 
-
-#endif //FLOATTYPE_H
+#endif //VOIDIRTYPE_H

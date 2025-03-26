@@ -29,6 +29,12 @@ struct TypeNode final {
     bool isPointer;
     std::optional<std::string> typeName;
 
+    [[nodiscard]] bool isNumeric() const;
+
+    [[nodiscard]] bool isVoid() const;
+
+    [[nodiscard]] TypeNode dereference() const;
+
     bool operator==(const TypeNode &other) const;
 
     static TypeNode makePrimitive(TypeKind kind, bool isPtr = false);

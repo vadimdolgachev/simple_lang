@@ -68,15 +68,29 @@ add_executable(simple_ast_parser
         ast/ReturnNode.h
         ast/TernaryOperatorNode.cpp
         ast/TernaryOperatorNode.h
-        ir/Type.cpp
-        ir/Type.h
-        ir/IntType.cpp
-        ir/IntType.h
-        ir/DoubleType.cpp
-        ir/DoubleType.h
+        ast/CondBranch.h
+        ir/IRType.cpp
+        ir/IRType.h
+        ir/IntIRType.cpp
+        ir/IntIRType.h
+        ir/DoubleIRType.cpp
+        ir/DoubleIRType.h
         ir/TypeManager.cpp
         ir/TypeManager.h
-        ast/CondBranch.h)
+        ir/TypeFactory.h
+        ir/ModuleContext.h
+        ir/NumericIRType.h
+        ir/VoidIRType.h
+        ir/BooleanIRType.cpp
+        ir/BooleanIRType.h
+        ir/StrIRType.cpp
+        ir/StrIRType.h
+        ir/ByteIRType.cpp
+        ir/ByteIRType.h
+        ir/CharIRType.cpp
+        ir/CharIRType.h
+        ir/VoidIRType.cpp
+        ir/NumericIRType.cpp)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
