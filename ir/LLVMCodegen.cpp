@@ -264,34 +264,15 @@ void LLVMCodegen::visit(const FunctionNode *const node) {
 }
 
 void LLVMCodegen::visit(const NumberNode *node) {
-    if (node->isFloat) {
-        value_ = llvm::ConstantFP::get(TypeFactory::from(TypeKind::Double, false)->getLLVMType(module->getContext()),
-                                       llvm::APFloat(node->value));
-    } else {
-        value_ = llvm::ConstantInt::get(TypeFactory::from(TypeKind::Integer, false)->getLLVMType(module->getContext()),
-                                        llvm::APInt(32, static_cast<int64_t>(node->value),
-                                                    true));
-    }
+    value_ = TypeFactory::from(node, mc)->createValue(node, *builder, *module);
 }
 
 void LLVMCodegen::visit(const StringNode *node) {
-    auto *strConstant = llvm::ConstantDataArray::getString(module->getContext(), node->str);
-    auto *var = new llvm::GlobalVariable(*module,
-                                         strConstant->getType(),
-                                         true,
-                                         llvm::GlobalValue::ExternalLinkage,
-                                         strConstant,
-                                         "str");
-
-    value_ = builder->CreateInBoundsGEP(strConstant->getType(),
-                                        var,
-                                        {builder->getInt32(0), builder->getInt32(0)});
+    value_ = TypeFactory::from(node, mc)->createValue(node, *builder, *module);
 }
 
 void LLVMCodegen::visit(const BooleanNode *node) {
-    value_ = llvm::ConstantInt::getBool(
-            TypeFactory::from(TypeKind::Boolean, false)->getLLVMType(module->getContext()),
-            node->value);
+    value_ = TypeFactory::from(node, mc)->createValue(node, *builder, *module);
 }
 
 void LLVMCodegen::visit(const BinOpNode *node) {
@@ -613,8 +594,6 @@ void LLVMCodegen::visit(const DeclarationNode *node) {
             initValue = llvm::Constant::getNullValue(llvmType);
         }
     }
-
-    // type->createStore(node->ident, type->defaultValue(), builder);
 
     if (builder->GetInsertBlock() == nullptr) {
         value_ = genGlobalDeclaration(node, llvmType, initValue, module, mc);

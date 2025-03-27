@@ -5,15 +5,16 @@
 #ifndef FLOATIRTYPE_H
 #define FLOATIRTYPE_H
 
-#include "IRType.h"
 #include "NumericIRType.h"
 
 class DoubleIRType final : public NumericIRType {
 public:
     explicit DoubleIRType(bool isPointer = false);
 
+    llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
+
 protected:
-    [[nodiscard]] llvm::Type *getBaseLLVMType(llvm::LLVMContext &context) const override;
+    llvm::Type *getBaseLLVMType(llvm::LLVMContext &context) const override;
 };
 
 

@@ -11,9 +11,10 @@ class IntIRType final : public NumericIRType {
 public:
     explicit IntIRType(bool isPointer = false);
 
-protected:
-    [[nodiscard]] llvm::Type* getBaseLLVMType(llvm::LLVMContext& context) const override;
+    llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
 
+protected:
+    llvm::Type *getBaseLLVMType(llvm::LLVMContext &context) const override;
 };
 
 #endif // INTIRTYPE_H

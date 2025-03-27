@@ -11,8 +11,10 @@ class CharIRType final : public NumericIRType {
 public:
     explicit CharIRType(bool isPointer = false);
 
+    llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
+
 protected:
-    [[nodiscard]] llvm::Type *getBaseLLVMType(llvm::LLVMContext &context) const override;
+    llvm::Type *getBaseLLVMType(llvm::LLVMContext &context) const override;
 };
 
 

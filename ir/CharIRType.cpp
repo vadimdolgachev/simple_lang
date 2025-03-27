@@ -4,8 +4,15 @@
 
 #include "CharIRType.h"
 
+
 CharIRType::CharIRType(const bool isPointer):
     NumericIRType(isPointer, true, false) {}
+
+llvm::Value * CharIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+    // return llvm::ConstantInt::get(getLLVMType(context),
+    //                               static_cast<int8_t>(charNode->value));
+    throw std::logic_error("Not supoported");
+}
 
 llvm::Type *CharIRType::getBaseLLVMType(llvm::LLVMContext &context) const {
     return llvm::Type::getInt8Ty(context);

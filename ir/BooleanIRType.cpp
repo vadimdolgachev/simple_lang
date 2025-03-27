@@ -4,6 +4,8 @@
 
 #include "BooleanIRType.h"
 
+#include "ast/BooleanNode.h"
+
 BooleanIRType::BooleanIRType(bool isPointer):
     IRType(isPointer) {}
 
@@ -25,7 +27,7 @@ llvm::Value *BooleanIRType::createBinaryOp(llvm::IRBuilder<> &builder,
     throw std::logic_error("Not implemented");
 }
 
-bool BooleanIRType::isUnaryOperationSupported(TokenType  /*op*/) const {
+bool BooleanIRType::isUnaryOperationSupported(TokenType /*op*/) const {
     return false;
 }
 
@@ -35,6 +37,11 @@ llvm::Value *BooleanIRType::createUnaryOp(llvm::IRBuilder<> &builder,
                                           llvm::Value *storage,
                                           const std::string &name) const {
     return nullptr;
+}
+
+llvm::Value *BooleanIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+    const auto *const boolNode = dynamic_cast<const BooleanNode *>(node);
+    return llvm::ConstantInt::getBool(getLLVMType(module.getContext()),boolNode->value);
 }
 
 llvm::Type *BooleanIRType::getLLVMType(llvm::LLVMContext &context) const {

@@ -4,6 +4,8 @@
 
 #include "StrIRType.h"
 
+#include "ast/StringNode.h"
+
 StrIRType::StrIRType(const bool isPointer):
     IRType(isPointer) {
     if (!isPointer) {
@@ -56,11 +58,11 @@ bool StrIRType::isUnaryOperationSupported(TokenType op) const {
     return false;
 }
 
-llvm::Value * StrIRType::createUnaryOp(llvm::IRBuilder<> &builder,
-        TokenType op,
-        llvm::Value *operand,
-        llvm::Value *storage,
-        const std::string &name) const {
+llvm::Value *StrIRType::createUnaryOp(llvm::IRBuilder<> &builder,
+                                      TokenType op,
+                                      llvm::Value *operand,
+                                      llvm::Value *storage,
+                                      const std::string &name) const {
     // if (op == TokenType::SizeOf) {
     //     llvm::Function *strlenFunc = getOrDeclareStrlen(
     //             builder.GetInsertBlock()->getModule()
@@ -70,11 +72,22 @@ llvm::Value * StrIRType::createUnaryOp(llvm::IRBuilder<> &builder,
     throw std::invalid_argument("Unsupported unary operation");
 }
 
-llvm::Type * StrIRType::getLLVMType(llvm::LLVMContext &context) const {
+llvm::Type *StrIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
 }
 
-llvm::Function * StrIRType::getOrDeclareStrcmp(llvm::Module *module) {
+llvm::Value *StrIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+    const auto *strNode = dynamic_cast<const StringNode *>(node);
+    auto *gv = new llvm::GlobalVariable(module,
+                                getLLVMType(module.getContext()),
+                                true,
+                                llvm::GlobalValue::ExternalLinkage,
+                                llvm::ConstantDataArray::getString(module.getContext(), strNode->str),
+                                ".str");
+    return llvm::ConstantExpr::getBitCast(gv, getLLVMType(module.getContext()));
+}
+
+llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) {
     // llvm::Function *func = module->getFunction("strcmp");
     // if (!func) {
     //     llvm::FunctionType *funcType = llvm::FunctionType::get(
@@ -94,10 +107,10 @@ llvm::Function * StrIRType::getOrDeclareStrcmp(llvm::Module *module) {
     return nullptr;
 }
 
-llvm::Function * StrIRType::getOrDeclareStrcat(llvm::Module *module) {
+llvm::Function *StrIRType::getOrDeclareStrcat(llvm::Module *module) {
     return nullptr;
 }
 
-llvm::Function * StrIRType::getOrDeclareStrlen(llvm::Module *module) {
+llvm::Function *StrIRType::getOrDeclareStrlen(llvm::Module *module) {
     return nullptr;
 }
