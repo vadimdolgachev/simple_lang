@@ -115,3 +115,7 @@ void NodePrinter::visit(const ReturnNode *node) {
 void NodePrinter::visit(const TernaryOperatorNode *node) {
     ostream << "TernaryOperatorNode";
 }
+
+void NodePrinter::visit(const MethodCallNode *node) {
+    ostream << "MethodCallNode";
+}

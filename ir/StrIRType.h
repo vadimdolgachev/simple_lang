@@ -33,12 +33,20 @@ public:
 
     llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
 
+    llvm::Value *createMethodCall(llvm::IRBuilder<> &builder,
+                                  const std::string &method,
+                                  llvm::Value *object,
+                                  const std::vector<llvm::Value *> &args,
+                                  const std::string &name) const override;
+
+    const MethodLists &methodList() const override;
+
 private:
-    static llvm::Function *getOrDeclareStrcmp(llvm::Module *module);
+    llvm::Function *getOrDeclareStrcmp(llvm::Module *module) const;
 
-    static llvm::Function *getOrDeclareStrcat(llvm::Module *module);
+    llvm::Function *getOrDeclareStrlen(llvm::Module *module) const;
 
-    static llvm::Function *getOrDeclareStrlen(llvm::Module *module);
+    MethodLists methods;
 };
 
 

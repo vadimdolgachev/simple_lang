@@ -19,6 +19,7 @@
 #include "ast/AssignmentNode.h"
 #include "ast/NumberNode.h"
 #include "ast/BinOpNode.h"
+#include "ast/MethodCallNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/TypeNode.h"
@@ -107,18 +108,29 @@ public:
         typeNode = trueType;
     }
 
-    void visit(const FunctionCallNode *node) override {}
-    void visit(const FunctionNode *node) override {}
-    void visit(const ProtoFunctionStatement *node) override {}
-    void visit(const IfStatement *node) override {}
-    void visit(const LoopCondNode *node) override {}
-    void visit(const BlockNode *node) override {}
+    void visit(const FunctionCallNode *node) override {
+        if (const auto *func = mc.symTable.lookupFunction(node->ident->name);
+            func != nullptr) {
+            typeNode = func->returnType;
+        } else {
+            throw std::logic_error("Undefined function: " + node->ident->name);
+        }
+    }
+
+    void visit(const FunctionNode *node) override {
+        typeNode = node->proto->returnType;
+    }
+
+    void visit(const MethodCallNode *node) override {
+        const auto objectType = from(node->object.get(), mc);
+        if (const auto *method = objectType->findMethodByName(node->method->ident->name)) {
+            typeNode = method->returnType;
+        }
+    }
 
     void visit(const DeclarationNode *node) override {
         typeNode = node->type;
     }
-
-    void visit(const ReturnNode *node) override {}
 
     [[nodiscard]] std::unique_ptr<IRType> create() const {
         return from(typeNode.value());
@@ -166,6 +178,12 @@ public:
     static std::unique_ptr<IRType> from(const TypeNode &typeNode) {
         return from(typeNode.kind, typeNode.isPointer);
     }
+
+    void visit(const ProtoFunctionStatement *node) override {}
+    void visit(const IfStatement *node) override {}
+    void visit(const LoopCondNode *node) override {}
+    void visit(const BlockNode *node) override {}
+    void visit(const ReturnNode *node) override {}
 
 private:
     explicit TypeFactory(const ModuleContext &mc):

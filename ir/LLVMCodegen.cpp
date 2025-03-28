@@ -26,6 +26,7 @@
 #include "IRType.h"
 #include "TypeFactory.h"
 #include "ast/LoopCondNode.h"
+#include "ast/MethodCallNode.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
 
@@ -313,9 +314,9 @@ void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
                                                   module.get());
     // function->addFnAttr(llvm::Attribute::NoUnwind);
     // function->addRetAttr(llvm::Attribute::ZExt);
-    for (auto *it = function->arg_begin(); it != function->arg_end(); ++it) {
-        const auto index = std::distance(function->arg_begin(), it);
-        it->setName(node->params[index].ident->name);
+    for (auto *arg = function->arg_begin(); arg != function->arg_end(); ++arg) {
+        const auto index = std::distance(function->arg_begin(), arg);
+        arg->setName(node->params[index].ident->name);
     }
     value_ = function;
 }
@@ -639,6 +640,20 @@ void LLVMCodegen::visit(const TernaryOperatorNode *node) {
     phi->addIncoming(trueVal, thenBB);
     phi->addIncoming(falseVal, elseBB);
     value_ = phi;
+}
+
+void LLVMCodegen::visit(const MethodCallNode *node) {
+    llvm::Value *object = generate(node->object.get(), builder, module, mc);
+
+    const auto objectType = TypeFactory::from(node->object.get(), mc);
+    if (!objectType->isMethodSupported(node->method->ident->name)) {
+        throw std::runtime_error("Method not supported");
+    }
+    value_ = objectType->createMethodCall(*builder,
+                                          node->method->ident->name,
+                                          object,
+                                          {},
+                                          "str.len");
 }
 
 llvm::Value *LLVMCodegen::value() const {

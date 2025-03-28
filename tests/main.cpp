@@ -22,6 +22,7 @@
 #include "ast/NumberNode.h"
 #include "ast/StringNode.h"
 #include "ast/LoopCondNode.h"
+#include "ast/MethodCallNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
@@ -102,6 +103,45 @@ namespace {
 
     TEST_F(VarDefinitionTest, AssignFloatNumber) {
         const std::string input = "varName=1.0;";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
+        ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
+
+        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
+
+        const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
+        ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
+        EXPECT_FLOAT_EQ(number->value, 1.0) << "Wrong number value: " << input;
+        EXPECT_EQ(number->isFloat, true) << "Wrong number type: " << input;
+    }
+
+
+    TEST_F(VarDefinitionTest, AssignFloat2Number) {
+        const std::string input = "varName=.5;";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
+        ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
+
+        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
+
+        const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
+        ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
+        EXPECT_FLOAT_EQ(number->value, 0.5) << "Wrong number value: " << input;
+        EXPECT_EQ(number->isFloat, true) << "Wrong number type: " << input;
+    }
+
+    TEST_F(VarDefinitionTest, AssignFloat3Number) {
+        const std::string input = "varName=1.;";
         const auto parser = std::make_unique<Parser>(
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
 
@@ -1003,6 +1043,19 @@ namespace {
 
         const auto *const ternary = dynamic_cast<TernaryOperatorNode *>(declNode->init.value().get());
         ASSERT_NE(ternary, nullptr) << "The value of Init must be of type TernaryOperatorNode";
+    }
+
+    TEST_F(NodesTest, MethodCallStringNode) {
+        const std::string input = R"("hello".len();)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [methodCall, orig] = tryCast<MethodCallNode>(std::move(node));
+        ASSERT_NE(methodCall, nullptr) << "Not a MethodCallNode node: " << input;
+        EXPECT_EQ("len", methodCall->method->ident->name) << "Wrong function name: " << input;
     }
 
 } // namespace

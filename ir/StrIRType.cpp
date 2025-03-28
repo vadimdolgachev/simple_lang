@@ -11,16 +11,17 @@ StrIRType::StrIRType(const bool isPointer):
     if (!isPointer) {
         throw std::invalid_argument("String type must be a pointer");
     }
+    methods.insert(std::make_unique<ProtoFunctionStatement>("len",
+                                                             TypeNode::makePrimitive(TypeKind::Integer, false),
+                                                             std::vector<DeclarationNode>{}));
 }
 
-bool StrIRType::isOperationSupported(TokenType op, const IRType *rhs) const {
+bool StrIRType::isOperationSupported(const TokenType op, const IRType *rhs) const {
     if (!dynamic_cast<const StrIRType *>(rhs)) {
         return false;
     }
 
-    return op == TokenType::Equal ||
-           op == TokenType::NotEqual ||
-           op == TokenType::Plus;
+    return op == TokenType::Equal || op == TokenType::NotEqual;
 }
 
 llvm::Value *StrIRType::createBinaryOp(llvm::IRBuilder<> &builder,
@@ -33,20 +34,17 @@ llvm::Value *StrIRType::createBinaryOp(llvm::IRBuilder<> &builder,
     switch (op) {
         case TokenType::Equal:
         case TokenType::NotEqual: {
-            llvm::Function *strcmpFunc = getOrDeclareStrcmp(module);
-            llvm::Value *cmpResult = builder.CreateCall(
-                    strcmpFunc, {lhs, rhs}, "strcmp.result");
-            llvm::Value *zero = llvm::ConstantInt::get(builder.getInt32Ty(), 0);
-            llvm::Value *result = builder.CreateICmp(
+            auto *const strcmpFunc = getOrDeclareStrcmp(module);
+            auto *const cmpResult = builder.CreateCall(strcmpFunc,
+                                                       {lhs, rhs},
+                                                       "strcmp.result");
+            auto *const zero = llvm::ConstantInt::get(builder.getInt32Ty(), 0);
+            auto *const result = builder.CreateICmp(
                     op == TokenType::Equal ? llvm::CmpInst::ICMP_EQ : llvm::CmpInst::ICMP_NE,
                     cmpResult,
                     zero,
                     name);
             return result;
-        }
-        case TokenType::Plus: {
-            llvm::Function *strcatFunc = getOrDeclareStrcat(module);
-            return builder.CreateCall(strcatFunc, {lhs, rhs}, name);
         }
         default:
             throw std::invalid_argument("Unsupported string operation");
@@ -54,7 +52,6 @@ llvm::Value *StrIRType::createBinaryOp(llvm::IRBuilder<> &builder,
 }
 
 bool StrIRType::isUnaryOperationSupported(TokenType op) const {
-    // return op == TokenType::SizeOf;
     return false;
 }
 
@@ -63,12 +60,6 @@ llvm::Value *StrIRType::createUnaryOp(llvm::IRBuilder<> &builder,
                                       llvm::Value *operand,
                                       llvm::Value *storage,
                                       const std::string &name) const {
-    // if (op == TokenType::SizeOf) {
-    //     llvm::Function *strlenFunc = getOrDeclareStrlen(
-    //             builder.GetInsertBlock()->getModule()
-    //             );
-    //     return builder.CreateCall(strlenFunc, {operand}, name);
-    // }
     throw std::invalid_argument("Unsupported unary operation");
 }
 
@@ -79,38 +70,49 @@ llvm::Type *StrIRType::getLLVMType(llvm::LLVMContext &context) const {
 llvm::Value *StrIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
     const auto *strNode = dynamic_cast<const StringNode *>(node);
     auto *gv = new llvm::GlobalVariable(module,
-                                getLLVMType(module.getContext()),
-                                true,
-                                llvm::GlobalValue::ExternalLinkage,
-                                llvm::ConstantDataArray::getString(module.getContext(), strNode->str),
-                                ".str");
+                                        getLLVMType(module.getContext()),
+                                        true,
+                                        llvm::GlobalValue::PrivateLinkage,
+                                        llvm::ConstantDataArray::getString(module.getContext(), strNode->str),
+                                        ".str");
     return llvm::ConstantExpr::getBitCast(gv, getLLVMType(module.getContext()));
 }
 
-llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) {
-    // llvm::Function *func = module->getFunction("strcmp");
-    // if (!func) {
-    //     llvm::FunctionType *funcType = llvm::FunctionType::get(
-    //             llvm::Type::getInt32Ty(module->getContext()),
-    //             {llvm::Type::getInt8PtrTy(module->getContext()),
-    //              llvm::Type::getInt8PtrTy(module->getContext())},
-    //             false
-    //             );
-    //     func = llvm::Function::Create(
-    //             funcType,
-    //             llvm::Function::ExternalLinkage,
-    //             "strcmp",
-    //             module
-    //             );
-    // }
-    // return func;
-    return nullptr;
+llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,
+                                         const std::string &method,
+                                         llvm::Value *object,
+                                         const std::vector<llvm::Value *> &args,
+                                         const std::string &name) const {
+    if (method == "len") {
+        if (!args.empty()) {
+            throw std::invalid_argument("len() does not take arguments");
+        }
+        auto *const strlenFunc = getOrDeclareStrlen(builder.GetInsertBlock()->getModule());
+        return builder.CreateCall(strlenFunc, {object}, name);
+    }
+    return IRType::createMethodCall(builder, method, object, args, name);
 }
 
-llvm::Function *StrIRType::getOrDeclareStrcat(llvm::Module *module) {
-    return nullptr;
+const IRType::MethodLists & StrIRType::methodList() const {
+    return methods;
 }
 
-llvm::Function *StrIRType::getOrDeclareStrlen(llvm::Module *module) {
-    return nullptr;
+llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) const {
+    auto &context = module->getContext();
+    auto *const funcType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context),
+                                                   {getLLVMType(context), getLLVMType(context)},
+                                                   false);
+    return llvm::cast<llvm::Function>(
+            module->getOrInsertFunction("strcmp", funcType).getCallee()
+            );
+}
+
+llvm::Function *StrIRType::getOrDeclareStrlen(llvm::Module *module) const {
+    auto &context = module->getContext();
+    auto *const funcType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context),
+                                                   {getLLVMType(context)},
+                                                   false);
+    return llvm::cast<llvm::Function>(
+            module->getOrInsertFunction("strlen", funcType).getCallee()
+            );
 }

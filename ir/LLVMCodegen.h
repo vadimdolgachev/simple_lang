@@ -49,6 +49,8 @@ public:
 
     void visit(const TernaryOperatorNode *node) override;
 
+    void visit(const MethodCallNode *node) override;
+
     [[nodiscard]] llvm::Value *value() const;
 
     static llvm::Value *generate(const BaseNode *const node,

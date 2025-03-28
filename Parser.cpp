@@ -15,6 +15,7 @@
 #include "ast/NumberNode.h"
 #include "ast/LoopCondNode.h"
 #include "ast/BlockNode.h"
+#include "ast/MethodCallNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
@@ -375,6 +376,16 @@ std::unique_ptr<ExpressionNode> Parser::parseFactor() {
         return expr;
     }
     if (auto expr = tryParseLiteral()) {
+        if (lexer->currToken().type == TokenType::Dot) {
+            lexer->nextToken();
+            auto ident = tryParseIdentifier();
+            auto [funCall, orig] = tryCast<FunctionCallNode>(std::move(ident));
+            if (funCall != nullptr) {
+                return std::make_unique<MethodCallNode>(std::move(expr), std::move(funCall));
+            }
+            throw std::runtime_error(
+                    makeErrorMsg("Unexpected expression: " + orig->toString()));
+        }
         return expr;
     }
     if (auto expr = tryParseIdentifier()) {
@@ -413,7 +424,7 @@ std::unique_ptr<NumberNode> Parser::parseNumber() const {
             numberStr.data() + numberStr.size(),
             number);
     if (ec != std::errc() || ptr != numberStr.data() + numberStr.size()) {
-        throw makeErrorMsg("Invalid numeric literal: " + numberStr);
+        throw std::logic_error(makeErrorMsg("Invalid numeric literal: " + numberStr));
     }
     const bool isFloat = numberStr.find_first_of(".eE") != std::string::npos;
     auto node = std::make_unique<NumberNode>(sign * number, isFloat);

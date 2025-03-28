@@ -14,6 +14,8 @@
 
 class IRType {
 public:
+    using MethodLists = std::unordered_set<std::unique_ptr<ProtoFunctionStatement>>;
+
     explicit IRType(bool isPointer);
 
     virtual ~IRType() = default;
@@ -40,6 +42,18 @@ public:
                                  llvm::Function *function);
 
     virtual llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) = 0;
+
+    virtual const MethodLists &methodList() const;
+
+    [[nodiscard]] virtual bool isMethodSupported(const std::string &method) const;
+
+    const ProtoFunctionStatement *findMethodByName(const std::string &methodName) const;
+
+    virtual llvm::Value *createMethodCall(llvm::IRBuilder<> &builder,
+                                          const std::string &method,
+                                          llvm::Value *object,
+                                          const std::vector<llvm::Value *> &args,
+                                          const std::string &name) const;
 
 protected:
     bool isPointer;

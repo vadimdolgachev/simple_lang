@@ -14,17 +14,17 @@ namespace {
         return v.val == '\n';
     };
     const std::unordered_map<std::string, TokenType> KEYWORDS = {
-        {"fn", TokenType::FunctionDefinition},
-        {"if", TokenType::If},
-        {"else", TokenType::Else},
-        {"for", TokenType::ForLoop},
-        {"while", TokenType::WhileLoop},
-        {"do", TokenType::DoLoop},
-        {"true", TokenType::Boolean},
-        {"false", TokenType::Boolean},
-        {"return", TokenType::Return}
+            {"fn", TokenType::FunctionDefinition},
+            {"if", TokenType::If},
+            {"else", TokenType::Else},
+            {"for", TokenType::ForLoop},
+            {"while", TokenType::WhileLoop},
+            {"do", TokenType::DoLoop},
+            {"true", TokenType::Boolean},
+            {"false", TokenType::Boolean},
+            {"return", TokenType::Return}
     };
-}  // namespace
+} // namespace
 
 void Lexer::readNextChar() {
     do {
@@ -66,7 +66,7 @@ Token Lexer::fetchNextToken() {
         resultToken = TokenType::Colon;
     } else if (currChar.val == EOF) {
         resultToken = TokenType::Eos;
-    } else if (isCharOfNumber(currChar.val)) {
+    } else if (std::isdigit(currChar.val) || (currChar.val == '.' && std::isdigit(getPeekChar()))) {
         // parse number
         resultToken = TokenType::Number;
         tokenValue = parseNumber();
@@ -80,6 +80,8 @@ Token Lexer::fetchNextToken() {
         resultToken = TokenType::RightCurlyBracket;
     } else if (currChar.val == ',') {
         resultToken = TokenType::Comma;
+    } else if (currChar.val == '.') {
+        resultToken = TokenType::Dot;
     } else if (currChar.val == '?') {
         resultToken = TokenType::Question;
     } else if (currChar.val == '=') {
@@ -198,7 +200,7 @@ std::string Lexer::parseNumber() {
         }
 
         if (isCharOfNumber(currChar.val)) {
-            tokenValue.push_back(static_cast<char>(currChar.val));
+            tokenValue.push_back(currChar.val);
             // last symbol of number
             if (ispunct(getPeekChar()) && getPeekChar() != '.') {
                 break;

@@ -184,48 +184,11 @@ int main() {
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
             std::make_unique<std::istringstream>(R"(
-        max: int = 10;
-
-        fn validate(sum: int) {
-            if (sum == max * (max - 1) / 2) {
-                println("Success sum=%d", sum);
-            } else {
-                println("Fail");
-            }
+        fn foo(): int {
+            return 10;
         }
-
-        fn forTest() {
-            sum: int = 0;
-            for (i: int = 0; i < max; ++i) {
-                sum = sum + i;
-            }
-            validate(sum);
-        }
-
-        fn whileTest() {
-            sum: int = 0;
-            i: int = 0;
-            while (i < max) {
-                sum = sum + i;
-                ++i;
-            }
-            validate(sum);
-        }
-
-        fn doWhileTest() {
-            sum: int = 0;
-            i: int = 0;
-            do {
-                sum = sum + i;
-                ++i;
-            } while (i < max);
-            validate(sum);
-        }
-
         fn main() {
-            forTest();
-            whileTest();
-            doWhileTest();
+            println("str len=%d", "1235678".len());
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();
