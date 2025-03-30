@@ -70,6 +70,7 @@ enum class TokenType : std::uint8_t {
     Question,           // ?
 
     // Special
+    Comment,   // Comment
     Eos,       // End of Stream
     Unknown    // Unknown token
 };
@@ -199,6 +200,9 @@ inline std::string toString(const TokenType token) {
         case TokenType::Unknown: {
             return "Unknown";
         }
+        case TokenType::Comment: {
+            return "Comment";
+        }
         default: {
             return "Invalid";
         }
@@ -223,6 +227,7 @@ public:
     struct Character final {
         char val;
         int32_t pos;
+        int32_t lineNumber;
     };
 
     explicit Lexer(std::unique_ptr<std::istream> stream);
@@ -248,12 +253,11 @@ private:
 
     [[nodiscard]] int getPeekChar() const;
 
-    static bool isCharOfNumber(int ch);
-
     [[nodiscard]] std::string parseNumber();
+    [[nodiscard]] std::string parseComment();
 
     std::unique_ptr<std::istream> stream;
-    Character currChar = {EOF, 0};
+    Character currChar = {EOF, 0, 0};
     std::deque<Token> tokenQueue;
     std::deque<Character> textQueue;
     size_t currTokIndex = 0;

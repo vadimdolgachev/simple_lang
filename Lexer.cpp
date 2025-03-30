@@ -8,6 +8,13 @@
 #include <iostream>
 #include <unordered_map>
 
+struct HashArray {
+    size_t operator()(const std::array<char, 2> &arr) const noexcept {
+        constexpr auto prime = 31;
+        return (arr[0] * prime) + arr[1];
+    }
+};
+
 namespace {
     constexpr uint32_t MAX_READ_LINES = 2;
     const auto isLineSepPred = [](const auto &v) {
@@ -23,6 +30,38 @@ namespace {
             {"true", TokenType::Boolean},
             {"false", TokenType::Boolean},
             {"return", TokenType::Return}
+    };
+    const std::unordered_map<char, TokenType> SINGLE_TOKENS = {
+            {'(', TokenType::LeftParenthesis},
+            {')', TokenType::RightParenthesis},
+            {'{', TokenType::LeftCurlyBracket},
+            {'}', TokenType::RightCurlyBracket},
+            {',', TokenType::Comma},
+            {'.', TokenType::Dot},
+            {'?', TokenType::Question},
+            {'*', TokenType::Star},
+            {'/', TokenType::Slash},
+            {';', TokenType::Semicolon},
+            {':', TokenType::Colon},
+            {'|', TokenType::BitwiseOr},
+            {'&', TokenType::BitwiseAnd},
+            {'>', TokenType::RightAngleBracket},
+            {'<', TokenType::LeftAngleBracket},
+            {'!', TokenType::LogicalNegation},
+            {'-', TokenType::Minus},
+            {'+', TokenType::Plus},
+            {'=', TokenType::Assignment},
+    };
+    const std::unordered_map<std::array<char, 2>, TokenType, HashArray> DOUBLE_TOKENS = {
+            {{'=', '='}, TokenType::Equal},
+            {{'!', '='}, TokenType::NotEqual},
+            {{'>', '='}, TokenType::RightAngleBracketEqual},
+            {{'<', '='}, TokenType::LeftAngleBracketEqual},
+            {{'+', '+'}, TokenType::IncrementOperator},
+            {{'-', '-'}, TokenType::DecrementOperator},
+            {{'|', '|'}, TokenType::LogicalOr},
+            {{'&', '&'}, TokenType::LogicalAnd},
+            {{'/', '/'}, TokenType::Comment},
     };
 } // namespace
 
@@ -60,90 +99,18 @@ Token Lexer::fetchNextToken() {
     const auto startTokenPosition = currChar.pos;
     auto resultToken = TokenType::Unknown;
 
-    if (currChar.val == ';') {
-        resultToken = TokenType::Semicolon;
-    } else if (currChar.val == ':') {
-        resultToken = TokenType::Colon;
-    } else if (currChar.val == EOF) {
+    if (currChar.val == EOF) {
         resultToken = TokenType::Eos;
     } else if (std::isdigit(currChar.val) || (currChar.val == '.' && std::isdigit(getPeekChar()))) {
         // parse number
         resultToken = TokenType::Number;
         tokenValue = parseNumber();
-    } else if (currChar.val == '(') {
-        resultToken = TokenType::LeftParenthesis;
-    } else if (currChar.val == ')') {
-        resultToken = TokenType::RightParenthesis;
-    } else if (currChar.val == '{') {
-        resultToken = TokenType::LeftCurlyBracket;
-    } else if (currChar.val == '}') {
-        resultToken = TokenType::RightCurlyBracket;
-    } else if (currChar.val == ',') {
-        resultToken = TokenType::Comma;
-    } else if (currChar.val == '.') {
-        resultToken = TokenType::Dot;
-    } else if (currChar.val == '?') {
-        resultToken = TokenType::Question;
-    } else if (currChar.val == '=') {
-        if (getPeekChar() == '=') {
-            readNextChar();
-            resultToken = TokenType::Equal;
-        } else {
-            resultToken = TokenType::Assignment;
-        }
-    } else if (currChar.val == '+') {
-        if (getPeekChar() == '+') {
-            readNextChar();
-            resultToken = TokenType::IncrementOperator;
-        } else {
-            resultToken = TokenType::Plus;
-        }
-    } else if (currChar.val == '-') {
-        if (getPeekChar() == '-') {
-            readNextChar();
-            resultToken = TokenType::DecrementOperator;
-        } else {
-            resultToken = TokenType::Minus;
-        }
-    } else if (currChar.val == '*') {
-        resultToken = TokenType::Star;
-    } else if (currChar.val == '/') {
-        resultToken = TokenType::Slash;
-    } else if (currChar.val == '<') {
-        if (getPeekChar() == '=') {
-            readNextChar();
-            resultToken = TokenType::LeftAngleBracketEqual;
-        } else {
-            resultToken = TokenType::LeftAngleBracket;
-        }
-    } else if (currChar.val == '>') {
-        if (getPeekChar() == '=') {
-            readNextChar();
-            resultToken = TokenType::RightAngleBracketEqual;
-        } else {
-            resultToken = TokenType::RightAngleBracket;
-        }
-    } else if (currChar.val == '!') {
-        if (getPeekChar() == '=') {
-            readNextChar();
-            resultToken = TokenType::NotEqual;
-        } else {
-            resultToken = TokenType::LogicalNegation;
-        }
-    } else if (currChar.val == '&') {
-        if (getPeekChar() == '&') {
-            readNextChar();
-            resultToken = TokenType::LogicalAnd;
-        } else {
-            resultToken = TokenType::BitwiseAnd;
-        }
-    } else if (currChar.val == '|') {
-        if (getPeekChar() == '|') {
-            readNextChar();
-            resultToken = TokenType::LogicalOr;
-        } else {
-            resultToken = TokenType::BitwiseOr;
-        }
+    } else if (const auto it = DOUBLE_TOKENS.find({currChar.val, static_cast<char>(getPeekChar())});
+        it != DOUBLE_TOKENS.end()) {
+        resultToken = it->second;
+        readNextChar();
+    } else if (const auto res = SINGLE_TOKENS.find(currChar.val); res != SINGLE_TOKENS.end()) {
+        resultToken = res->second;
     } else {
         // parse identifiers
         if (std::isalpha(currChar.val) || currChar.val == '"') {
@@ -175,6 +142,10 @@ Token Lexer::fetchNextToken() {
         }
     }
 
+    if (resultToken == TokenType::Comment) {
+        tokenValue = parseComment();
+    }
+
     pushToken({resultToken, tokenValue, startTokenPosition - 1, currChar.pos - 1});
 
     return currToken();
@@ -184,22 +155,10 @@ int Lexer::getPeekChar() const {
     return stream->peek();
 }
 
-bool Lexer::isCharOfNumber(const int ch) {
-    return std::isdigit(ch) || ch == '.';
-}
-
 std::string Lexer::parseNumber() {
     std::string tokenValue;
     do {
-        if (isspace(currChar.val)) {
-            if (ispunct(getPeekChar())) {
-                break;
-            }
-            readNextChar();
-            continue;
-        }
-
-        if (isCharOfNumber(currChar.val)) {
+        if (std::isdigit(currChar.val) || currChar.val == '.') {
             tokenValue.push_back(currChar.val);
             // last symbol of number
             if (ispunct(getPeekChar()) && getPeekChar() != '.') {
@@ -211,6 +170,19 @@ std::string Lexer::parseNumber() {
         }
     } while (hasNextToken());
     return tokenValue;
+}
+
+std::string Lexer::parseComment() {
+    readNextChar();
+    std::string comment;
+    const auto isAllowChar = [](const int c) {
+        return c != '\n' && c != EOF;
+    };
+    while (isAllowChar(currChar.val)) {
+        comment.push_back(currChar.val);
+        readNextChar();
+    }
+    return comment;
 }
 
 Lexer::Lexer(std::unique_ptr<std::istream> stream):

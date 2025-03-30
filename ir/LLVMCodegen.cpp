@@ -656,6 +656,10 @@ void LLVMCodegen::visit(const MethodCallNode *node) {
                                           "str.len");
 }
 
+void LLVMCodegen::visit(const CommentNode *node) {
+    // skip comments
+}
+
 llvm::Value *LLVMCodegen::value() const {
     return value_;
 }

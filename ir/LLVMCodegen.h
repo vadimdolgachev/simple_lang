@@ -51,6 +51,8 @@ public:
 
     void visit(const MethodCallNode *node) override;
 
+    void visit(const CommentNode *node) override;
+
     [[nodiscard]] llvm::Value *value() const;
 
     static llvm::Value *generate(const BaseNode *const node,

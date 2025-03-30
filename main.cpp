@@ -26,10 +26,7 @@
 #include "Parser.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/TypeNode.h"
-#include "ir/DoubleIRType.h"
-#include "ir/IntIRType.h"
 #include "ir/LLVMCodegen.h"
-#include "ir/TypeManager.h"
 
 namespace {
     std::unique_ptr<llvm::LLVMContext> llvmContext;

@@ -14,6 +14,7 @@
 #include "ast/BaseNode.h"
 #include "ast/AssignmentNode.h"
 #include "ast/BooleanNode.h"
+#include "ast/CommentNode.h"
 #include "ast/IdentNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/FunctionCallNode.h"
@@ -1056,6 +1057,19 @@ namespace {
         auto [methodCall, orig] = tryCast<MethodCallNode>(std::move(node));
         ASSERT_NE(methodCall, nullptr) << "Not a MethodCallNode node: " << input;
         EXPECT_EQ("len", methodCall->method->ident->name) << "Wrong function name: " << input;
+    }
+
+    TEST_F(NodesTest, CommentNode) {
+        const std::string input = R"(// comment text)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [commentNode, orig] = tryCast<CommentNode>(std::move(node));
+        ASSERT_NE(commentNode, nullptr) << "Not a CommentNode node: " << input;
+        EXPECT_EQ(" comment text", commentNode->text) << "Wrong comment text: " << input;
     }
 
 } // namespace

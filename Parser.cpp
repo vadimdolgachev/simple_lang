@@ -15,6 +15,7 @@
 #include "ast/NumberNode.h"
 #include "ast/LoopCondNode.h"
 #include "ast/BlockNode.h"
+#include "ast/CommentNode.h"
 #include "ast/MethodCallNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
@@ -61,6 +62,7 @@ std::unique_ptr<BaseNode> Parser::nextNode() {
         return assignment;
     }
     const auto token = lexer->currToken().type;
+    const auto value = lexer->currToken().value;
     if (token == TokenType::FunctionDefinition) {
         lexer->nextToken();
         return parseFunctionDef();
@@ -85,6 +87,10 @@ std::unique_ptr<BaseNode> Parser::nextNode() {
     if (token == TokenType::Return) {
         lexer->nextToken();
         return parseReturnStatement();
+    }
+    if (token == TokenType::Comment) {
+        lexer->nextToken();
+        return std::make_unique<CommentNode>(value.value_or(""));
     }
     // Expressions
     auto result = parseExpr();
@@ -568,14 +574,16 @@ std::unique_ptr<ExpressionNode> Parser::parseTernaryOperator(std::unique_ptr<Exp
 std::string Parser::makeErrorMsg(const std::string &msg) const {
     std::string lines;
     uint32_t startLinePos = 0;
-    for (const auto &[ch, pos]: lexer->readText()) {
-        if (ch == '\n') {
+    for (const auto &[ch, pos, lineNumber]: lexer->readText()) {
+        if (ch == '\n' && pos < lexer->currToken().startPosition) {
             startLinePos = pos + 1;
         }
         lines.push_back(ch);
     }
     const auto padding = lexer->currToken().startPosition - startLinePos;
-    lines.push_back('\n');
+    if (lines.size() > 0 && lines[lines.size() - 1] != '\n') {
+        lines.push_back('\n');
+    }
     lines.insert(lines.end(), padding, '-');
     lines.insert(lines.end(), lexer->currToken().endPosition - lexer->currToken().startPosition + 1,
                  '^');

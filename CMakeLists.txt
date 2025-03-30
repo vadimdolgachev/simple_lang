@@ -92,7 +92,9 @@ add_executable(simple_ast_parser
         ir/VoidIRType.cpp
         ir/NumericIRType.cpp
         ast/MethodCallNode.cpp
-        ast/MethodCallNode.h)
+        ast/MethodCallNode.h
+        ast/CommentNode.cpp
+        ast/CommentNode.h)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

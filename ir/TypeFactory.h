@@ -184,6 +184,7 @@ public:
     void visit(const LoopCondNode *node) override {}
     void visit(const BlockNode *node) override {}
     void visit(const ReturnNode *node) override {}
+    void visit(const CommentNode *node) override {}
 
 private:
     explicit TypeFactory(const ModuleContext &mc):

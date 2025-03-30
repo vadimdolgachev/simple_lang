@@ -54,6 +54,8 @@ add_executable(tests main.cpp
         ../ast/TernaryOperatorNode.cpp
         ../ast/MethodCallNode.h
         ../ast/MethodCallNode.cpp
+        ../ast/CommentNode.h
+        ../ast/CommentNode.cpp
         ../Lexer.cpp
         ../Lexer.h
         ../Parser.h
