@@ -651,10 +651,10 @@ namespace {
 
         ASSERT_EQ(protoFn->params.size(), 4) << "Wrong number of arguments in: " << input;
 
-        EXPECT_EQ(protoFn->params[0].ident->name, "arg1") << "Wrong identifier name in: " << input;
-        EXPECT_EQ(protoFn->params[1].ident->name, "arg2") << "Wrong identifier name in: " << input;
-        EXPECT_EQ(protoFn->params[2].ident->name, "arg3") << "Wrong identifier name in: " << input;
-        EXPECT_EQ(protoFn->params[3].ident->name, "arg4") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[0]->ident->name, "arg1") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[1]->ident->name, "arg2") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[2]->ident->name, "arg3") << "Wrong identifier name in: " << input;
+        EXPECT_EQ(protoFn->params[3]->ident->name, "arg4") << "Wrong identifier name in: " << input;
 
         EXPECT_EQ(protoFn->returnType.kind, TypeKind::Str) << "Wrong return type: " << input;
     }
@@ -754,10 +754,10 @@ namespace {
         EXPECT_EQ(fnNode->proto->name, "foo") << "Wrong function name";
 
         ASSERT_EQ(fnNode->proto->params.size(), 4) << "Wrong number of parameters";
-        EXPECT_EQ(fnNode->proto->params[0].ident->name, "arg1") << "Wrong parameter 1 name";
-        EXPECT_EQ(fnNode->proto->params[1].ident->name, "arg2") << "Wrong parameter 2 name";
-        EXPECT_EQ(fnNode->proto->params[2].ident->name, "arg3") << "Wrong parameter 3 name";
-        EXPECT_EQ(fnNode->proto->params[3].ident->name, "arg4") << "Wrong parameter 4 name";
+        EXPECT_EQ(fnNode->proto->params[0]->ident->name, "arg1") << "Wrong parameter 1 name";
+        EXPECT_EQ(fnNode->proto->params[1]->ident->name, "arg2") << "Wrong parameter 2 name";
+        EXPECT_EQ(fnNode->proto->params[2]->ident->name, "arg3") << "Wrong parameter 3 name";
+        EXPECT_EQ(fnNode->proto->params[3]->ident->name, "arg4") << "Wrong parameter 4 name";
 
         ASSERT_FALSE(fnNode->body->statements.empty()) << "Function body should not be empty";
         ASSERT_EQ(fnNode->body->statements.size(), 2) << "Wrong number of body statements";

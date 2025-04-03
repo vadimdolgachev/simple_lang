@@ -25,6 +25,7 @@
 
 #include "IRType.h"
 #include "TypeFactory.h"
+#include "Util.h"
 #include "ast/LoopCondNode.h"
 #include "ast/MethodCallNode.h"
 #include "ast/ReturnNode.h"
@@ -42,12 +43,13 @@ namespace {
 
         // If not, check whether we can codegen the declaration from some existing
         // prototype.
-        if (const auto *const proto = mc.symTable.lookupFunction(name)) {
-            auto *const fun = LLVMCodegen::generate(proto,
-                                                    builder,
-                                                    module,
-                                                    mc);
-            return llvm::dyn_cast<llvm::Function>(fun);
+        if (const auto &proto = mc.symTable.lookupFunction(name);
+            proto.has_value()) {
+            auto *const value = LLVMCodegen::generate(proto.value().get(),
+                                                      builder,
+                                                      module,
+                                                      mc);
+            return llvm::dyn_cast<llvm::Function>(value);
         }
 
         // If no existing prototype exists, return null.
@@ -194,7 +196,7 @@ namespace {
         builder->SetInsertPoint(basicBlock);
 
         for (auto &arg: func->args()) {
-            const auto &paramType = node->proto->params[arg.getArgNo()].type;
+            const auto &paramType = node->proto->params[arg.getArgNo()]->type;
             auto *const alloca = builder->CreateAlloca(
                     TypeFactory::from(paramType)->getLLVMType(module->getContext()),
                     nullptr,
@@ -219,11 +221,11 @@ LLVMCodegen::LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &builder,
 
 void LLVMCodegen::visit(const IdentNode *node) {
     if (const auto gv = mc.symTable.lookupGlobal(node->name)) {
-        value_ = builder->CreateLoad(gv->value->getValueType(),
-                                     gv->value,
+        value_ = builder->CreateLoad(gv->bound->getValueType(),
+                                     gv->bound,
                                      node->name + ".global");
     } else {
-        auto *const alloc = mc.symTable.lookup(node->name)->value;
+        auto *const alloc = mc.symTable.lookup(node->name)->bound;
         if (alloc == nullptr) {
             throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
         }
@@ -302,7 +304,7 @@ void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
     std::vector<llvm::Type *> functionParams;
     functionParams.reserve(node->params.size());
     for (const auto &param: node->params) {
-        functionParams.push_back(TypeFactory::from(param.type)->getLLVMType(module->getContext()));
+        functionParams.push_back(TypeFactory::from(param->type)->getLLVMType(module->getContext()));
     }
     auto *const functionType = llvm::FunctionType::get(
             TypeFactory::from(node->returnType)->getLLVMType(module->getContext()),
@@ -312,11 +314,12 @@ void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
                                                   llvm::Function::ExternalLinkage,
                                                   node->name,
                                                   module.get());
+    mc.symTable.insert(dynCast<ProtoFunctionStatement>(node->clone()));
     // function->addFnAttr(llvm::Attribute::NoUnwind);
     // function->addRetAttr(llvm::Attribute::ZExt);
     for (auto *arg = function->arg_begin(); arg != function->arg_end(); ++arg) {
         const auto index = std::distance(function->arg_begin(), arg);
-        arg->setName(node->params[index].ident->name);
+        arg->setName(node->params[index]->ident->name);
     }
     value_ = function;
 }
@@ -328,16 +331,16 @@ void LLVMCodegen::visit(const AssignmentNode *const node) {
                                 mc);
     if (builder->GetInsertBlock() == nullptr) {} else {
         if (const auto var = mc.symTable.lookup(node->lvalue->name)) {
-            builder->CreateStore(tryCastValue(builder, init, var->value->getAllocatedType()),
-                                 var->value);
-            value_ = var->value;
+            builder->CreateStore(tryCastValue(builder, init, var->bound->getAllocatedType()),
+                                 var->bound);
+            value_ = var->bound;
         } else if (const auto gVar = mc.symTable.lookupGlobal(node->lvalue->name)) {
-            if (gVar->value->isConstant()) {
+            if (gVar->bound->isConstant()) {
                 throw std::logic_error("Variable: " + node->lvalue->name + " is constant");
             }
-            builder->CreateStore(tryCastValue(builder, init, gVar->value->getValueType()),
-                                 gVar->value);
-            value_ = gVar->value;
+            builder->CreateStore(tryCastValue(builder, init, gVar->bound->getValueType()),
+                                 gVar->bound);
+            value_ = gVar->bound;
         } else {
             throw std::logic_error("Undefined variable: " + node->lvalue->name);
         }
@@ -345,10 +348,10 @@ void LLVMCodegen::visit(const AssignmentNode *const node) {
 }
 
 void LLVMCodegen::visit(const FunctionCallNode *const node) {
-    auto *calleeFunc = getModuleFunction(node->ident->name,
-                                         builder,
-                                         module,
-                                         mc);
+    auto *const calleeFunc = getModuleFunction(node->ident->name,
+                                               builder,
+                                               module,
+                                               mc);
     if (calleeFunc == nullptr) {
         throw std::runtime_error(std::format("Undefined reference: '{}'", node->ident->name));
     }
@@ -448,7 +451,7 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
             throw std::logic_error("Undefined variable: " + ident->name);
         }
 
-        auto *const varType = var->value->getAllocatedType();
+        auto *const varType = var->bound->getAllocatedType();
 
         if (!varType->isIntOrIntVectorTy() &&
             !varType->isFPOrFPVectorTy() &&
@@ -457,7 +460,7 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
         }
 
         auto *const loadedVal = builder->CreateLoad(varType,
-                                                    var->value,
+                                                    var->bound,
                                                     ident->name + ".val");
 
         llvm::Value *delta = nullptr;
@@ -475,7 +478,7 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
                 delta,
                 "incdec.tmp");
 
-        builder->CreateStore(newVal, var->value);
+        builder->CreateStore(newVal, var->bound);
         value_ = node->unaryPosType == UnaryOpNode::UnaryOpType::Prefix ? newVal : loadedVal;
     } else if (node->operatorType == TokenType::Minus) {
         value_ = builder->CreateNeg(generate(node->expr.get(),

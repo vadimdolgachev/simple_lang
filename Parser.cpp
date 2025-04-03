@@ -53,7 +53,7 @@ std::unique_ptr<BaseNode> Parser::nextNode() {
         lexer->nextToken();
         if (lexer->currToken().type == TokenType::Colon && token.value.has_value()) {
             lexer->prevToken();
-            return std::make_unique<DeclarationNode>(parseDeclarationNode(true));
+            return parseDeclarationNode(true);
         }
         lexer->prevToken();
     }
@@ -125,7 +125,7 @@ std::unique_ptr<StatementNode> Parser::parseForStatement() {
         throw std::runtime_error(makeErrorMsg("Expected '(' after 'for'"));
     }
     lexer->nextToken(); // '('
-    auto init = std::make_unique<DeclarationNode>(parseDeclarationNode(false));
+    auto init = parseDeclarationNode(false);
     if (lexer->currToken().type != TokenType::Semicolon) {
         throw std::runtime_error(makeErrorMsg("Expected ';' after init statement"));
     }
@@ -473,9 +473,9 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
     }
     const auto fnName = parseIdent();
     lexer->nextToken();
-    std::vector<DeclarationNode> params;
+    std::vector<std::unique_ptr<DeclarationNode>> params;
     while (lexer->currToken().type != TokenType::RightParenthesis) {
-        params.emplace_back(parseDeclarationNode(false));
+        params.push_back(parseDeclarationNode(false));
         if (lexer->currToken().type != TokenType::Comma && lexer->currToken().type !=
             TokenType::RightParenthesis) {
             throw std::runtime_error(
@@ -513,13 +513,13 @@ std::unique_ptr<BlockNode> Parser::parseBlock() {
     if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
         block = parseCurlyBracketBlock();
     } else {
-        block = std::make_unique<BlockNode>(makeVectorUnique<BaseNode>(parseExpr()));
+        block = std::make_unique<BlockNode>(makeVector<BaseNode>(parseExpr()));
         consumeSemicolon();
     }
     return block;
 }
 
-DeclarationNode Parser::parseDeclarationNode(const bool needConsumeSemicolon) {
+std::unique_ptr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemicolon) {
     auto ident = std::make_unique<IdentNode>(lexer->currToken().value.value());
     lexer->nextToken();
     if (lexer->currToken().type != TokenType::Colon) {
@@ -541,9 +541,9 @@ DeclarationNode Parser::parseDeclarationNode(const bool needConsumeSemicolon) {
     if (needConsumeSemicolon) {
         consumeSemicolon();
     }
-    return {std::move(ident),
-            TypeNode::makePrimitive(it->second, false),
-            std::move(init)};
+    return std::make_unique<DeclarationNode>(std::move(ident),
+                                             TypeNode::makePrimitive(it->second, false),
+                                             std::move(init));
 }
 
 std::unique_ptr<StatementNode> Parser::parseReturnStatement() {

@@ -85,7 +85,7 @@ void NodePrinter::visit(const AssignmentNode *node) {
 }
 
 void NodePrinter::visit(const FunctionCallNode *node) {
-    ostream << "CallFunctionNode: name=" << node->ident;
+    ostream << "CallFunctionNode: name=" << node->ident->name;
 }
 
 void NodePrinter::visit(const IfStatement *node) {

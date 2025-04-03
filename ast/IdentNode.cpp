@@ -10,3 +10,7 @@ std::string IdentNode::toString() const {
 void IdentNode::visit(NodeVisitor *visitor) const {
     visitor->visit(this);
 }
+
+std::unique_ptr<BaseNode> IdentNode::clone() const {
+    return std::make_unique<IdentNode>(*this);
+}

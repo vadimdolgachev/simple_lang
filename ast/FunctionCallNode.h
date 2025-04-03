@@ -14,9 +14,7 @@
 class FunctionCallNode final : public ExpressionNode {
 public:
     FunctionCallNode(std::unique_ptr<IdentNode> ident,
-                     std::vector<std::unique_ptr<ExpressionNode>> args) :
-        ident(std::move(ident)),
-        args(std::move(args)) {}
+                     std::vector<std::unique_ptr<ExpressionNode>> args);
 
     [[nodiscard]] std::string toString() const override;
 

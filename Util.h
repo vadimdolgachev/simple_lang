@@ -6,6 +6,7 @@
 #define UTIL_H
 
 #include <memory>
+#include <vector>
 
 template<typename>
 struct deduce_arg_type;
@@ -44,16 +45,35 @@ std::tuple<std::unique_ptr<To>, std::unique_ptr<From>> tryCast(std::unique_ptr<F
     return res;
 }
 
+template<typename DerivedType, typename BaseType>
+std::unique_ptr<DerivedType> dynCast(std::unique_ptr<BaseType> &&basePtr) {
+    if (auto *derived = dynamic_cast<DerivedType *>(basePtr.get())) {
+        basePtr.release();
+        return std::unique_ptr<DerivedType>(derived);
+    }
+    return nullptr;
+}
+
 template<class T>
 std::vector<std::unique_ptr<T>> makeVectorUnique() {
     return {};
 }
 
 template<class T, class... Args>
-std::vector<std::unique_ptr<T>> makeVectorUnique(Args &&... args) {
+std::vector<std::unique_ptr<T>> makeVector(Args &&... args) {
     std::vector<std::unique_ptr<T>> vector;
     (vector.emplace_back(std::forward<Args>(args)), ...);
     return vector;
+}
+
+template<typename T>
+std::vector<std::unique_ptr<T>> clone(const std::vector<std::unique_ptr<T>> &source) {
+    std::vector<std::unique_ptr<T>> dest;
+    dest.reserve(source.size());
+    for (const auto &item: source) {
+        dest.emplace_back(dynCast<T>(item->clone()));
+    }
+    return dest;
 }
 
 #endif //UTIL_H

@@ -10,7 +10,7 @@ IRType::IRType(const bool isPointer):
 void IRType::registerCustomOperation(const TokenType op, llvm::Function *function) {}
 
 const IRType::MethodLists &IRType::methodList() const {
-    return {};
+    throw std::logic_error("Not supported");
 }
 
 bool IRType::isMethodSupported(const std::string &method) const {

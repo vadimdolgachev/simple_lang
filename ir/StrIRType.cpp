@@ -12,8 +12,8 @@ StrIRType::StrIRType(const bool isPointer):
         throw std::invalid_argument("String type must be a pointer");
     }
     methods.insert(std::make_unique<ProtoFunctionStatement>("len",
-                                                             TypeNode::makePrimitive(TypeKind::Integer, false),
-                                                             std::vector<DeclarationNode>{}));
+                                                            TypeNode::makePrimitive(TypeKind::Integer, false),
+                                                            std::vector<std::unique_ptr<DeclarationNode>>{}));
 }
 
 bool StrIRType::isOperationSupported(const TokenType op, const IRType *rhs) const {
@@ -93,7 +93,7 @@ llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,
     return IRType::createMethodCall(builder, method, object, args, name);
 }
 
-const IRType::MethodLists & StrIRType::methodList() const {
+const IRType::MethodLists &StrIRType::methodList() const {
     return methods;
 }
 

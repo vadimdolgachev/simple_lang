@@ -15,12 +15,14 @@
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/TypeNode.h"
 
-template<typename T>
+template<typename SymbolType, typename BoundType>
 struct SymbolInfo final {
-    TypeNode type;
+    SymbolType type;
     bool isConst = false;
-    T *value = nullptr;
+    BoundType bound = {};
 };
+
+using FuncSymbol = std::shared_ptr<ProtoFunctionStatement>;
 
 class SymbolTable final {
 public:
@@ -30,21 +32,21 @@ public:
 
     void insert(const std::string &name, TypeNode type, llvm::AllocaInst *alloca);
 
-    [[nodiscard]] std::optional<SymbolInfo<llvm::AllocaInst>> lookup(const std::string &name) const;
+    [[nodiscard]] std::optional<SymbolInfo<TypeNode, llvm::AllocaInst *>> lookup(const std::string &name) const;
 
     void insert(const std::string &name, TypeNode type, llvm::GlobalVariable *value);
 
-    [[nodiscard]] std::optional<SymbolInfo<llvm::GlobalVariable>> lookupGlobal(
+    [[nodiscard]] std::optional<SymbolInfo<TypeNode, llvm::GlobalVariable *>> lookupGlobal(
             const std::string &name) const;
 
     void insert(std::unique_ptr<ProtoFunctionStatement> proto);
 
-    [[nodiscard]] ProtoFunctionStatement *lookupFunction(const std::string &name) const;
+    std::optional<FuncSymbol> lookupFunction(const std::string &name) const;
 
 private:
-    std::deque<std::unordered_map<std::string, SymbolInfo<llvm::AllocaInst>>> scopes;
-    std::unordered_map<std::string, SymbolInfo<llvm::GlobalVariable>> globalValues;
-    std::unordered_set<std::unique_ptr<ProtoFunctionStatement>> functions;
+    std::deque<std::unordered_map<std::string, SymbolInfo<TypeNode, llvm::AllocaInst *>>> scopes;
+    std::unordered_map<std::string, SymbolInfo<TypeNode, llvm::GlobalVariable *>> globalValues;
+    std::unordered_map<std::string, FuncSymbol> functions;
 };
 
 #endif //SYMBOLTABLE_H

@@ -3,7 +3,6 @@
 #include <sstream>
 #include <utility>
 #include <vector>
-#include <unordered_map>
 #include <cstdarg>
 
 #include <llvm/Analysis/MemorySSA.h>
@@ -136,15 +135,15 @@ namespace {
         llvm::orc::SymbolMap symbols;
 
         constexpr auto printlnName = "println";
-        std::vector<DeclarationNode> params;
-        params.emplace_back(std::make_unique<IdentNode>("fmt"),
-                            TypeNode::makePrimitive(TypeKind::Str, true),
-                            std::nullopt);
+        std::vector<std::unique_ptr<DeclarationNode>> params;
+        params.push_back(std::make_unique<DeclarationNode>(std::make_unique<IdentNode>("fmt"),
+                                                           TypeNode::makePrimitive(TypeKind::Str, true),
+                                                           std::nullopt));
 
         cm.symTable.insert(std::make_unique<ProtoFunctionStatement>(printlnName,
-            TypeNode::makePrimitive(TypeKind::Void, false),
-            std::move(params),
-            true));
+                                                                    TypeNode::makePrimitive(TypeKind::Void, false),
+                                                                    std::move(params),
+                                                                    true));
         symbols[mangle(printlnName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
                 llvm::JITSymbolFlags(
@@ -152,14 +151,14 @@ namespace {
         };
 
         constexpr auto printName = "print";
-        params.emplace_back(std::make_unique<IdentNode>("fmt"),
-                            TypeNode::makePrimitive(TypeKind::Str, true),
-                            std::nullopt);
+        params.push_back(std::make_unique<DeclarationNode>(std::make_unique<IdentNode>("fmt"),
+                                                           TypeNode::makePrimitive(TypeKind::Str, true),
+                                                           std::nullopt));
 
         cm.symTable.insert(std::make_unique<ProtoFunctionStatement>(printlnName,
-            TypeNode::makePrimitive(TypeKind::Void, false),
-            std::move(params),
-            true));
+                                                                    TypeNode::makePrimitive(TypeKind::Void, false),
+                                                                    std::move(params),
+                                                                    true));
         symbols[mangle(printName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrint)>(&libPrint),
                 llvm::JITSymbolFlags(
@@ -181,11 +180,11 @@ int main() {
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
             std::make_unique<std::istringstream>(R"(
-        fn foo(): int {
-            return 10;
+        fn foo(): double {
+            return 3.14;
         }
         fn main() {
-            println("str len=%d", "1235678".len());
+            println("str len=%f", foo() + "123".len());
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();

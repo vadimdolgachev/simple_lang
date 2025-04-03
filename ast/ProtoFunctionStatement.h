@@ -15,16 +15,20 @@ class ProtoFunctionStatement final : public StatementNode {
 public:
     ProtoFunctionStatement(std::string name,
                            TypeNode returnType,
-                           std::vector<DeclarationNode> params,
+                           std::vector<std::unique_ptr<DeclarationNode>> params,
                            bool isVarArgs = false);
+
+    ProtoFunctionStatement(const ProtoFunctionStatement &other);
 
     [[nodiscard]] std::string toString() const override;
 
     void visit(NodeVisitor *visitor) const override;
 
-    std::string name;
-    TypeNode returnType;
-    std::vector<DeclarationNode> params;
+    [[nodiscard]] std::unique_ptr<BaseNode> clone() const override;
+
+    const std::string name;
+    const TypeNode returnType;
+    const std::vector<std::unique_ptr<DeclarationNode>> params;
     const bool isVarArgs;
 };
 

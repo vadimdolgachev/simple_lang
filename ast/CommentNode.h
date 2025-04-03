@@ -14,7 +14,7 @@ public:
     void visit(NodeVisitor *visitor) const override;
     [[nodiscard]] std::string toString() const override;
 
-    std::string text;
+    const std::string text;
 };
 
 

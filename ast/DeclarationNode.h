@@ -18,13 +18,17 @@ public:
                     TypeNode type,
                     std::optional<std::unique_ptr<ExpressionNode>> init);
 
+    DeclarationNode(const DeclarationNode &other);
+
     [[nodiscard]] std::string toString() const override;
 
     void visit(NodeVisitor *visitor) const override;
 
-    std::unique_ptr<IdentNode> ident;
-    TypeNode type;
-    std::optional<std::unique_ptr<ExpressionNode>> init;
+    [[nodiscard]] std::unique_ptr<BaseNode> clone() const override;
+
+    const std::unique_ptr<IdentNode> ident;
+    const TypeNode type;
+    const std::optional<std::unique_ptr<ExpressionNode>> init;
 };
 
 

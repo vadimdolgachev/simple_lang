@@ -17,6 +17,8 @@ public:
 
     void visit(NodeVisitor *visitor) const override;
 
+    [[nodiscard]] std::unique_ptr<BaseNode> clone() const override;
+
     const std::string name;
 };
 

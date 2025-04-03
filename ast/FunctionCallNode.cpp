@@ -3,6 +3,11 @@
 
 #include <sstream>
 
+FunctionCallNode::FunctionCallNode(std::unique_ptr<IdentNode> ident,
+                                   std::vector<std::unique_ptr<ExpressionNode>> args):
+    ident(std::move(ident)),
+    args(std::move(args)) {}
+
 std::string FunctionCallNode::toString() const {
     std::stringstream ss;
     ss << "call func: " << ident->name << "(";

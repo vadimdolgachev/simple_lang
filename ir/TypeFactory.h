@@ -28,10 +28,10 @@
 class TypeFactory final : public NodeVisitor {
 public:
     void visit(const IdentNode *node) override {
-        if (const auto symbolInfo = mc.symTable.lookup(node->name)) {
-            typeNode = symbolInfo.value().type;
-        } else if (auto *const func = mc.symTable.lookupFunction(node->name)) {
-            typeNode = func->returnType;
+        if (const auto alloc = mc.symTable.lookup(node->name)) {
+            typeNode = alloc.value().type;
+        } else if (const auto &func = mc.symTable.lookupFunction(node->name); func) {
+            typeNode = func.value()->returnType;
         } else if (const auto gVal = mc.symTable.lookupGlobal(node->name)) {
             typeNode = gVal->type;
         }
@@ -109,9 +109,9 @@ public:
     }
 
     void visit(const FunctionCallNode *node) override {
-        if (const auto *func = mc.symTable.lookupFunction(node->ident->name);
-            func != nullptr) {
-            typeNode = func->returnType;
+        if (const auto &func = mc.symTable.lookupFunction(node->ident->name);
+            func.has_value()) {
+            typeNode = func.value()->returnType;
         } else {
             throw std::logic_error("Undefined function: " + node->ident->name);
         }

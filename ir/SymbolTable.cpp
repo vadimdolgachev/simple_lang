@@ -5,6 +5,7 @@
 #include "SymbolTable.h"
 
 #include <ranges>
+#include <utility>
 
 void SymbolTable::enterScope() {
     scopes.emplace_back();
@@ -25,19 +26,19 @@ void SymbolTable::insert(const std::string &name, TypeNode type, llvm::GlobalVar
 }
 
 void SymbolTable::insert(std::unique_ptr<ProtoFunctionStatement> proto) {
-    functions.insert(std::move(proto));
+    //TODO: mangle name
+    auto name = proto->name;
+    functions.emplace(std::move(name), std::move(proto));
 }
 
-ProtoFunctionStatement *SymbolTable::lookupFunction(const std::string &name) const {
-    if (const auto it = std::ranges::find_if(functions, [&name](const auto &f) {
-        return f->name == name;
-    }); it != functions.end()) {
-        return it->get();
+std::optional<FuncSymbol> SymbolTable::lookupFunction(const std::string &name) const {
+    if (const auto function = functions.find(name); function != functions.end()) {
+        return function->second;
     }
     return {};
 }
 
-std::optional<SymbolInfo<llvm::AllocaInst>> SymbolTable::lookup(const std::string &name) const {
+std::optional<SymbolInfo<TypeNode, llvm::AllocaInst *>> SymbolTable::lookup(const std::string &name) const {
     for (const auto &scope: std::ranges::reverse_view(scopes)) {
         if (auto found = scope.find(name); found != scope.end()) {
             return found->second;
@@ -46,7 +47,7 @@ std::optional<SymbolInfo<llvm::AllocaInst>> SymbolTable::lookup(const std::strin
     return {};
 }
 
-std::optional<SymbolInfo<llvm::GlobalVariable>> SymbolTable::lookupGlobal(const std::string &name) const {
+std::optional<SymbolInfo<TypeNode, llvm::GlobalVariable *>> SymbolTable::lookupGlobal(const std::string &name) const {
     if (const auto it = globalValues.find(name); it != globalValues.end()) {
         return it->second;
     }

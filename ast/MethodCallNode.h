@@ -18,8 +18,8 @@ public:
 
     [[nodiscard]] std::string toString() const override;
 
-    std::unique_ptr<ExpressionNode> object;
-    std::unique_ptr<FunctionCallNode> method;
+    const std::unique_ptr<ExpressionNode> object;
+    const std::unique_ptr<FunctionCallNode> method;
 };
 
 #endif //METHODCALLNODE_H

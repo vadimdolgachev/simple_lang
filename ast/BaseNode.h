@@ -6,6 +6,7 @@
 #ifndef BASEASTNODE_H
 #define BASEASTNODE_H
 
+#include <memory>
 #include <string>
 
 class UnaryOpNode;
@@ -75,6 +76,10 @@ public:
     virtual void visit(NodeVisitor *visitor) const = 0;
 
     [[nodiscard]] virtual std::string toString() const = 0;
+
+    [[nodiscard]] virtual std::unique_ptr<BaseNode> clone() const {
+        throw std::logic_error("Not implemented");
+    }
 };
 
 class StatementNode : public BaseNode {

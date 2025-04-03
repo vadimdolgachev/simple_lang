@@ -20,7 +20,7 @@ public:
 
     [[nodiscard]] std::string toString() const override;
 
-    Statements statements;
+    const Statements statements;
 };
 
 #endif //BLOCKNODE_H
