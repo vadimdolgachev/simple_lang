@@ -23,7 +23,7 @@ enum class TypeKind : std::uint8_t {
 struct TypeNode final {
     TypeNode(TypeKind type,
              bool isPointer,
-             std::optional<std::string> typeName);
+             std::optional<std::string> typeName = std::nullopt);
 
     TypeKind kind;
     bool isPointer;

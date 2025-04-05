@@ -25,7 +25,7 @@ class BlockNode;
 class DeclarationNode;
 class ReturnNode;
 class TernaryOperatorNode;
-class MethodCallNode;
+class MemberAccessNode;
 class CommentNode;
 
 class NodeVisitor {
@@ -64,7 +64,7 @@ public:
 
     virtual void visit(const TernaryOperatorNode *node) = 0;
 
-    virtual void visit(const MethodCallNode *node) = 0;
+    virtual void visit(const MemberAccessNode *node) = 0;
 
     virtual void visit(const CommentNode *node) = 0;
 };

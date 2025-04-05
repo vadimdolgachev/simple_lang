@@ -3,6 +3,7 @@
 //
 
 #include "IRType.h"
+#include "ast/ProtoFunctionStatement.h"
 
 IRType::IRType(const bool isPointer):
     isPointer(isPointer) {}

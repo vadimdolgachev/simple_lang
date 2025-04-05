@@ -15,7 +15,8 @@ class LLVMCodegen final : public NodeVisitor {
 public:
     LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &builder,
                 const std::unique_ptr<llvm::Module> &module,
-                ModuleContext &mc);
+                ModuleContext &mc,
+                ExpressionNode *object = nullptr);
 
     void visit(const IdentNode *node) override;
 
@@ -49,7 +50,7 @@ public:
 
     void visit(const TernaryOperatorNode *node) override;
 
-    void visit(const MethodCallNode *node) override;
+    void visit(const MemberAccessNode *node) override;
 
     void visit(const CommentNode *node) override;
 
@@ -58,8 +59,9 @@ public:
     static llvm::Value *generate(const BaseNode *const node,
                                  const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
                                  const std::unique_ptr<llvm::Module> &llvmModule,
-                                 ModuleContext &mc) {
-        LLVMCodegen codegen(llvmIRBuilder, llvmModule, mc);
+                                 ModuleContext &mc,
+                                 ExpressionNode *object = nullptr) {
+        LLVMCodegen codegen(llvmIRBuilder, llvmModule, mc, object);
         node->visit(&codegen);
         return codegen.value();
     }
@@ -69,6 +71,7 @@ private:
     const std::unique_ptr<llvm::IRBuilder<>> &builder;
     const std::unique_ptr<llvm::Module> &module;
     ModuleContext &mc;
+    ExpressionNode *const object;
 };
 
 #endif //LLVMCODEGEN_H

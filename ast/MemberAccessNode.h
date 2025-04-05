@@ -9,17 +9,17 @@
 
 #include "BaseNode.h"
 
-class MethodCallNode final : public ExpressionNode {
+class MemberAccessNode final : public ExpressionNode {
 public:
-    explicit MethodCallNode(std::unique_ptr<ExpressionNode> object,
-                            std::unique_ptr<FunctionCallNode> functionCall);
+    explicit MemberAccessNode(std::unique_ptr<ExpressionNode> object,
+                              std::unique_ptr<ExpressionNode> member);
 
     void visit(NodeVisitor *visitor) const override;
 
     [[nodiscard]] std::string toString() const override;
 
     const std::unique_ptr<ExpressionNode> object;
-    const std::unique_ptr<FunctionCallNode> method;
+    const std::unique_ptr<ExpressionNode> member;
 };
 
 #endif //METHODCALLNODE_H

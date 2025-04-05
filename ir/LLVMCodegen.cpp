@@ -27,7 +27,7 @@
 #include "TypeFactory.h"
 #include "Util.h"
 #include "ast/LoopCondNode.h"
-#include "ast/MethodCallNode.h"
+#include "ast/MemberAccessNode.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
 
@@ -214,10 +214,12 @@ namespace {
 
 LLVMCodegen::LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &builder,
                          const std::unique_ptr<llvm::Module> &module,
-                         ModuleContext &mc):
+                         ModuleContext &mc,
+                         ExpressionNode *object):
     builder(builder),
     module(module),
-    mc(mc) {}
+    mc(mc),
+    object(object) {}
 
 void LLVMCodegen::visit(const IdentNode *node) {
     if (const auto gv = mc.symTable.lookupGlobal(node->name)) {
@@ -348,34 +350,40 @@ void LLVMCodegen::visit(const AssignmentNode *const node) {
 }
 
 void LLVMCodegen::visit(const FunctionCallNode *const node) {
-    auto *const calleeFunc = getModuleFunction(node->ident->name,
-                                               builder,
-                                               module,
-                                               mc);
-    if (calleeFunc == nullptr) {
-        throw std::runtime_error(std::format("Undefined reference: '{}'", node->ident->name));
-    }
-
-    // If argument mismatch error.
-    if (!calleeFunc->isVarArg() && calleeFunc->arg_size() != node->args.size()) {
-        throw std::logic_error("Argument mismatch error");
-    }
-
-    std::vector<llvm::Value *> argsFunc;
-    argsFunc.reserve(node->args.size());
-    const auto *const funcType = calleeFunc->getFunctionType();
-    for (size_t i = 0; i < node->args.size(); ++i) {
-        auto *argValue = generate(node->args[i].get(),
-                                  builder,
-                                  module,
-                                  mc);
-        if (i < funcType->getNumParams()) {
-            argValue = tryCastValue(builder, argValue, funcType->getParamType(i));
+    if (object) {
+        const auto objectType = TypeFactory::from(object, mc);
+        if (!objectType->isMethodSupported(node->ident->name)) {
+            throw std::runtime_error("Method not supported");
         }
-        argsFunc.push_back(argValue);
-    }
+        value_ = objectType->createMethodCall(*builder, node->ident->name,
+                                              generate(object, builder, module, mc), {}, node->ident->name);
+    } else {
+        auto *const calleeFunc = getModuleFunction(node->ident->name,
+                                                   builder,
+                                                   module,
+                                                   mc);
+        if (calleeFunc == nullptr) {
+            throw std::runtime_error(std::format("Undefined reference: '{}'", node->ident->name));
+        }
 
-    value_ = builder->CreateCall(calleeFunc, argsFunc);
+        // If argument mismatch error.
+        if (!calleeFunc->isVarArg() && calleeFunc->arg_size() != node->args.size()) {
+            throw std::logic_error("Argument mismatch error");
+        }
+
+        std::vector<llvm::Value *> argsFunc;
+        argsFunc.reserve(node->args.size());
+        const auto *const funcType = calleeFunc->getFunctionType();
+        for (size_t i = 0; i < node->args.size(); ++i) {
+            auto *argValue = generate(node->args[i].get(), builder, module, mc);
+            if (i < funcType->getNumParams()) {
+                argValue = tryCastValue(builder, argValue, funcType->getParamType(i));
+            }
+            argsFunc.push_back(argValue);
+        }
+
+        value_ = builder->CreateCall(calleeFunc, argsFunc);
+    }
 }
 
 void LLVMCodegen::visit(const IfStatement *node) {
@@ -439,8 +447,7 @@ void LLVMCodegen::visit(const IfStatement *node) {
 }
 
 void LLVMCodegen::visit(const UnaryOpNode *node) {
-    if (node->operatorType == TokenType::IncrementOperator
-        || node->operatorType == TokenType::DecrementOperator) {
+    if (node->operatorType == TokenType::PlusPlus || node->operatorType == TokenType::MinusMinus) {
         const auto *ident = dynamic_cast<IdentNode *>(node->expr.get());
         if (ident == nullptr) {
             throw std::logic_error("Increment/decrement requires lvalue variable");
@@ -469,7 +476,7 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
         } else {
             delta = llvm::ConstantFP::get(varType, 1.0);
         }
-        if (node->operatorType == TokenType::DecrementOperator) {
+        if (node->operatorType == TokenType::MinusMinus) {
             delta = builder->CreateNeg(delta, "neg.tmp");
         }
 
@@ -645,18 +652,8 @@ void LLVMCodegen::visit(const TernaryOperatorNode *node) {
     value_ = phi;
 }
 
-void LLVMCodegen::visit(const MethodCallNode *node) {
-    llvm::Value *object = generate(node->object.get(), builder, module, mc);
-
-    const auto objectType = TypeFactory::from(node->object.get(), mc);
-    if (!objectType->isMethodSupported(node->method->ident->name)) {
-        throw std::runtime_error("Method not supported");
-    }
-    value_ = objectType->createMethodCall(*builder,
-                                          node->method->ident->name,
-                                          object,
-                                          {},
-                                          "str.len");
+void LLVMCodegen::visit(const MemberAccessNode *node) {
+    value_ = generate(node->member.get(), builder, module, mc, node->object.get());
 }
 
 void LLVMCodegen::visit(const CommentNode *node) {

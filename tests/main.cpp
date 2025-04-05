@@ -23,7 +23,7 @@
 #include "ast/NumberNode.h"
 #include "ast/StringNode.h"
 #include "ast/LoopCondNode.h"
-#include "ast/MethodCallNode.h"
+#include "ast/MemberAccessNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
@@ -587,28 +587,28 @@ namespace {
 
     TEST_F(UnaryOpTest, PostfixIncrement) {
         testUnaryOperation("var++;",
-                           TokenType::IncrementOperator,
+                           TokenType::PlusPlus,
                            UnaryOpNode::UnaryOpType::Postfix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PrefixIncrement) {
         testUnaryOperation("++var;",
-                           TokenType::IncrementOperator,
+                           TokenType::PlusPlus,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PostfixDecrement) {
         testUnaryOperation("var--;",
-                           TokenType::DecrementOperator,
+                           TokenType::MinusMinus,
                            UnaryOpNode::UnaryOpType::Postfix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PrefixDecrement) {
         testUnaryOperation("--var;",
-                           TokenType::DecrementOperator,
+                           TokenType::MinusMinus,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
@@ -768,7 +768,7 @@ namespace {
 
         const auto *stmt2 = dynamic_cast<UnaryOpNode *>(fnNode->body->statements[1].get());
         ASSERT_NE(stmt2, nullptr) << "Second statement is not a unary operation";
-        EXPECT_EQ(stmt2->operatorType, TokenType::IncrementOperator)
+        EXPECT_EQ(stmt2->operatorType, TokenType::PlusPlus)
             << "Wrong unary operator type";
         EXPECT_EQ(stmt2->unaryPosType, UnaryOpNode::UnaryOpType::Prefix)
             << "Wrong unary operator position";
@@ -904,7 +904,7 @@ namespace {
         ASSERT_NE(nextOp, nullptr) << "Iteration expression is not a unary operation node";
 
         ASSERT_EQ(nextOp->operatorType,
-                  TokenType::IncrementOperator) << "Expected increment operator in iteration expression";
+                  TokenType::PlusPlus) << "Expected increment operator in iteration expression";
         ASSERT_EQ(nextOp->unaryPosType,
                   UnaryOpNode::UnaryOpType::Prefix) << "Expected prefix increment operator in iteration expression";
 
@@ -1054,9 +1054,53 @@ namespace {
         auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
-        auto [methodCall, orig] = tryCast<MethodCallNode>(std::move(node));
-        ASSERT_NE(methodCall, nullptr) << "Not a MethodCallNode node: " << input;
-        EXPECT_EQ("len", methodCall->method->ident->name) << "Wrong function name: " << input;
+        auto [memberAccess, orig] = tryCast<MemberAccessNode>(std::move(node));
+        ASSERT_NE(memberAccess, nullptr) << "Not a MemberAccessNode node: " << input;
+        auto *methodCall = dynamic_cast<FunctionCallNode *>(memberAccess->member.get());
+        ASSERT_NE(methodCall, nullptr) << "Not a FunctionCallNode node: " << input;
+        EXPECT_EQ("len", methodCall->ident->name) << "Wrong function name: " << input;
+    }
+
+    TEST_F(NodesTest, FieldAccessNode) {
+        const std::string input = R"(obj.field1;)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [memberAccess, orig] = tryCast<MemberAccessNode>(std::move(node));
+        ASSERT_NE(memberAccess, nullptr) << "Not a MemberAccessNode node: " << input;
+        auto *fieldAccess = dynamic_cast<IdentNode *>(memberAccess->member.get());
+        ASSERT_NE(fieldAccess, nullptr) << "Not a IdentNode node: " << input;
+        EXPECT_EQ("field1", fieldAccess->name) << "Wrong field name: " << input;
+    }
+
+    TEST_F(NodesTest, MultiFieldAccessNode) {
+        const std::string input = R"(obj.method().field;)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [memberAccess, orig] = tryCast<MemberAccessNode>(std::move(node));
+        ASSERT_NE(memberAccess, nullptr) << "Not a MemberAccessNode node: " << input;
+
+        auto *memberAccess2 = dynamic_cast<MemberAccessNode *>(memberAccess->object.get());
+        ASSERT_NE(memberAccess2, nullptr) << "Not a MemberAccessNode node: " << input;
+
+        auto *field1Access = dynamic_cast<IdentNode *>(memberAccess2->object.get());
+        ASSERT_NE(field1Access, nullptr) << "Not a IdentNode node: " << input;
+        EXPECT_EQ("obj", field1Access->name) << "Wrong field name: " << input;
+
+        auto *methodCall = dynamic_cast<FunctionCallNode *>(memberAccess2->member.get());
+        ASSERT_NE(methodCall, nullptr) << "Not a FunctionCallNode node: " << input;
+        EXPECT_EQ("method", methodCall->ident->name) << "Wrong field name: " << input;
+
+        auto *field2Access = dynamic_cast<IdentNode *>(memberAccess->member.get());
+        ASSERT_NE(field2Access, nullptr) << "Not a IdentNode node: " << input;
+        EXPECT_EQ("field", field2Access->name) << "Wrong field name: " << input;
     }
 
     TEST_F(NodesTest, CommentNode) {

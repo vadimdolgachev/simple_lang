@@ -5,6 +5,8 @@
 #include "StrIRType.h"
 
 #include "ast/StringNode.h"
+#include "ast/TypeNode.h"
+#include "ast/ProtoFunctionStatement.h"
 
 StrIRType::StrIRType(const bool isPointer):
     IRType(isPointer) {
@@ -12,7 +14,7 @@ StrIRType::StrIRType(const bool isPointer):
         throw std::invalid_argument("String type must be a pointer");
     }
     methods.insert(std::make_unique<ProtoFunctionStatement>("len",
-                                                            TypeNode::makePrimitive(TypeKind::Integer, false),
+                                                            TypeNode::makePrimitive(TypeKind::Integer),
                                                             std::vector<std::unique_ptr<DeclarationNode>>{}));
 }
 

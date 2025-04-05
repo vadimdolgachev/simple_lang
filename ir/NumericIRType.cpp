@@ -39,8 +39,8 @@ bool NumericIRType::isOperationSupported(const TokenType op, const IRType *rhs) 
 
 bool NumericIRType::isUnaryOperationSupported(const TokenType op) const {
     switch (op) {
-        case TokenType::IncrementOperator:
-        case TokenType::DecrementOperator:
+        case TokenType::PlusPlus:
+        case TokenType::MinusMinus:
         case TokenType::Plus:
         case TokenType::Minus:
             return true;
@@ -81,7 +81,7 @@ llvm::Value * NumericIRType::createUnaryOp(llvm::IRBuilder<> &builder,
         llvm::Value *storage,
         const std::string &name) const {
     auto *const delta =
-        llvm::ConstantInt::get(operand->getType(), op == TokenType::IncrementOperator ? 1 : -1);
+        llvm::ConstantInt::get(operand->getType(), op == TokenType::PlusPlus ? 1 : -1);
 
     auto *const result = createAdd(builder, operand, delta, name);
 
@@ -89,7 +89,7 @@ llvm::Value * NumericIRType::createUnaryOp(llvm::IRBuilder<> &builder,
         builder.CreateStore(result, storage);
     }
 
-    return op == TokenType::IncrementOperator ? result : operand;
+    return op == TokenType::PlusPlus ? result : operand;
 
 }
 

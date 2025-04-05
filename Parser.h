@@ -46,6 +46,7 @@ private:
     [[nodiscard]] std::unique_ptr<ExpressionNode> parseTernaryOperator(std::unique_ptr<ExpressionNode> cond);
     void consumeSemicolon() const;
     [[nodiscard]] std::string makeErrorMsg(const std::string &msg) const;
+    [[nodiscard]] std::unique_ptr<ExpressionNode> parseObjectMember(std::unique_ptr<ExpressionNode> object);
 
     std::unique_ptr<Lexer> lexer;
 };

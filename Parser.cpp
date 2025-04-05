@@ -16,7 +16,7 @@
 #include "ast/LoopCondNode.h"
 #include "ast/BlockNode.h"
 #include "ast/CommentNode.h"
-#include "ast/MethodCallNode.h"
+#include "ast/MemberAccessNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
@@ -239,8 +239,8 @@ std::unique_ptr<ExpressionNode> Parser::parseExpr() {
         || token.type == TokenType::Boolean
         || token.type == TokenType::LeftParenthesis
         || token.type == TokenType::Identifier
-        || token.type == TokenType::IncrementOperator
-        || token.type == TokenType::DecrementOperator
+        || token.type == TokenType::PlusPlus
+        || token.type == TokenType::MinusMinus
         || token.type == TokenType::LogicalNegation) {
         auto expr = parseBoolLogic();
         if (lexer->currToken().type == TokenType::Question) {
@@ -317,8 +317,8 @@ std::unique_ptr<ExpressionNode> Parser::tryParseUnaryOp() {
 }
 
 std::unique_ptr<ExpressionNode> Parser::tryParsePrefixOp() {
-    if (lexer->currToken().type == TokenType::DecrementOperator
-        || lexer->currToken().type == TokenType::IncrementOperator) {
+    if (lexer->currToken().type == TokenType::MinusMinus
+        || lexer->currToken().type == TokenType::PlusPlus) {
         const auto type = lexer->currToken().type;
         lexer->nextToken();
         auto val = parseFactor();
@@ -332,8 +332,8 @@ std::unique_ptr<ExpressionNode> Parser::tryParsePrefixOp() {
 std::unique_ptr<ExpressionNode> Parser::tryParseIdentifier() {
     if (lexer->currToken().type == TokenType::Identifier) {
         auto ident = parseIdent();
-        if (lexer->currToken().type == TokenType::DecrementOperator
-            || lexer->currToken().type == TokenType::IncrementOperator) {
+        if (lexer->currToken().type == TokenType::MinusMinus
+            || lexer->currToken().type == TokenType::PlusPlus) {
             const auto type = lexer->currToken().type;
             lexer->nextToken();
             return std::make_unique<UnaryOpNode>(type,
@@ -372,37 +372,38 @@ std::unique_ptr<ExpressionNode> Parser::tryParseLiteral() const {
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseFactor() {
+    std::unique_ptr<ExpressionNode> expr;
+
     if (lexer->currToken().type == TokenType::LeftParenthesis) {
         lexer->nextToken(); // "("
-        auto expr = parseExpr();
+        expr = parseExpr();
         if (lexer->currToken().type != TokenType::RightParenthesis) {
             throw std::runtime_error(makeErrorMsg("Expected ')' character"));
         }
         lexer->nextToken(); // ")"
+    }
+    if (expr == nullptr) {
+        expr = tryParseLiteral();
+    }
+    if (expr == nullptr) {
+        expr = tryParseIdentifier();
+    }
+    if (expr == nullptr) {
+        expr = tryParseUnaryOp();
+    }
+    if (expr == nullptr) {
+        expr = tryParsePrefixOp();
+    }
+
+    while (expr && lexer->currToken().type == TokenType::Dot) {
+        lexer->nextToken();
+        expr = parseObjectMember(std::move(expr));
+    }
+
+    if (expr != nullptr) {
         return expr;
     }
-    if (auto expr = tryParseLiteral()) {
-        if (lexer->currToken().type == TokenType::Dot) {
-            lexer->nextToken();
-            auto ident = tryParseIdentifier();
-            auto [funCall, orig] = tryCast<FunctionCallNode>(std::move(ident));
-            if (funCall != nullptr) {
-                return std::make_unique<MethodCallNode>(std::move(expr), std::move(funCall));
-            }
-            throw std::runtime_error(
-                    makeErrorMsg("Unexpected expression: " + orig->toString()));
-        }
-        return expr;
-    }
-    if (auto expr = tryParseIdentifier()) {
-        return expr;
-    }
-    if (auto expr = tryParseUnaryOp()) {
-        return expr;
-    }
-    if (auto expr = tryParsePrefixOp()) {
-        return expr;
-    }
+
     throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
 }
 
@@ -486,20 +487,22 @@ std::unique_ptr<StatementNode> Parser::parseFunctionDef() {
         }
     }
     lexer->nextToken(); // ")"
-    auto retType = TypeKind::Void;
+    auto retTypeKind = TypeKind::Void;
     if (lexer->currToken().type == TokenType::Colon) {
         lexer->nextToken();
         const auto typeName = lexer->currToken().value.value();
-        const auto it = TYPES.find(typeName);
-        if (it == TYPES.end()) {
+        const auto typeKind = TYPES.find(typeName);
+        if (typeKind == TYPES.end()) {
             throw std::runtime_error(
                     makeErrorMsg("Unexpected type: " + lexer->currToken().toString()));
         }
         lexer->nextToken();
-        retType = it->second;
+        retTypeKind = typeKind->second;
     }
+    //TODO: process pointers
+    bool const isPtr = retTypeKind == TypeKind::Str;
     auto proto = std::make_unique<ProtoFunctionStatement>(fnName->name,
-                                                          TypeNode::makePrimitive(retType, false),
+                                                          TypeNode::makePrimitive(retTypeKind, isPtr),
                                                           std::move(params));
     if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
         return std::make_unique<FunctionNode>(std::move(proto), parseCurlyBracketBlock());
@@ -528,8 +531,8 @@ std::unique_ptr<DeclarationNode> Parser::parseDeclarationNode(const bool needCon
     }
     lexer->nextToken();
     const auto typeName = lexer->currToken().value.value();
-    const auto it = TYPES.find(typeName);
-    if (it == TYPES.end()) {
+    const auto typeKind = TYPES.find(typeName);
+    if (typeKind == TYPES.end()) {
         throw std::runtime_error(makeErrorMsg("Unexpected type: " + lexer->currToken().toString()));
     }
     lexer->nextToken();
@@ -541,8 +544,10 @@ std::unique_ptr<DeclarationNode> Parser::parseDeclarationNode(const bool needCon
     if (needConsumeSemicolon) {
         consumeSemicolon();
     }
+    //TODO: process pointers
+    bool const isPtr = typeKind->second == TypeKind::Str;
     return std::make_unique<DeclarationNode>(std::move(ident),
-                                             TypeNode::makePrimitive(it->second, false),
+                                             TypeNode::makePrimitive(typeKind->second, isPtr),
                                              std::move(init));
 }
 
@@ -588,4 +593,8 @@ std::string Parser::makeErrorMsg(const std::string &msg) const {
     lines.insert(lines.end(), lexer->currToken().endPosition - lexer->currToken().startPosition + 1,
                  '^');
     return std::format("\n{}\n{}", lines, msg);
+}
+
+std::unique_ptr<ExpressionNode> Parser::parseObjectMember(std::unique_ptr<ExpressionNode> object) {
+    return std::make_unique<MemberAccessNode>(std::move(object), tryParseIdentifier());
 }

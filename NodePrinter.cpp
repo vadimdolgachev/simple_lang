@@ -29,10 +29,10 @@ namespace {
             case TokenType::Slash:
                 os << "/";
                 break;
-            case TokenType::IncrementOperator:
+            case TokenType::PlusPlus:
                 os << "++";
                 break;
-            case TokenType::DecrementOperator:
+            case TokenType::MinusMinus:
                 os << "--";
                 break;
             default:
@@ -116,6 +116,6 @@ void NodePrinter::visit(const TernaryOperatorNode *node) {
     ostream << "TernaryOperatorNode";
 }
 
-void NodePrinter::visit(const MethodCallNode *node) {
+void NodePrinter::visit(const MemberAccessNode *node) {
     ostream << "MethodCallNode";
 }

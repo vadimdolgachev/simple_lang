@@ -29,8 +29,8 @@ enum class TokenType : std::uint8_t {
     Boolean,
 
     // Operators
-    IncrementOperator,   // ++
-    DecrementOperator,   // --
+    PlusPlus,            // ++
+    MinusMinus,          // --
     Plus,                // +
     Minus,               // -
     Star,                // *
@@ -110,11 +110,11 @@ inline std::string toString(const TokenType token) {
         case TokenType::Boolean: {
             return "Boolean";
         }
-        case TokenType::IncrementOperator: {
-            return "IncrementOperator";
+        case TokenType::PlusPlus: {
+            return "PlusPlus";
         }
-        case TokenType::DecrementOperator: {
-            return "DecrementOperator";
+        case TokenType::MinusMinus: {
+            return "MinusMinus";
         }
         case TokenType::Plus: {
             return "Plus";

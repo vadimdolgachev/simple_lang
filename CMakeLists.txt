@@ -91,8 +91,8 @@ add_executable(simple_ast_parser
         ir/CharIRType.h
         ir/VoidIRType.cpp
         ir/NumericIRType.cpp
-        ast/MethodCallNode.cpp
-        ast/MethodCallNode.h
+        ast/MemberAccessNode.cpp
+        ast/MemberAccessNode.h
         ast/CommentNode.cpp
         ast/CommentNode.h)
 

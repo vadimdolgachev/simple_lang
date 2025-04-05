@@ -5,10 +5,11 @@
 #ifndef IRTYPE_H
 #define IRTYPE_H
 
+#include <unordered_set>
+
 #include <llvm/IR/Type.h>
 #include <llvm/IR/IRBuilder.h>
 
-#include "LLVMCodegen.h"
 #include "Lexer.h"
 #include "ast/BaseNode.h"
 

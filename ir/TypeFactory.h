@@ -19,11 +19,13 @@
 #include "ast/AssignmentNode.h"
 #include "ast/NumberNode.h"
 #include "ast/BinOpNode.h"
-#include "ast/MethodCallNode.h"
+#include "ast/MemberAccessNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/TypeNode.h"
 #include "ast/TernaryOperatorNode.h"
+#include "ast/FunctionCallNode.h"
+#include "ast/FunctionNode.h"
 
 class TypeFactory final : public NodeVisitor {
 public:
@@ -121,10 +123,12 @@ public:
         typeNode = node->proto->returnType;
     }
 
-    void visit(const MethodCallNode *node) override {
+    void visit(const MemberAccessNode *node) override {
         const auto objectType = from(node->object.get(), mc);
-        if (const auto *method = objectType->findMethodByName(node->method->ident->name)) {
-            typeNode = method->returnType;
+        if (const auto *function = dynamic_cast<FunctionCallNode *>(node->member.get())) {
+            if (const auto *method = objectType->findMethodByName(function->ident->name)) {
+                typeNode = method->returnType;
+            }
         }
     }
 
@@ -164,7 +168,7 @@ public:
                 type = std::make_unique<VoidIRType>();
                 break;
             case Str:
-                type = std::make_unique<StrIRType>(isPointer);
+                type = std::make_unique<StrIRType>();
                 break;
             case Custom:
                 // type = std::make_unique<CustomType>(typeNode.typeName, typeNode.isPointer);
