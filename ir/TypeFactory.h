@@ -19,6 +19,7 @@
 #include "ast/AssignmentNode.h"
 #include "ast/NumberNode.h"
 #include "ast/BinOpNode.h"
+#include "ast/FieldAccessNode.h"
 #include "ast/MemberAccessNode.h"
 #include "ast/UnaryOpNode.h"
 #include "ast/ProtoFunctionStatement.h"
@@ -26,6 +27,7 @@
 #include "ast/TernaryOperatorNode.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
+#include "ast/MethodCallNode.h"
 
 class TypeFactory final : public NodeVisitor {
 public:
@@ -123,13 +125,17 @@ public:
         typeNode = node->proto->returnType;
     }
 
-    void visit(const MemberAccessNode *node) override {
+    void visit(const MethodCallNode *node) override {
         const auto objectType = from(node->object.get(), mc);
-        if (const auto *function = dynamic_cast<FunctionCallNode *>(node->member.get())) {
-            if (const auto *method = objectType->findMethodByName(function->ident->name)) {
-                typeNode = method->returnType;
-            }
+        if (const auto *method = objectType->findMethodByName(node->method->ident->name)) {
+            typeNode = method->returnType;
         }
+    }
+
+    void visit(const FieldAccessNode *node) override {
+        const auto objType = from(node->object.get(), mc);
+        [[maybe_unused]] auto fieldType = objType->findField(node->field->name);
+        throw std::logic_error("Not implemented");
     }
 
     void visit(const DeclarationNode *node) override {

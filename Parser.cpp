@@ -16,7 +16,8 @@
 #include "ast/LoopCondNode.h"
 #include "ast/BlockNode.h"
 #include "ast/CommentNode.h"
-#include "ast/MemberAccessNode.h"
+#include "ast/FieldAccessNode.h"
+#include "ast/MethodCallNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
@@ -596,5 +597,17 @@ std::string Parser::makeErrorMsg(const std::string &msg) const {
 }
 
 std::unique_ptr<ExpressionNode> Parser::parseObjectMember(std::unique_ptr<ExpressionNode> object) {
-    return std::make_unique<MemberAccessNode>(std::move(object), tryParseIdentifier());
+    auto member =
+            visitRet(tryParseIdentifier(),
+                     [&object](std::unique_ptr<FunctionCallNode> node) {
+                         return std::make_unique<MethodCallNode>(std::move(object), std::move(node));
+                     }, [&object](std::unique_ptr<IdentNode> node) {
+                         return std::make_unique<FieldAccessNode>(std::move(object), std::move(node));
+                     }, [](std::unique_ptr<ExpressionNode> orig) {
+                         return nullptr;
+                     });
+    if (member) {
+        return member;
+    }
+    throw std::logic_error("Unexpected object member");
 }

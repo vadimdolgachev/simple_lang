@@ -180,9 +180,12 @@ int main() {
 
     const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
             std::make_unique<std::istringstream>(R"(
+        fn foo(a: int): int {
+            return -a;
+        }
         fn main() {
             s: str = "123";
-            println("str len=%d", 2 + s.len());
+            println("str len=%d", foo(2) + s.len());
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();

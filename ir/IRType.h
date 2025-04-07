@@ -44,11 +44,13 @@ public:
 
     virtual llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) = 0;
 
-    virtual const MethodLists &methodList() const;
+    [[nodiscard]] virtual const MethodLists &methodList() const;
 
     [[nodiscard]] virtual bool isMethodSupported(const std::string &method) const;
 
-    const ProtoFunctionStatement *findMethodByName(const std::string &methodName) const;
+    [[nodiscard]] const ProtoFunctionStatement *findMethodByName(const std::string &methodName) const;
+
+    [[nodiscard]] std::string findField(const std::string &fieldName) const;
 
     virtual llvm::Value *createMethodCall(llvm::IRBuilder<> &builder,
                                           const std::string &method,

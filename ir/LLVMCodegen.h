@@ -50,7 +50,9 @@ public:
 
     void visit(const TernaryOperatorNode *node) override;
 
-    void visit(const MemberAccessNode *node) override;
+    void visit(const MethodCallNode *node) override;
+
+    void visit(const FieldAccessNode *node) override;
 
     void visit(const CommentNode *node) override;
 
@@ -59,9 +61,8 @@ public:
     static llvm::Value *generate(const BaseNode *const node,
                                  const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
                                  const std::unique_ptr<llvm::Module> &llvmModule,
-                                 ModuleContext &mc,
-                                 ExpressionNode *object = nullptr) {
-        LLVMCodegen codegen(llvmIRBuilder, llvmModule, mc, object);
+                                 ModuleContext &mc) {
+        LLVMCodegen codegen(llvmIRBuilder, llvmModule, mc);
         node->visit(&codegen);
         return codegen.value();
     }
@@ -71,7 +72,6 @@ private:
     const std::unique_ptr<llvm::IRBuilder<>> &builder;
     const std::unique_ptr<llvm::Module> &module;
     ModuleContext &mc;
-    ExpressionNode *const object;
 };
 
 #endif //LLVMCODEGEN_H

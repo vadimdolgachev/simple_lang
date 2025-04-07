@@ -32,6 +32,20 @@ void visit(std::unique_ptr<Base, Del> ptr, Fs &&... fs) {
     (attempt(std::forward<Fs>(fs)), ...);
 }
 
+template<typename Base, typename Ret = Base, typename... Fs>
+std::unique_ptr<Ret> visitRet(std::unique_ptr<Base> ptr, Fs &&... fs) {
+    std::unique_ptr<Ret> res = {};
+    const auto attempt = [&]<typename FType>(FType &&f) {
+        if (auto *const rawPtr = dynamic_cast<typename HandlerType<FType>::pointer>(ptr.get())) {
+            res = std::forward<FType>(f)(
+                    std::unique_ptr<typename HandlerType<FType>::element_type>(
+                            static_cast<typename HandlerType<FType>::pointer>(ptr.release())));
+        }
+    };
+    (attempt(std::forward<Fs>(fs)), ...);
+    return res;
+}
+
 template<typename To, typename From>
 std::tuple<std::unique_ptr<To>, std::unique_ptr<From>> tryCast(std::unique_ptr<From> fromPtr) {
     static_assert(std::is_same_v<std::default_delete<From>, std::decay_t<decltype(fromPtr.get_deleter())>>,

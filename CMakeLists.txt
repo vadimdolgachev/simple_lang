@@ -94,7 +94,12 @@ add_executable(simple_ast_parser
         ast/MemberAccessNode.cpp
         ast/MemberAccessNode.h
         ast/CommentNode.cpp
-        ast/CommentNode.h)
+        ast/CommentNode.h
+        ast/MethodCallNode.cpp
+        ast/MethodCallNode.h
+        ast/FieldAccessNode.cpp
+        ast/FieldAccessNode.h
+)
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -52,8 +52,10 @@ add_executable(tests main.cpp
         ../ast/ReturnNode.cpp
         ../ast/TernaryOperatorNode.h
         ../ast/TernaryOperatorNode.cpp
-        ../ast/MemberAccessNode.h
-        ../ast/MemberAccessNode.cpp
+        ../ast/MethodCallNode.h
+        ../ast/MethodCallNode.cpp
+        ../ast/FieldAccessNode.h
+        ../ast/FieldAccessNode.cpp
         ../ast/CommentNode.h
         ../ast/CommentNode.cpp
         ../Lexer.cpp

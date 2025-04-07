@@ -23,7 +23,8 @@
 #include "ast/NumberNode.h"
 #include "ast/StringNode.h"
 #include "ast/LoopCondNode.h"
-#include "ast/MemberAccessNode.h"
+#include "ast/MethodCallNode.h"
+#include "ast/FieldAccessNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
@@ -1054,11 +1055,9 @@ namespace {
         auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
-        auto [memberAccess, orig] = tryCast<MemberAccessNode>(std::move(node));
-        ASSERT_NE(memberAccess, nullptr) << "Not a MemberAccessNode node: " << input;
-        auto *methodCall = dynamic_cast<FunctionCallNode *>(memberAccess->member.get());
-        ASSERT_NE(methodCall, nullptr) << "Not a FunctionCallNode node: " << input;
-        EXPECT_EQ("len", methodCall->ident->name) << "Wrong function name: " << input;
+        auto [methodCall, orig] = tryCast<MethodCallNode>(std::move(node));
+        ASSERT_NE(methodCall, nullptr) << "Not a MemberAccessNode node: " << input;
+        EXPECT_EQ("len", methodCall->method->ident->name) << "Wrong function name: " << input;
     }
 
     TEST_F(NodesTest, FieldAccessNode) {
@@ -1069,11 +1068,9 @@ namespace {
         auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
-        auto [memberAccess, orig] = tryCast<MemberAccessNode>(std::move(node));
-        ASSERT_NE(memberAccess, nullptr) << "Not a MemberAccessNode node: " << input;
-        auto *fieldAccess = dynamic_cast<IdentNode *>(memberAccess->member.get());
-        ASSERT_NE(fieldAccess, nullptr) << "Not a IdentNode node: " << input;
-        EXPECT_EQ("field1", fieldAccess->name) << "Wrong field name: " << input;
+        auto [fieldAccess, orig] = tryCast<FieldAccessNode>(std::move(node));
+        ASSERT_NE(fieldAccess, nullptr) << "Not a FieldAccessNode node: " << input;
+        EXPECT_EQ("field1", fieldAccess->field->name) << "Wrong field name: " << input;
     }
 
     TEST_F(NodesTest, MultiFieldAccessNode) {
@@ -1084,23 +1081,18 @@ namespace {
         auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
 
-        auto [memberAccess, orig] = tryCast<MemberAccessNode>(std::move(node));
-        ASSERT_NE(memberAccess, nullptr) << "Not a MemberAccessNode node: " << input;
+        auto [fieldAccess, orig] = tryCast<FieldAccessNode>(std::move(node));
+        ASSERT_NE(fieldAccess, nullptr) << "Not a FieldAccess node: " << input;
 
-        auto *memberAccess2 = dynamic_cast<MemberAccessNode *>(memberAccess->object.get());
-        ASSERT_NE(memberAccess2, nullptr) << "Not a MemberAccessNode node: " << input;
+        EXPECT_EQ("field", fieldAccess->field->name) << "Wrong field name: " << input;
 
-        auto *field1Access = dynamic_cast<IdentNode *>(memberAccess2->object.get());
-        ASSERT_NE(field1Access, nullptr) << "Not a IdentNode node: " << input;
-        EXPECT_EQ("obj", field1Access->name) << "Wrong field name: " << input;
-
-        auto *methodCall = dynamic_cast<FunctionCallNode *>(memberAccess2->member.get());
+        auto *methodCall = dynamic_cast<MethodCallNode *>(fieldAccess->object.get());
         ASSERT_NE(methodCall, nullptr) << "Not a FunctionCallNode node: " << input;
-        EXPECT_EQ("method", methodCall->ident->name) << "Wrong field name: " << input;
+        EXPECT_EQ("method", methodCall->method->ident->name) << "Wrong field name: " << input;
 
-        auto *field2Access = dynamic_cast<IdentNode *>(memberAccess->member.get());
-        ASSERT_NE(field2Access, nullptr) << "Not a IdentNode node: " << input;
-        EXPECT_EQ("field", field2Access->name) << "Wrong field name: " << input;
+        auto *objectName = dynamic_cast<IdentNode *>(methodCall->object.get());
+        ASSERT_NE(objectName, nullptr) << "Not a IdentNode node: " << input;
+        EXPECT_EQ("obj", objectName->name) << "Wrong object name: " << input;
     }
 
     TEST_F(NodesTest, CommentNode) {

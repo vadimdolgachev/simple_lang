@@ -44,7 +44,9 @@ public:
 
     void visit(const TernaryOperatorNode *node) override;
 
-    void visit(const MemberAccessNode *node) override;
+    void visit(const MethodCallNode *node) override;
+
+    void visit(const FieldAccessNode *node) override;
 
 private:
     std::ostream &ostream;

@@ -28,6 +28,10 @@ const ProtoFunctionStatement *IRType::findMethodByName(const std::string &method
     return nullptr;
 }
 
+std::string IRType::findField(const std::string &fieldName) const {
+    throw std::logic_error("Not supported");
+}
+
 llvm::Value *IRType::createMethodCall(llvm::IRBuilder<> &builder,
                                       const std::string &method,
                                       llvm::Value *object,

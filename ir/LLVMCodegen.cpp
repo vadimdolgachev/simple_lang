@@ -27,7 +27,6 @@
 #include "TypeFactory.h"
 #include "Util.h"
 #include "ast/LoopCondNode.h"
-#include "ast/MemberAccessNode.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
 
@@ -218,8 +217,7 @@ LLVMCodegen::LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &builder,
                          ExpressionNode *object):
     builder(builder),
     module(module),
-    mc(mc),
-    object(object) {}
+    mc(mc) {}
 
 void LLVMCodegen::visit(const IdentNode *node) {
     if (const auto gv = mc.symTable.lookupGlobal(node->name)) {
@@ -319,9 +317,8 @@ void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
     mc.symTable.insert(dynCast<ProtoFunctionStatement>(node->clone()));
     // function->addFnAttr(llvm::Attribute::NoUnwind);
     // function->addRetAttr(llvm::Attribute::ZExt);
-    for (auto *arg = function->arg_begin(); arg != function->arg_end(); ++arg) {
-        const auto index = std::distance(function->arg_begin(), arg);
-        arg->setName(node->params[index]->ident->name);
+    for (auto [index, arg]: enumerate(function->args())) {
+        arg.setName(node->params[index]->ident->name);
     }
     value_ = function;
 }
@@ -350,40 +347,31 @@ void LLVMCodegen::visit(const AssignmentNode *const node) {
 }
 
 void LLVMCodegen::visit(const FunctionCallNode *const node) {
-    if (object) {
-        const auto objectType = TypeFactory::from(object, mc);
-        if (!objectType->isMethodSupported(node->ident->name)) {
-            throw std::runtime_error("Method not supported");
-        }
-        value_ = objectType->createMethodCall(*builder, node->ident->name,
-                                              generate(object, builder, module, mc), {}, node->ident->name);
-    } else {
-        auto *const calleeFunc = getModuleFunction(node->ident->name,
-                                                   builder,
-                                                   module,
-                                                   mc);
-        if (calleeFunc == nullptr) {
-            throw std::runtime_error(std::format("Undefined reference: '{}'", node->ident->name));
-        }
-
-        // If argument mismatch error.
-        if (!calleeFunc->isVarArg() && calleeFunc->arg_size() != node->args.size()) {
-            throw std::logic_error("Argument mismatch error");
-        }
-
-        std::vector<llvm::Value *> argsFunc;
-        argsFunc.reserve(node->args.size());
-        const auto *const funcType = calleeFunc->getFunctionType();
-        for (size_t i = 0; i < node->args.size(); ++i) {
-            auto *argValue = generate(node->args[i].get(), builder, module, mc);
-            if (i < funcType->getNumParams()) {
-                argValue = tryCastValue(builder, argValue, funcType->getParamType(i));
-            }
-            argsFunc.push_back(argValue);
-        }
-
-        value_ = builder->CreateCall(calleeFunc, argsFunc);
+    auto *const calleeFunc = getModuleFunction(node->ident->name,
+                                               builder,
+                                               module,
+                                               mc);
+    if (calleeFunc == nullptr) {
+        throw std::runtime_error(std::format("Undefined reference: '{}'", node->ident->name));
     }
+
+    // If argument mismatch error.
+    if (!calleeFunc->isVarArg() && calleeFunc->arg_size() != node->args.size()) {
+        throw std::logic_error("Argument mismatch error");
+    }
+
+    std::vector<llvm::Value *> argsFunc;
+    argsFunc.reserve(node->args.size());
+    const auto *const funcType = calleeFunc->getFunctionType();
+    for (size_t i = 0; i < node->args.size(); ++i) {
+        auto *argValue = generate(node->args[i].get(), builder, module, mc);
+        if (i < funcType->getNumParams()) {
+            argValue = tryCastValue(builder, argValue, funcType->getParamType(i));
+        }
+        argsFunc.push_back(argValue);
+    }
+
+    value_ = builder->CreateCall(calleeFunc, argsFunc);
 }
 
 void LLVMCodegen::visit(const IfStatement *node) {
@@ -652,8 +640,25 @@ void LLVMCodegen::visit(const TernaryOperatorNode *node) {
     value_ = phi;
 }
 
-void LLVMCodegen::visit(const MemberAccessNode *node) {
-    value_ = generate(node->member.get(), builder, module, mc, node->object.get());
+void LLVMCodegen::visit(const MethodCallNode *node) {
+    const auto objectType = TypeFactory::from(node->object.get(), mc);
+    if (!objectType->isMethodSupported(node->method->ident->name)) {
+        throw std::runtime_error("Method not supported");
+    }
+    std::vector<llvm::Value *> args;
+    args.reserve(node->method->args.size());
+    for (const auto &arg: node->method->args) {
+        args.push_back(generate(arg.get(), builder, module, mc));
+    }
+    value_ = objectType->createMethodCall(*builder,
+                                          node->method->ident->name,
+                                          generate(node->object.get(), builder, module, mc),
+                                          args,
+                                          node->method->ident->name);
+}
+
+void LLVMCodegen::visit(const FieldAccessNode *node) {
+
 }
 
 void LLVMCodegen::visit(const CommentNode *node) {
