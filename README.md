@@ -1,4 +1,4 @@
-# SimpleASTParser
+# simple_lang
 
 ## Simple program
 ```

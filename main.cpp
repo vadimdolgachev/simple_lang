@@ -44,6 +44,7 @@ namespace {
     void initLlvmModules() {
         llvmContext = std::make_unique<llvm::LLVMContext>();
         llvmModule = std::make_unique<llvm::Module>("my cool jit", *llvmContext);
+
         llvmModule->setDataLayout(llvmJit->getDataLayout());
 
         llvmIRBuilder = std::make_unique<llvm::IRBuilder<>>(*llvmContext);
@@ -138,7 +139,8 @@ namespace {
         std::vector<std::unique_ptr<DeclarationNode>> params;
         params.push_back(std::make_unique<DeclarationNode>(std::make_unique<IdentNode>("fmt"),
                                                            TypeNode::makePrimitive(TypeKind::Str, true),
-                                                           std::nullopt));
+                                                           std::nullopt,
+                                                           false));
 
         cm.symTable.insert(std::make_unique<ProtoFunctionStatement>(printlnName,
                                                                     TypeNode::makePrimitive(TypeKind::Void, false),
@@ -153,7 +155,8 @@ namespace {
         constexpr auto printName = "print";
         params.push_back(std::make_unique<DeclarationNode>(std::make_unique<IdentNode>("fmt"),
                                                            TypeNode::makePrimitive(TypeKind::Str, true),
-                                                           std::nullopt));
+                                                           std::nullopt,
+                                                           false));
 
         cm.symTable.insert(std::make_unique<ProtoFunctionStatement>(printlnName,
                                                                     TypeNode::makePrimitive(TypeKind::Void, false),
@@ -183,9 +186,10 @@ int main() {
         fn foo(a: int): int {
             return -a;
         }
+        global: int = 10;
         fn main() {
             s: str = "123";
-            println("str len=%d", foo(2) + s.len());
+            println("str len=%d", global + foo(2) + s.len());
         }
     )")));
     auto stream = std::make_unique<std::istringstream>();

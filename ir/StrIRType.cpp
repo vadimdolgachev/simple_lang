@@ -69,7 +69,9 @@ llvm::Type *StrIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
 }
 
-llvm::Value *StrIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+llvm::Value *StrIRType::createValue(const BaseNode *node,
+                                    llvm::IRBuilder<> & /*builder*/,
+                                    llvm::Module &module) {
     const auto *strNode = dynamic_cast<const StringNode *>(node);
     auto *gv = new llvm::GlobalVariable(module,
                                         getLLVMType(module.getContext()),

@@ -16,7 +16,8 @@ class DeclarationNode final : public BaseNode {
 public:
     DeclarationNode(std::unique_ptr<IdentNode> ident,
                     TypeNode type,
-                    std::optional<std::unique_ptr<ExpressionNode>> init);
+                    std::optional<std::unique_ptr<ExpressionNode>> init,
+                    bool isGlobal);
 
     DeclarationNode(const DeclarationNode &other);
 
@@ -29,6 +30,7 @@ public:
     const std::unique_ptr<IdentNode> ident;
     const TypeNode type;
     const std::optional<std::unique_ptr<ExpressionNode>> init;
+    const bool isGlobal;
 };
 
 

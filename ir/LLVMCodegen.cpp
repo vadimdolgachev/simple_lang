@@ -594,7 +594,7 @@ void LLVMCodegen::visit(const DeclarationNode *node) {
         }
     }
 
-    if (builder->GetInsertBlock() == nullptr) {
+    if (node->isGlobal) {
         value_ = genGlobalDeclaration(node, llvmType, initValue, module, mc);
     } else {
         value_ = genLocalDeclaration(node, llvmType, initValue, builder, mc);
@@ -657,9 +657,7 @@ void LLVMCodegen::visit(const MethodCallNode *node) {
                                           node->method->ident->name);
 }
 
-void LLVMCodegen::visit(const FieldAccessNode *node) {
-
-}
+void LLVMCodegen::visit(const FieldAccessNode *node) {}
 
 void LLVMCodegen::visit(const CommentNode *node) {
     // skip comments
