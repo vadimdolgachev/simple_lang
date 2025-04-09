@@ -20,15 +20,15 @@
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/StringNode.h"
 #include "ast/TypeNode.h"
-
-#include "LLVMCodegen.h"
-
-#include "IRType.h"
-#include "TypeFactory.h"
-#include "Util.h"
 #include "ast/LoopCondNode.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
+#include "ast/MethodCallNode.h"
+
+#include "LLVMCodegen.h"
+#include "IRType.h"
+#include "TypeFactory.h"
+#include "Util.h"
 
 namespace {
     llvm::Function *getModuleFunction(const std::string &name,

@@ -523,7 +523,7 @@ std::unique_ptr<BlockNode> Parser::parseBlock() {
     return block;
 }
 
-std::unique_ptr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemicolon, bool globalScope) {
+std::unique_ptr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemicolon, bool isModuleScope) {
     auto ident = std::make_unique<IdentNode>(lexer->currToken().value.value());
     lexer->nextToken();
     if (lexer->currToken().type != TokenType::Colon) {
@@ -550,7 +550,7 @@ std::unique_ptr<DeclarationNode> Parser::parseDeclarationNode(const bool needCon
     return std::make_unique<DeclarationNode>(std::move(ident),
                                              TypeNode::makePrimitive(typeKind->second, isPtr),
                                              std::move(init),
-                                             globalScope);
+                                             isModuleScope);
 }
 
 std::unique_ptr<StatementNode> Parser::parseReturnStatement() {

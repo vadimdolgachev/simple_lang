@@ -99,6 +99,7 @@ add_executable(simple_ast_parser
         ast/MethodCallNode.h
         ast/FieldAccessNode.cpp
         ast/FieldAccessNode.h
+        ir/TypeFactory.cpp
 )
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

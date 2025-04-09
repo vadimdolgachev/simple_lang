@@ -41,7 +41,7 @@ private:
     [[nodiscard]] std::unique_ptr<StatementNode> parseWhileStatement();
     [[nodiscard]] std::unique_ptr<StatementNode> parseDoWhileStatement();
     [[nodiscard]] std::unique_ptr<BlockNode> parseBlock();
-    [[nodiscard]] std::unique_ptr<DeclarationNode> parseDeclarationNode(bool needConsumeSemicolon, bool globalScope = false);
+    [[nodiscard]] std::unique_ptr<DeclarationNode> parseDeclarationNode(bool needConsumeSemicolon, bool isModuleScope = false);
     [[nodiscard]] std::unique_ptr<StatementNode> parseReturnStatement();
     [[nodiscard]] std::unique_ptr<ExpressionNode> parseTernaryOperator(std::unique_ptr<ExpressionNode> cond);
     void consumeSemicolon() const;
