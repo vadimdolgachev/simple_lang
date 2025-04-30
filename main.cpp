@@ -20,12 +20,15 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 #include <llvm/Transforms/Utils/Mem2Reg.h>
 
+#include "CompilerFronted.h"
 #include "KaleidoscopeJIT.h"
 #include "Lexer.h"
 #include "Parser.h"
 #include "ast/ProtoFunctionStatement.h"
-#include "ast/TypeNode.h"
+#include "type/Type.h"
 #include "ir/LLVMCodegen.h"
+#include "type/FunctionType.h"
+#include "type/TypeFactory.h"
 
 namespace {
     std::unique_ptr<llvm::LLVMContext> llvmContext;
@@ -136,16 +139,10 @@ namespace {
         llvm::orc::SymbolMap symbols;
 
         constexpr auto printlnName = "println";
-        std::vector<std::unique_ptr<DeclarationNode>> params;
-        params.push_back(std::make_unique<DeclarationNode>(std::make_unique<IdentNode>("fmt"),
-                                                           TypeNode::makePrimitive(TypeKind::Str, true),
-                                                           std::nullopt,
-                                                           false));
-
-        cm.symTable.insert(std::make_unique<ProtoFunctionStatement>(printlnName,
-                                                                    TypeNode::makePrimitive(TypeKind::Void, false),
-                                                                    std::move(params),
-                                                                    true));
+        auto printType = TypeFactory::makeFunction(TypeFactory::makePrimitiveType(TypeKind::Void),
+                                                        std::vector{TypeFactory::makePrimitiveType(TypeKind::Str)});
+        cm.symTable.insertGlobal(SymbolTable::mangleFunction(printlnName, printType->parametersType()),
+                                 std::make_shared<SymbolInfo>(printType));
         symbols[mangle(printlnName)] = {
                 llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
                 llvm::JITSymbolFlags(
@@ -153,17 +150,10 @@ namespace {
         };
 
         constexpr auto printName = "print";
-        params.push_back(std::make_unique<DeclarationNode>(std::make_unique<IdentNode>("fmt"),
-                                                           TypeNode::makePrimitive(TypeKind::Str, true),
-                                                           std::nullopt,
-                                                           false));
-
-        cm.symTable.insert(std::make_unique<ProtoFunctionStatement>(printlnName,
-                                                                    TypeNode::makePrimitive(TypeKind::Void, false),
-                                                                    std::move(params),
-                                                                    true));
+        cm.symTable.insertGlobal(SymbolTable::mangleFunction(printName, printType->parametersType()),
+                                 std::make_shared<SymbolInfo>(printType));
         symbols[mangle(printName)] = {
-                llvm::orc::ExecutorAddr::fromPtr<decltype(libPrint)>(&libPrint),
+                llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
                 llvm::JITSymbolFlags(
                         llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
         };
@@ -181,21 +171,34 @@ int main() {
     ModuleContext cm;
     defineEmbeddedFunctions(cm);
 
-    const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
-            std::make_unique<std::istringstream>(R"(
-        fn foo(a: int): int {
-            return -a;
-        }
-        global: int = 10;
-        fn main() {
-            s: str = "123";
-            println("str len=%d", global + foo(2) + s.len());
-        }
-    )")));
-    auto stream = std::make_unique<std::istringstream>();
-    stream->basic_ios::rdbuf(std::cin.rdbuf());
-    const auto lexer = std::make_unique<Lexer>(std::move(stream));
+    // const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
+    //         std::make_unique<std::istringstream>(R"(
+    //     fn foo(a: int): int {
+    //         return -a;
+    //     }
+    //     global: int = 10;
+    //     fn main() {
+    //         s: str = "123";
+    //         println("str len=%d", global + foo(2) + s.len());
+    //     }
+    // )")));
+    //
+    // executeMain(cm, parser);
 
-    executeMain(cm, parser);
+    CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
+        fn foo(i: int): int {
+            return i;
+        }
+        fn main() {
+            v1: double = 0;
+            v2: bool = true;
+            v3: str = "123";
+            if (v1 != 0 && v2) {
+                v1 = 1;
+            }
+        }
+    )"));
+    compiler.generateIR(llvmIRBuilder,
+                        llvmModule);
     return 0;
 }

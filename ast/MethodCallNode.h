@@ -10,16 +10,20 @@
 
 class MethodCallNode final : public MemberAccessNode {
 public:
-    MethodCallNode(std::unique_ptr<ExpressionNode> object,
+    MethodCallNode(ExprNodePtr object,
                    std::unique_ptr<FunctionCallNode> method):
         MemberAccessNode(std::move(object)),
         method(std::move(method)) {}
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
 
     [[nodiscard]] std::string toString() const override;
 
-    const std::unique_ptr<FunctionCallNode> method;
+    [[nodiscard]] TypePtr getType() const override;
+
+    void setType(TypePtr type) override;
+
+    std::unique_ptr<FunctionCallNode> method;
 };
 
 

@@ -11,7 +11,7 @@ class CommentNode final : public BaseNode {
 public:
     explicit CommentNode(std::string text);
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
     [[nodiscard]] std::string toString() const override;
 
     const std::string text;

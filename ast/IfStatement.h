@@ -21,11 +21,11 @@ public:
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
 
-    const CondBranch ifBranch;
-    const std::vector<CondBranch> elseIfBranches;
-    const std::optional<std::unique_ptr<BlockNode>> elseBranch;
+    CondBranch ifBranch;
+    std::vector<CondBranch> elseIfBranches;
+    std::optional<std::unique_ptr<BlockNode>> elseBranch;
 };
 
 #endif //IFSTATEMENT_H

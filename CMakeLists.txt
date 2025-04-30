@@ -17,7 +17,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS})
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 add_executable(simple_ast_parser
         main.cpp
@@ -60,10 +60,10 @@ add_executable(simple_ast_parser
         ast/BlockNode.h
         ast/DeclarationNode.cpp
         ast/DeclarationNode.h
-        ast/TypeNode.cpp
-        ast/TypeNode.h
-        ir/SymbolTable.cpp
-        ir/SymbolTable.h
+        type/Type.cpp
+        type/Type.h
+        SymbolTable.cpp
+        SymbolTable.h
         ast/ReturnNode.cpp
         ast/ReturnNode.h
         ast/TernaryOperatorNode.cpp
@@ -75,9 +75,7 @@ add_executable(simple_ast_parser
         ir/IntIRType.h
         ir/DoubleIRType.cpp
         ir/DoubleIRType.h
-        ir/TypeManager.cpp
-        ir/TypeManager.h
-        ir/TypeFactory.h
+        ir/IRTypeFactory.h
         ir/ModuleContext.h
         ir/NumericIRType.h
         ir/VoidIRType.h
@@ -99,7 +97,33 @@ add_executable(simple_ast_parser
         ast/MethodCallNode.h
         ast/FieldAccessNode.cpp
         ast/FieldAccessNode.h
-        ir/TypeFactory.cpp
+        ir/IRTypeFactory.cpp
+        ast/ModuleNode.cpp
+        ast/ModuleNode.h
+        CompilerFronted.cpp
+        CompilerFronted.h
+        SemanticAnalyzer.cpp
+        SemanticAnalyzer.h
+        ast/TypeCastNode.cpp
+        ast/TypeCastNode.h
+        type/NumericType.cpp
+        type/NumericType.h
+        type/VoidType.cpp
+        type/VoidType.h
+        type/FunctionType.cpp
+        type/FunctionType.h
+        type/BoolType.cpp
+        type/BoolType.h
+        type/PointerType.cpp
+        type/PointerType.h
+        type/StrType.cpp
+        type/StrType.h
+        type/TypeFactory.cpp
+        type/TypeFactory.h
+        type/CharType.cpp
+        type/CharType.h
+        type/ByteType.cpp
+        type/ByteType.h
 )
 
 target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

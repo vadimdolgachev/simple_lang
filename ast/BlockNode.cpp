@@ -7,7 +7,7 @@
 BlockNode::BlockNode(Statements statements) :
     statements(std::move(statements)) {}
 
-void BlockNode::visit(NodeVisitor *visitor) const {
+void BlockNode::visit(NodeVisitor *visitor) {
     visitor->visit(this);
 }
 

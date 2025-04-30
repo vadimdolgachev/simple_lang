@@ -4,7 +4,7 @@
 #include <sstream>
 
 FunctionCallNode::FunctionCallNode(std::unique_ptr<IdentNode> ident,
-                                   std::vector<std::unique_ptr<ExpressionNode>> args):
+                                   std::vector<ExprNodePtr> args):
     ident(std::move(ident)),
     args(std::move(args)) {}
 
@@ -25,6 +25,14 @@ std::string FunctionCallNode::toString() const {
     return ss.str();
 }
 
-void FunctionCallNode::visit(NodeVisitor *visitor) const {
+void FunctionCallNode::visit(NodeVisitor *visitor) {
     visitor->visit(this);
+}
+
+TypePtr FunctionCallNode::getType() const {
+    return this->type;
+}
+
+void FunctionCallNode::setType(TypePtr type) {
+    this->type = std::move(type);
 }

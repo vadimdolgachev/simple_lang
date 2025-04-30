@@ -11,6 +11,7 @@
 #include "ast/IdentNode.h"
 #include "ast/AssignmentNode.h"
 #include "ast/BooleanNode.h"
+#include "ast/ModuleNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/StringNode.h"
 
@@ -46,19 +47,19 @@ NodePrinter::NodePrinter(std::ostream &os)
     : ostream(os) {
 }
 
-void NodePrinter::visit(const IdentNode *node) {
+void NodePrinter::visit(IdentNode *node) {
     ostream << "VariableAccess: name=" << node->name << ", ";
 }
 
-void NodePrinter::visit(const NumberNode *node) {
+void NodePrinter::visit(NumberNode *node) {
     ostream << "Number value=" << node->value;
 }
 
-void NodePrinter::visit(const StringNode *node) {
+void NodePrinter::visit(StringNode *node) {
     ostream << "String value=" << node->str;
 }
 
-void NodePrinter::visit(const BinOpNode *node) {
+void NodePrinter::visit(BinOpNode *node) {
     ostream << "BinOp: op=" << node->binOp;
     ostream << ", lhs=(";
     node->lhs->visit(this);
@@ -68,58 +69,70 @@ void NodePrinter::visit(const BinOpNode *node) {
     ostream << ")";
 }
 
-void NodePrinter::visit(const BooleanNode *node) {
+void NodePrinter::visit(BooleanNode *node) {
     ostream << "Boolean value=" << node->value;
 }
 
-void NodePrinter::visit(const FunctionNode *node) {
+void NodePrinter::visit(FunctionNode *node) {
     ostream << "Function: name=" << node->proto->toString();
 }
 
-void NodePrinter::visit(const ProtoFunctionStatement *node) {
+void NodePrinter::visit(ProtoFunctionStatement *node) {
     ostream << "ProtoFunction: name=" << node->name;
 }
 
-void NodePrinter::visit(const AssignmentNode *node) {
+void NodePrinter::visit(AssignmentNode *node) {
     ostream << "VariableDefinition: var=" << node->lvalue;
 }
 
-void NodePrinter::visit(const FunctionCallNode *node) {
+void NodePrinter::visit(FunctionCallNode *node) {
     ostream << "CallFunctionNode: name=" << node->ident->name;
 }
 
-void NodePrinter::visit(const IfStatement *node) {
+void NodePrinter::visit(IfStatement *node) {
     ostream << "IfStatement";
 }
 
-void NodePrinter::visit(const UnaryOpNode *node) {
+void NodePrinter::visit(UnaryOpNode *node) {
     ostream << "UnaryOp: name=" << node->operatorType;
 }
 
-void NodePrinter::visit(const LoopCondNode *node) {
+void NodePrinter::visit(LoopCondNode *node) {
     ostream << "WhileLoop";
 }
 
-void NodePrinter::visit(const BlockNode *node) {
+void NodePrinter::visit(BlockNode *node) {
     ostream << "Block";
 }
 
-void NodePrinter::visit(const DeclarationNode *node) {
+void NodePrinter::visit(DeclarationNode *node) {
     ostream << "DeclarationNode";
 }
 
-void NodePrinter::visit(const ReturnNode *node) {
+void NodePrinter::visit(ReturnNode *node) {
     ostream << "ReturnNode";
 }
 
-void NodePrinter::visit(const TernaryOperatorNode *node) {
+void NodePrinter::visit(TernaryOperatorNode *node) {
     ostream << "TernaryOperatorNode";
 }
 
-void NodePrinter::visit(const MethodCallNode *node) {
+void NodePrinter::visit(MethodCallNode *node) {
     ostream << "MethodCallNode";
 }
 
-void NodePrinter::visit(const FieldAccessNode *node) {
+void NodePrinter::visit(FieldAccessNode *node) {
     ostream << "FieldAccessNode";
+}
+
+void NodePrinter::visit(CommentNode *node) {
+
+}
+
+void NodePrinter::visit(ModuleNode *node) {
+
+}
+
+void NodePrinter::visit(TypeCastNode *node) {
+    ostream << "TypeCastNode";
 }

@@ -15,11 +15,18 @@ public:
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
 
-    [[nodiscard]] std::unique_ptr<BaseNode> clone() const override;
+    [[nodiscard]] BaseNodePtr clone() const override;
+
+    [[nodiscard]] TypePtr getType() const override;
+
+    void setType(TypePtr type) override;
 
     const std::string name;
+
+private:
+    TypePtr type;
 };
 
 #endif //VARIABLEACCESSAST_H

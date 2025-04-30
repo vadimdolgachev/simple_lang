@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <vector>
+#include <expected>
 
 template<typename>
 struct deduce_arg_type;
@@ -89,5 +90,8 @@ std::vector<std::unique_ptr<T>> clone(const std::vector<std::unique_ptr<T>> &sou
     }
     return dest;
 }
+
+template<typename T>
+using Result = std::expected<T, std::string>;
 
 #endif //UTIL_H

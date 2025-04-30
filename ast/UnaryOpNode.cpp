@@ -2,7 +2,7 @@
 
 UnaryOpNode::UnaryOpNode(const TokenType operatorType,
                          const UnaryOpType unaryPosType,
-                         std::unique_ptr<ExpressionNode> expr) :
+                         ExprNodePtr expr) :
     operatorType(operatorType),
     unaryPosType(unaryPosType),
     expr(std::move(expr)) {}
@@ -11,6 +11,13 @@ std::string UnaryOpNode::toString() const {
     return "unary operator";
 }
 
-void UnaryOpNode::visit(NodeVisitor *const visitor) const {
+void UnaryOpNode::visit(NodeVisitor *const visitor) {
     visitor->visit(this);
+}
+
+TypePtr UnaryOpNode::getType() const {
+    return expr->getType();
+}
+
+void UnaryOpNode::setType(TypePtr type) {
 }

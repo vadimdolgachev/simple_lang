@@ -12,16 +12,24 @@
 
 class BinOpNode final : public ExpressionNode {
 public:
-    BinOpNode(TokenType binOp, std::unique_ptr<ExpressionNode> lhs,
-              std::unique_ptr<ExpressionNode> rhs);
+    BinOpNode(TokenType binOp,
+              ExprNodePtr lhs,
+              ExprNodePtr rhs);
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
+
+    [[nodiscard]] TypePtr getType() const override;
+
+    void setType(TypePtr type) override;
 
     const TokenType binOp;
-    const std::unique_ptr<ExpressionNode> lhs;
-    const std::unique_ptr<ExpressionNode> rhs;
+    ExprNodePtr lhs;
+    ExprNodePtr rhs;
+
+private:
+    TypePtr exprType;
 };
 
 #endif //BINOPAST_H

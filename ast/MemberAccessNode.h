@@ -11,10 +11,9 @@
 
 class MemberAccessNode : public ExpressionNode {
 public:
-    explicit MemberAccessNode(std::unique_ptr<ExpressionNode> object):
-        object(std::move(object)) {}
+    explicit MemberAccessNode(ExprNodePtr object);
 
-    const std::unique_ptr<ExpressionNode> object;
+    ExprNodePtr object;
 };
 
 #endif //MEMBERACCESSNODE_H

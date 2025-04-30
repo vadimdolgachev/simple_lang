@@ -28,7 +28,7 @@
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
-#include "ast/TypeNode.h"
+#include "../type/Type.h"
 
 namespace {
     class VarDefinitionTest : public testing::Test {};
@@ -657,7 +657,7 @@ namespace {
         EXPECT_EQ(protoFn->params[2]->ident->name, "arg3") << "Wrong identifier name in: " << input;
         EXPECT_EQ(protoFn->params[3]->ident->name, "arg4") << "Wrong identifier name in: " << input;
 
-        EXPECT_EQ(protoFn->returnType.kind, TypeKind::Str) << "Wrong return type: " << input;
+        EXPECT_EQ(protoFn->returnType->getKind(), TypeKind::Str) << "Wrong return type: " << input;
     }
 
     TEST_F(FunctionTest, ComplexFunctionCall) {
@@ -778,7 +778,7 @@ namespace {
         ASSERT_NE(operand, nullptr) << "Invalid operand type";
         EXPECT_EQ(operand->name, "v") << "Wrong operand identifier";
 
-        EXPECT_EQ(fnNode->proto->returnType.kind, TypeKind::Void) << "Wrong return type: " << input;
+        EXPECT_EQ(fnNode->proto->returnType->getKind(), TypeKind::Void) << "Wrong return type: " << input;
     }
 
     class IfStatementTest : public testing::Test {};

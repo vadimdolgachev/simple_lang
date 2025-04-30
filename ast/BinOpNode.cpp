@@ -1,7 +1,7 @@
 #include "BinOpNode.h"
 
-BinOpNode::BinOpNode(const TokenType binOp, std::unique_ptr<ExpressionNode> lhs,
-                     std::unique_ptr<ExpressionNode> rhs) :
+BinOpNode::BinOpNode(const TokenType binOp, ExprNodePtr lhs,
+                     ExprNodePtr rhs) :
     binOp(binOp), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
 std::string BinOpNode::toString() const {
@@ -19,6 +19,14 @@ std::string BinOpNode::toString() const {
            .append(isRhsBinOp ? ")" : "");
 }
 
-void BinOpNode::visit(NodeVisitor *visitor) const {
+void BinOpNode::visit(NodeVisitor *visitor) {
     visitor->visit(this);
+}
+
+TypePtr BinOpNode::getType() const {
+    return exprType;
+}
+
+void BinOpNode::setType(TypePtr type) {
+    exprType = std::move(type);
 }

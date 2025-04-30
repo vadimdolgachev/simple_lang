@@ -9,12 +9,12 @@
 
 #include "BaseNode.h"
 #include "DeclarationNode.h"
-#include "TypeNode.h"
+#include "../type/Type.h"
 
 class ProtoFunctionStatement final : public StatementNode {
 public:
     ProtoFunctionStatement(std::string name,
-                           TypeNode returnType,
+                           TypePtr returnType,
                            std::vector<std::unique_ptr<DeclarationNode>> params,
                            bool isVarArgs = false);
 
@@ -22,13 +22,13 @@ public:
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
 
-    [[nodiscard]] std::unique_ptr<BaseNode> clone() const override;
+    [[nodiscard]] BaseNodePtr clone() const override;
 
     const std::string name;
-    const TypeNode returnType;
-    const std::vector<std::unique_ptr<DeclarationNode>> params;
+    TypePtr returnType;
+    std::vector<std::unique_ptr<DeclarationNode>> params;
     const bool isVarArgs;
 };
 

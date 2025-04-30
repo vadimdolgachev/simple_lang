@@ -12,15 +12,15 @@
 
 class FunctionNode final : public StatementNode {
 public:
-    FunctionNode(std::unique_ptr<ProtoFunctionStatement> proto,
+    FunctionNode(std::shared_ptr<ProtoFunctionStatement> proto,
                  std::unique_ptr<BlockNode> body);
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
 
-    const std::unique_ptr<ProtoFunctionStatement> proto;
-    const std::unique_ptr<BlockNode> body;
+    std::shared_ptr<ProtoFunctionStatement> proto;
+    std::unique_ptr<BlockNode> body;
 };
 
 #endif //FUNCTIONAST_H

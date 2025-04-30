@@ -10,26 +10,28 @@
 
 #include "BaseNode.h"
 #include "IdentNode.h"
-#include "TypeNode.h"
+#include "../type/Type.h"
 
-class DeclarationNode final : public BaseNode {
+class DeclarationNode final : public StatementNode {
 public:
     DeclarationNode(std::unique_ptr<IdentNode> ident,
-                    TypeNode type,
-                    std::optional<std::unique_ptr<ExpressionNode>> init,
+                    TypePtr type,
+                    std::optional<ExprNodePtr> init,
+                    bool isConst,
                     bool isGlobal);
 
     DeclarationNode(const DeclarationNode &other);
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
 
-    [[nodiscard]] std::unique_ptr<BaseNode> clone() const override;
+    [[nodiscard]] BaseNodePtr clone() const override;
 
     const std::unique_ptr<IdentNode> ident;
-    const TypeNode type;
-    const std::optional<std::unique_ptr<ExpressionNode>> init;
+    const TypePtr type;
+    std::optional<ExprNodePtr> init;
+    const bool isConst;
     const bool isGlobal;
 };
 

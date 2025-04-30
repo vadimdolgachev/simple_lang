@@ -9,13 +9,19 @@
 
 class FieldAccessNode final : public MemberAccessNode {
 public:
-    explicit FieldAccessNode(std::unique_ptr<ExpressionNode> object,
+    explicit FieldAccessNode(ExprNodePtr object,
                              std::unique_ptr<IdentNode> field);
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
     [[nodiscard]] std::string toString() const override;
 
-    const std::unique_ptr<IdentNode> field;
+    TypePtr getType() const override;
+    void setType(TypePtr type) override;
+
+    std::unique_ptr<IdentNode> field;
+
+private:
+    TypePtr type;
 };
 
 #endif //FIELDACCESSNODE_H

@@ -5,7 +5,7 @@
 #include "Util.h"
 
 ProtoFunctionStatement::ProtoFunctionStatement(std::string name,
-                                               TypeNode returnType,
+                                               TypePtr returnType,
                                                std::vector<std::unique_ptr<DeclarationNode>> params,
                                                const bool isVarArgs) :
     name(std::move(name)),
@@ -23,10 +23,10 @@ std::string ProtoFunctionStatement::toString() const {
     return "proto func:" + name;
 }
 
-void ProtoFunctionStatement::visit(NodeVisitor *const visitor) const {
+void ProtoFunctionStatement::visit(NodeVisitor *const visitor) {
     visitor->visit(this);
 }
 
-std::unique_ptr<BaseNode> ProtoFunctionStatement::clone() const {
+BaseNodePtr ProtoFunctionStatement::clone() const {
     return std::make_unique<ProtoFunctionStatement>(*this);
 }

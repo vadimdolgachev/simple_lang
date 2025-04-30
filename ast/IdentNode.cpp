@@ -7,10 +7,18 @@ std::string IdentNode::toString() const {
     return "ident=" + name;
 }
 
-void IdentNode::visit(NodeVisitor *visitor) const {
+void IdentNode::visit(NodeVisitor *visitor) {
     visitor->visit(this);
 }
 
-std::unique_ptr<BaseNode> IdentNode::clone() const {
+BaseNodePtr IdentNode::clone() const {
     return std::make_unique<IdentNode>(*this);
+}
+
+TypePtr IdentNode::getType() const {
+    return type;
+}
+
+void IdentNode::setType(TypePtr type) {
+    this->type = std::move(type);
 }

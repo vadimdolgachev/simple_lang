@@ -13,11 +13,11 @@ class ReturnNode final : public StatementNode {
 public:
     explicit ReturnNode(std::unique_ptr<ExpressionNode> expr);
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
 
     [[nodiscard]] std::string toString() const override;
 
-    const std::unique_ptr<ExpressionNode> expr;
+    std::unique_ptr<ExpressionNode> expr;
 };
 
 

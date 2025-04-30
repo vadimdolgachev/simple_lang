@@ -7,7 +7,7 @@
 ReturnNode::ReturnNode(std::unique_ptr<ExpressionNode> expr):
     expr(std::move(expr)) {}
 
-void ReturnNode::visit(NodeVisitor *visitor) const {
+void ReturnNode::visit(NodeVisitor *visitor) {
     visitor->visit(this);
 }
 

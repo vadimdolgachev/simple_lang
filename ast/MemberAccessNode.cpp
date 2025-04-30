@@ -3,3 +3,6 @@
 //
 
 #include "MemberAccessNode.h"
+
+MemberAccessNode::MemberAccessNode(ExprNodePtr object):
+    object(std::move(object)) {}

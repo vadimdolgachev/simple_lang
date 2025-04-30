@@ -21,17 +21,17 @@ public:
 
     LoopCondNode(Type loopType,
                  CondBranch condBranch,
-                 std::optional<std::unique_ptr<BaseNode>> init = std::nullopt,
-                 std::optional<std::unique_ptr<ExpressionNode>> increment = std::nullopt);
+                 std::optional<BaseNodePtr> init = std::nullopt,
+                 std::optional<ExprNodePtr> increment = std::nullopt);
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
 
     const Type loopType;
-    const CondBranch condBranch;
-    const std::optional<std::unique_ptr<BaseNode>> init;
-    const std::optional<std::unique_ptr<ExpressionNode>> increment;
+    CondBranch condBranch;
+    std::optional<BaseNodePtr> init;
+    std::optional<ExprNodePtr> increment;
 };
 
 #endif //LOOPCONDNODE_H

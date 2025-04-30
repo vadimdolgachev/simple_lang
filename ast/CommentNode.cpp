@@ -7,7 +7,7 @@
 CommentNode::CommentNode(std::string text):
     text(std::move(text)) {}
 
-void CommentNode::visit(NodeVisitor *visitor) const {
+void CommentNode::visit(NodeVisitor *visitor) {
     visitor->visit(this);
 }
 

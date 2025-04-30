@@ -19,15 +19,18 @@ public:
 
     UnaryOpNode(TokenType operatorType,
                 UnaryOpType unaryPosType,
-                std::unique_ptr<ExpressionNode> expr);
+                ExprNodePtr expr);
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
+
+    TypePtr getType() const override;
+    void setType(TypePtr type) override;
 
     const TokenType operatorType;
     const UnaryOpType unaryPosType;
-    const std::unique_ptr<ExpressionNode> expr;
+    ExprNodePtr expr;
 };
 
 #endif //UNARYOPAST_H

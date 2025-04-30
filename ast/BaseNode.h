@@ -9,6 +9,8 @@
 #include <memory>
 #include <string>
 
+#include "../type/Type.h"
+
 class UnaryOpNode;
 class IfStatement;
 class FunctionCallNode;
@@ -29,59 +31,68 @@ class MemberAccessNode;
 class CommentNode;
 class MethodCallNode;
 class FieldAccessNode;
+class ModuleNode;
+class TypeCastNode;
 
 class NodeVisitor {
 public:
     virtual ~NodeVisitor() = default;
 
-    virtual void visit(const IdentNode *node) = 0;
+    virtual void visit(IdentNode *node) = 0;
 
-    virtual void visit(const NumberNode *node) = 0;
+    virtual void visit(NumberNode *node) = 0;
 
-    virtual void visit(const StringNode *node) = 0;
+    virtual void visit(StringNode *node) = 0;
 
-    virtual void visit(const BooleanNode *node) = 0;
+    virtual void visit(BooleanNode *node) = 0;
 
-    virtual void visit(const BinOpNode *node) = 0;
+    virtual void visit(BinOpNode *node) = 0;
 
-    virtual void visit(const FunctionNode *node) = 0;
+    virtual void visit(FunctionNode *node) = 0;
 
-    virtual void visit(const ProtoFunctionStatement *node) = 0;
+    virtual void visit(ProtoFunctionStatement *node) = 0;
 
-    virtual void visit(const AssignmentNode *node) = 0;
+    virtual void visit(AssignmentNode *node) = 0;
 
-    virtual void visit(const FunctionCallNode *node) = 0;
+    virtual void visit(FunctionCallNode *node) = 0;
 
-    virtual void visit(const IfStatement *node) = 0;
+    virtual void visit(IfStatement *node) = 0;
 
-    virtual void visit(const UnaryOpNode *node) = 0;
+    virtual void visit(UnaryOpNode *node) = 0;
 
-    virtual void visit(const LoopCondNode *node) = 0;
+    virtual void visit(LoopCondNode *node) = 0;
 
-    virtual void visit(const BlockNode *node) = 0;
+    virtual void visit(BlockNode *node) = 0;
 
-    virtual void visit(const DeclarationNode *node) = 0;
+    virtual void visit(DeclarationNode *node) = 0;
 
-    virtual void visit(const ReturnNode *node) = 0;
+    virtual void visit(ReturnNode *node) = 0;
 
-    virtual void visit(const TernaryOperatorNode *node) = 0;
+    virtual void visit(TernaryOperatorNode *node) = 0;
 
-    virtual void visit(const MethodCallNode *node) = 0;
+    virtual void visit(MethodCallNode *node) = 0;
 
-    virtual void visit(const FieldAccessNode *node) = 0;
+    virtual void visit(FieldAccessNode *node) = 0;
 
-    virtual void visit(const CommentNode *node) = 0;
+    virtual void visit(CommentNode *node) = 0;
+
+    virtual void visit(ModuleNode *node) = 0;
+
+    virtual void visit(TypeCastNode *node) = 0;
 };
+
+class BaseNode;
+using BaseNodePtr = std::unique_ptr<BaseNode>;
 
 class BaseNode {
 public:
     virtual ~BaseNode() = default;
 
-    virtual void visit(NodeVisitor *visitor) const = 0;
+    virtual void visit(NodeVisitor *visitor) = 0;
 
     [[nodiscard]] virtual std::string toString() const = 0;
 
-    [[nodiscard]] virtual std::unique_ptr<BaseNode> clone() const {
+    [[nodiscard]] virtual BaseNodePtr clone() const {
         throw std::logic_error("Not implemented");
     }
 };
@@ -91,10 +102,19 @@ public:
     ~StatementNode() override = default;
 };
 
+using StmtNodePtr = std::unique_ptr<StatementNode>;
+
 class ExpressionNode : public BaseNode {
 public:
     ~ExpressionNode() override = default;
+
+    [[nodiscard]] virtual TypePtr getType() const = 0;
+
+    virtual void setType(TypePtr type) = 0;
 };
 
+template<typename T>
+using NodePtr = std::unique_ptr<T>;
+using ExprNodePtr = NodePtr<ExpressionNode>;
 
 #endif //BASEASTNODE_H

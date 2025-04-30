@@ -5,7 +5,15 @@
 #ifndef MODULECONTEXT_H
 #define MODULECONTEXT_H
 
-#include "SymbolTable.h"
+#include "../SymbolTable.h"
+
+// template<typename SymbolType, typename BoundType>
+// struct SymbolInfo final {
+//     SymbolType type;
+//     bool isConst = false;
+//     BoundType bound = {};
+// };
+
 
 struct ModuleContext final {
     ModuleContext() = default;

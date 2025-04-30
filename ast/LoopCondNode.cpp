@@ -6,8 +6,8 @@
 
 LoopCondNode::LoopCondNode(const Type loopType,
                            CondBranch condBranch,
-                           std::optional<std::unique_ptr<BaseNode>> init,
-                           std::optional<std::unique_ptr<ExpressionNode>> increment):
+                           std::optional<BaseNodePtr> init,
+                           std::optional<ExprNodePtr> increment):
     loopType(loopType),
     condBranch(std::move(condBranch)),
     init(std::move(init)),
@@ -29,6 +29,6 @@ std::string LoopCondNode::toString() const {
     return "LoopCondNode (" + typeStr + ")";
 }
 
-void LoopCondNode::visit(NodeVisitor *visitor) const {
+void LoopCondNode::visit(NodeVisitor *visitor) {
     visitor->visit(this);
 }

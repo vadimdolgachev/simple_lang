@@ -18,47 +18,51 @@ public:
                 ModuleContext &mc,
                 ExpressionNode *object = nullptr);
 
-    void visit(const IdentNode *node) override;
+    void visit(IdentNode *node) override;
 
-    void visit(const FunctionNode *node) override;
+    void visit(FunctionNode *node) override;
 
-    void visit(const NumberNode *node) override;
+    void visit(NumberNode *node) override;
 
-    void visit(const StringNode *node) override;
+    void visit(StringNode *node) override;
 
-    void visit(const BooleanNode *node) override;
+    void visit(BooleanNode *node) override;
 
-    void visit(const BinOpNode *node) override;
+    void visit(BinOpNode *node) override;
 
-    void visit(const ProtoFunctionStatement *node) override;
+    void visit(ProtoFunctionStatement *node) override;
 
-    void visit(const AssignmentNode *node) override;
+    void visit(AssignmentNode *node) override;
 
-    void visit(const FunctionCallNode *node) override;
+    void visit(FunctionCallNode *node) override;
 
-    void visit(const IfStatement *node) override;
+    void visit(IfStatement *node) override;
 
-    void visit(const UnaryOpNode *node) override;
+    void visit(UnaryOpNode *node) override;
 
-    void visit(const LoopCondNode *node) override;
+    void visit(LoopCondNode *node) override;
 
-    void visit(const BlockNode *node) override;
+    void visit(BlockNode *node) override;
 
-    void visit(const DeclarationNode *node) override;
+    void visit(DeclarationNode *node) override;
 
-    void visit(const ReturnNode *node) override;
+    void visit(ReturnNode *node) override;
 
-    void visit(const TernaryOperatorNode *node) override;
+    void visit(TernaryOperatorNode *node) override;
 
-    void visit(const MethodCallNode *node) override;
+    void visit(MethodCallNode *node) override;
 
-    void visit(const FieldAccessNode *node) override;
+    void visit(FieldAccessNode *node) override;
 
-    void visit(const CommentNode *node) override;
+    void visit(CommentNode *node) override;
+
+    void visit(ModuleNode *node) override;
+
+    void visit(TypeCastNode *node) override;
 
     [[nodiscard]] llvm::Value *value() const;
 
-    static llvm::Value *generate(const BaseNode *const node,
+    static llvm::Value *generate(BaseNode *const node,
                                  const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
                                  const std::unique_ptr<llvm::Module> &llvmModule,
                                  ModuleContext &mc) {

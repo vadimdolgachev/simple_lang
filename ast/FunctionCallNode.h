@@ -14,14 +14,20 @@
 class FunctionCallNode final : public ExpressionNode {
 public:
     FunctionCallNode(std::unique_ptr<IdentNode> ident,
-                     std::vector<std::unique_ptr<ExpressionNode>> args);
+                     std::vector<ExprNodePtr> args);
 
     [[nodiscard]] std::string toString() const override;
 
-    void visit(NodeVisitor *visitor) const override;
+    void visit(NodeVisitor *visitor) override;
+
+    [[nodiscard]] TypePtr getType() const override;
+    void setType(TypePtr type) override;
 
     const std::unique_ptr<IdentNode> ident;
-    const std::vector<std::unique_ptr<ExpressionNode>> args;
+    std::vector<ExprNodePtr> args;
+
+private:
+    TypePtr type;
 };
 
 #endif // CALLFUNCTIONEXPR_H

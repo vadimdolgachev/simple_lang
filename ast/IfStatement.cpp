@@ -12,6 +12,6 @@ std::string IfStatement::toString() const {
     return "if expr";
 }
 
-void IfStatement::visit(NodeVisitor *const visitor) const {
+void IfStatement::visit(NodeVisitor *const visitor) {
     visitor->visit(this);
 }

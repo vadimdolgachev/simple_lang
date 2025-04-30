@@ -19,7 +19,7 @@
 #include "ast/BooleanNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/StringNode.h"
-#include "ast/TypeNode.h"
+#include "../type/Type.h"
 #include "ast/LoopCondNode.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
@@ -27,7 +27,7 @@
 
 #include "LLVMCodegen.h"
 #include "IRType.h"
-#include "TypeFactory.h"
+#include "IRTypeFactory.h"
 #include "Util.h"
 
 namespace {
@@ -42,14 +42,15 @@ namespace {
 
         // If not, check whether we can codegen the declaration from some existing
         // prototype.
-        if (const auto &proto = mc.symTable.lookupFunction(name);
-            proto.has_value()) {
-            auto *const value = LLVMCodegen::generate(proto.value().get(),
-                                                      builder,
-                                                      module,
-                                                      mc);
-            return llvm::dyn_cast<llvm::Function>(value);
-        }
+
+        // if (const auto &proto = mc.symTable.lookupFunction(name);
+        //     proto.has_value()) {
+        //     auto *const value = LLVMCodegen::generate(proto.value().get(),
+        //                                               builder,
+        //                                               module,
+        //                                               mc);
+        //     return llvm::dyn_cast<llvm::Function>(value);
+        // }
 
         // If no existing prototype exists, return null.
         return nullptr;
@@ -157,7 +158,7 @@ namespace {
         gVar->setAlignment(llvm::MaybeAlign(8));
         gVar->setDSOLocal(true);
 
-        mc.symTable.insert(node->ident->name, node->type, gVar);
+        mc.symTable.insert(node->ident->name, std::make_shared<GlobalSymbol>(node->type, gVar));
         return gVar;
     }
 
@@ -181,8 +182,8 @@ namespace {
         }
 
         mc.symTable.insert(node->ident->name,
-                           node->type,
-                           alloca);
+                           std::make_shared<AllocaInstSymbol>(node->type,
+                                                                  alloca));
         return alloca;
     }
 
@@ -196,17 +197,19 @@ namespace {
 
         for (auto &arg: func->args()) {
             const auto &paramType = node->proto->params[arg.getArgNo()]->type;
-            auto *const alloca = builder->CreateAlloca(
-                    TypeFactory::from(paramType)->getLLVMType(module->getContext()),
-                    nullptr,
-                    arg.getName());
 
-            builder->CreateStore(&arg, alloca);
+            // auto *const alloca = builder->CreateAlloca(
+            //         TypeFactory::from(paramType)->getLLVMType(module->getContext()),
+            //         nullptr,
+            //         arg.getName());
+            //
+            // builder->CreateStore(&arg, alloca);
+            //
+            // if (mc.symTable.lookup(std::string(arg.getName()))) {
+            //     throw std::logic_error("Duplicate parameter name: " + std::string(arg.getName()));
+            // }
+            // mc.symTable.insert(std::string(arg.getName()), paramType, alloca);
 
-            if (mc.symTable.lookup(std::string(arg.getName()))) {
-                throw std::logic_error("Duplicate parameter name: " + std::string(arg.getName()));
-            }
-            mc.symTable.insert(std::string(arg.getName()), paramType, alloca);
         }
     }
 } // namespace
@@ -219,21 +222,24 @@ LLVMCodegen::LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &builder,
     module(module),
     mc(mc) {}
 
-void LLVMCodegen::visit(const IdentNode *node) {
-    if (const auto gv = mc.symTable.lookupGlobal(node->name)) {
-        value_ = builder->CreateLoad(gv->bound->getValueType(),
-                                     gv->bound,
-                                     node->name + ".global");
-    } else {
-        auto *const alloc = mc.symTable.lookup(node->name)->bound;
-        if (alloc == nullptr) {
-            throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
+void LLVMCodegen::visit(IdentNode *node) {
+    if (const auto symbol = mc.symTable.lookup(node->name)) {
+        if (const auto &sig = std::dynamic_pointer_cast<GlobalSymbol>(symbol.value())) {
+            value_ = builder->CreateLoad(sig->var->getValueType(),
+                                         sig->var,
+                                         node->name + ".global");
+        } else if (const auto &sia = std::dynamic_pointer_cast<AllocaInstSymbol>(symbol.value())) {
+            if (sia->inst == nullptr) {
+                throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
+            }
+            value_ = builder->CreateLoad(sia->inst->getAllocatedType(),
+                                         sia->inst,
+                                         node->name);
         }
-        value_ = builder->CreateLoad(alloc->getAllocatedType(), alloc, node->name);
     }
 }
 
-void LLVMCodegen::visit(const FunctionNode *const node) {
+void LLVMCodegen::visit(FunctionNode *const node) {
     auto *const func = llvm::dyn_cast<llvm::Function>(
             generate(node->proto.get(), builder, module, mc));
 
@@ -253,9 +259,9 @@ void LLVMCodegen::visit(const FunctionNode *const node) {
                            processFunctionParameters(func, basicBlock, node, builder, module, mc);
                        });
 
-    if (node->proto->returnType.isVoid()) {
-        builder->CreateRetVoid();
-    }
+    // if (node->proto->returnType.isVoid()) {
+    //     builder->CreateRetVoid();
+    // }
 
     std::string verifyError;
     llvm::raw_string_ostream os(verifyError);
@@ -266,19 +272,19 @@ void LLVMCodegen::visit(const FunctionNode *const node) {
     value_ = func;
 }
 
-void LLVMCodegen::visit(const NumberNode *node) {
-    value_ = TypeFactory::from(node, mc)->createValue(node, *builder, *module);
+void LLVMCodegen::visit(NumberNode *node) {
+    value_ = IRTypeFactory::from(node, mc)->createValue(node, *builder, *module);
 }
 
-void LLVMCodegen::visit(const StringNode *node) {
-    value_ = TypeFactory::from(node, mc)->createValue(node, *builder, *module);
+void LLVMCodegen::visit(StringNode *node) {
+    value_ = IRTypeFactory::from(node, mc)->createValue(node, *builder, *module);
 }
 
-void LLVMCodegen::visit(const BooleanNode *node) {
-    value_ = TypeFactory::from(node, mc)->createValue(node, *builder, *module);
+void LLVMCodegen::visit(BooleanNode *node) {
+    value_ = IRTypeFactory::from(node, mc)->createValue(node, *builder, *module);
 }
 
-void LLVMCodegen::visit(const BinOpNode *node) {
+void LLVMCodegen::visit(BinOpNode *node) {
     auto *lhsValue = generate(node->lhs.get(),
                               builder,
                               module,
@@ -294,59 +300,63 @@ void LLVMCodegen::visit(const BinOpNode *node) {
         throw std::logic_error("Unsupported operation");
     }
 
-    const auto resultTypeNode = TypeFactory::from(node, mc);
+    const auto resultTypeNode = IRTypeFactory::from(node, mc);
     lhsValue = tryCastValue(builder, lhsValue, resultTypeNode->getLLVMType(module->getContext()));
     rhsValue = tryCastValue(builder, rhsValue, resultTypeNode->getLLVMType(module->getContext()));
     value_ = resultTypeNode->createBinaryOp(*builder, node->binOp, lhsValue, rhsValue, "binOp");
 }
 
-void LLVMCodegen::visit(const ProtoFunctionStatement *node) {
+void LLVMCodegen::visit(ProtoFunctionStatement *node) {
     std::vector<llvm::Type *> functionParams;
     functionParams.reserve(node->params.size());
-    for (const auto &param: node->params) {
-        functionParams.push_back(TypeFactory::from(param->type)->getLLVMType(module->getContext()));
-    }
-    auto *const functionType = llvm::FunctionType::get(
-            TypeFactory::from(node->returnType)->getLLVMType(module->getContext()),
-            functionParams,
-            node->isVarArgs);
-    auto *const function = llvm::Function::Create(functionType,
-                                                  llvm::Function::ExternalLinkage,
-                                                  node->name,
-                                                  module.get());
-    mc.symTable.insert(dynCast<ProtoFunctionStatement>(node->clone()));
-    // function->addFnAttr(llvm::Attribute::NoUnwind);
-    // function->addRetAttr(llvm::Attribute::ZExt);
-    for (auto [index, arg]: enumerate(function->args())) {
-        arg.setName(node->params[index]->ident->name);
-    }
-    value_ = function;
+    // for (const auto &param: node->params) {
+    //     functionParams.push_back(TypeFactory::from(param->type)->getLLVMType(module->getContext()));
+    // }
+    // auto *const functionType = llvm::FunctionType::get(
+    //         TypeFactory::from(node->returnType)->getLLVMType(module->getContext()),
+    //         functionParams,
+    //         node->isVarArgs);
+    // auto *const function = llvm::Function::Create(functionType,
+    //                                               llvm::Function::ExternalLinkage,
+    //                                               node->name,
+    //                                               module.get());
+    // mc.symTable.insert(dynCast<ProtoFunctionStatement>(node->clone()));
+    // // function->addFnAttr(llvm::Attribute::NoUnwind);
+    // // function->addRetAttr(llvm::Attribute::ZExt);
+    // for (auto [index, arg]: enumerate(function->args())) {
+    //     arg.setName(node->params[index]->ident->name);
+    // }
+    // value_ = function;
 }
 
-void LLVMCodegen::visit(const AssignmentNode *const node) {
+void LLVMCodegen::visit(AssignmentNode *const node) {
     auto *const init = generate(node->rvalue.get(),
                                 builder,
                                 module,
                                 mc);
-    if (builder->GetInsertBlock() == nullptr) {} else {
+    if (builder->GetInsertBlock() != nullptr) {
         if (const auto var = mc.symTable.lookup(node->lvalue->name)) {
-            builder->CreateStore(tryCastValue(builder, init, var->bound->getAllocatedType()),
-                                 var->bound);
-            value_ = var->bound;
-        } else if (const auto gVar = mc.symTable.lookupGlobal(node->lvalue->name)) {
-            if (gVar->bound->isConstant()) {
-                throw std::logic_error("Variable: " + node->lvalue->name + " is constant");
+            if (const auto si = std::dynamic_pointer_cast<AllocaInstSymbol>(var.value())) {
+                builder->CreateStore(tryCastValue(builder, init, si->inst->getAllocatedType()),
+                                     si->inst);
+                value_ = si->inst;
             }
-            builder->CreateStore(tryCastValue(builder, init, gVar->bound->getValueType()),
-                                 gVar->bound);
-            value_ = gVar->bound;
+        } else if (const auto gVar = mc.symTable.lookupGlobal(node->lvalue->name)) {
+            if (const auto &sig = std::dynamic_pointer_cast<GlobalSymbol>(gVar.value())) {
+                if (sig->var->isConstant()) {
+                    throw std::logic_error("Variable: " + node->lvalue->name + " is constant");
+                }
+                builder->CreateStore(tryCastValue(builder, init, sig->var->getValueType()),
+                                     sig->var);
+                value_ = sig->var;
+            }
         } else {
             throw std::logic_error("Undefined variable: " + node->lvalue->name);
         }
     }
 }
 
-void LLVMCodegen::visit(const FunctionCallNode *const node) {
+void LLVMCodegen::visit(FunctionCallNode *const node) {
     auto *const calleeFunc = getModuleFunction(node->ident->name,
                                                builder,
                                                module,
@@ -374,7 +384,7 @@ void LLVMCodegen::visit(const FunctionCallNode *const node) {
     value_ = builder->CreateCall(calleeFunc, argsFunc);
 }
 
-void LLVMCodegen::visit(const IfStatement *node) {
+void LLVMCodegen::visit(IfStatement *node) {
     auto *const firstCV = tryCastValue(builder,
                                        generate(node->ifBranch.cond.get(), builder, module, mc),
                                        builder->getInt1Ty());
@@ -434,7 +444,7 @@ void LLVMCodegen::visit(const IfStatement *node) {
     builder->SetInsertPoint(mergeBB);
 }
 
-void LLVMCodegen::visit(const UnaryOpNode *node) {
+void LLVMCodegen::visit(UnaryOpNode *node) {
     if (node->operatorType == TokenType::PlusPlus || node->operatorType == TokenType::MinusMinus) {
         const auto *ident = dynamic_cast<IdentNode *>(node->expr.get());
         if (ident == nullptr) {
@@ -445,8 +455,8 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
         if (var == std::nullopt) {
             throw std::logic_error("Undefined variable: " + ident->name);
         }
-
-        auto *const varType = var->bound->getAllocatedType();
+        const auto symbolInfoAlloca = std::dynamic_pointer_cast<AllocaInstSymbol>(var.value());
+        auto *const varType = symbolInfoAlloca->inst->getAllocatedType();
 
         if (!varType->isIntOrIntVectorTy() &&
             !varType->isFPOrFPVectorTy() &&
@@ -455,7 +465,7 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
         }
 
         auto *const loadedVal = builder->CreateLoad(varType,
-                                                    var->bound,
+                                                    symbolInfoAlloca->inst,
                                                     ident->name + ".val");
 
         llvm::Value *delta = nullptr;
@@ -473,7 +483,7 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
                 delta,
                 "incdec.tmp");
 
-        builder->CreateStore(newVal, var->bound);
+        builder->CreateStore(newVal, symbolInfoAlloca->inst);
         value_ = node->unaryPosType == UnaryOpNode::UnaryOpType::Prefix ? newVal : loadedVal;
     } else if (node->operatorType == TokenType::Minus) {
         value_ = builder->CreateNeg(generate(node->expr.get(),
@@ -490,7 +500,7 @@ void LLVMCodegen::visit(const UnaryOpNode *node) {
     }
 }
 
-void LLVMCodegen::visit(const LoopCondNode *node) {
+void LLVMCodegen::visit(LoopCondNode *node) {
     auto *const parentFunc = builder->GetInsertBlock()->getParent();
     llvm::BasicBlock *condBB = nullptr;
     auto *const loopBB = llvm::BasicBlock::Create(module->getContext(), "loop", parentFunc);
@@ -561,7 +571,7 @@ void LLVMCodegen::visit(const LoopCondNode *node) {
     builder->SetInsertPoint(mergeBB);
 }
 
-void LLVMCodegen::visit(const BlockNode *node) {
+void LLVMCodegen::visit(BlockNode *node) {
     if (!builder->GetInsertBlock()) {
         throw std::logic_error("Block generation outside of function context");
     }
@@ -573,35 +583,36 @@ void LLVMCodegen::visit(const BlockNode *node) {
                        mc);
 }
 
-void LLVMCodegen::visit(const DeclarationNode *node) {
-    const auto type = TypeFactory::from(node->type);
-    auto *const llvmType = type->getLLVMType(module->getContext());
-    if (llvmType == nullptr) {
-        throw std::logic_error("Unknown type for variable: " + node->ident->name);
-    }
-
-    llvm::Value *initValue = nullptr;
-    if (node->init.has_value()) {
-        initValue = generate(node->init.value().get(), builder, module, mc);
-        if (!initValue) {
-            throw std::logic_error("Failed to generate initializer for: " + node->ident->name);
-        }
-    } else {
-        if (llvmType->isAggregateType()) {
-            initValue = llvm::ConstantAggregateZero::get(llvmType);
-        } else {
-            initValue = llvm::Constant::getNullValue(llvmType);
-        }
-    }
-
-    if (node->isGlobal) {
-        value_ = genGlobalDeclaration(node, llvmType, initValue, module, mc);
-    } else {
-        value_ = genLocalDeclaration(node, llvmType, initValue, builder, mc);
-    }
+void LLVMCodegen::visit(DeclarationNode *node) {
+    // const auto type = TypeFactory::from(node->type);
+    // auto *const llvmType = type->getLLVMType(module->getContext());
+    // if (llvmType == nullptr) {
+    //     throw std::logic_error("Unknown type for variable: " + node->ident->name);
+    // }
+    //
+    // llvm::Value *initValue = nullptr;
+    // if (node->init.has_value()) {
+    //     // auto initType = TypeFactory::from(node->init.value().get(), mc);
+    //     initValue = generate(node->init.value().get(), builder, module, mc);
+    //     if (!initValue) {
+    //         throw std::logic_error("Failed to generate initializer for: " + node->ident->name);
+    //     }
+    // } else {
+    //     if (llvmType->isAggregateType()) {
+    //         initValue = llvm::ConstantAggregateZero::get(llvmType);
+    //     } else {
+    //         initValue = llvm::Constant::getNullValue(llvmType);
+    //     }
+    // }
+    //
+    // if (node->isGlobal) {
+    //     value_ = genGlobalDeclaration(node, llvmType, initValue, module, mc);
+    // } else {
+    //     value_ = genLocalDeclaration(node, llvmType, initValue, builder, mc);
+    // }
 }
 
-void LLVMCodegen::visit(const ReturnNode *node) {
+void LLVMCodegen::visit(ReturnNode *node) {
     if (node->expr != nullptr) {
         value_ = builder->CreateRet(generate(node->expr.get(), builder, module, mc));
     } else {
@@ -609,7 +620,7 @@ void LLVMCodegen::visit(const ReturnNode *node) {
     }
 }
 
-void LLVMCodegen::visit(const TernaryOperatorNode *node) {
+void LLVMCodegen::visit(TernaryOperatorNode *node) {
     auto *const parentFunc = builder->GetInsertBlock()->getParent();
 
     auto *const thenBB = llvm::BasicBlock::Create(module->getContext(), "tern_then", parentFunc);
@@ -640,8 +651,8 @@ void LLVMCodegen::visit(const TernaryOperatorNode *node) {
     value_ = phi;
 }
 
-void LLVMCodegen::visit(const MethodCallNode *node) {
-    const auto objectType = TypeFactory::from(node->object.get(), mc);
+void LLVMCodegen::visit(MethodCallNode *node) {
+    const auto objectType = IRTypeFactory::from(node->object.get(), mc);
     if (!objectType->isMethodSupported(node->method->ident->name)) {
         throw std::runtime_error("Method not supported");
     }
@@ -657,11 +668,15 @@ void LLVMCodegen::visit(const MethodCallNode *node) {
                                           node->method->ident->name);
 }
 
-void LLVMCodegen::visit(const FieldAccessNode *node) {}
+void LLVMCodegen::visit(FieldAccessNode *node) {}
 
-void LLVMCodegen::visit(const CommentNode *node) {
+void LLVMCodegen::visit(CommentNode *node) {
     // skip comments
 }
+
+void LLVMCodegen::visit(ModuleNode *node) {}
+
+void LLVMCodegen::visit(TypeCastNode *node) {}
 
 llvm::Value *LLVMCodegen::value() const {
     return value_;

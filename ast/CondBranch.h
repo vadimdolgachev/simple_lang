@@ -8,7 +8,7 @@
 #include "BlockNode.h"
 
 struct CondBranch {
-    std::unique_ptr<ExpressionNode> cond;
+    ExprNodePtr cond;
     std::unique_ptr<BlockNode> then;
 };
 

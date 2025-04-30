@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.26)
 project(tests)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 set(CPM_DOWNLOAD_VERSION 0.40.5)
 if (NOT EXISTS "${CMAKE_BINARY_DIR}/cmake/CPM.cmake")
@@ -46,12 +46,30 @@ add_executable(tests main.cpp
         ../ast/BlockNode.cpp
         ../ast/DeclarationNode.cpp
         ../ast/DeclarationNode.h
-        ../ast/TypeNode.cpp
-        ../ast/TypeNode.h
+        ../type/Type.cpp
+        ../type/Type.h
+        ../type/NumericType.cpp
+        ../type/NumericType.h
+        ../type/StrType.cpp
+        ../type/StrType.h
+        ../type/PointerType.cpp
+        ../type/PointerType.h
+        ../type/BoolType.cpp
+        ../type/BoolType.h
+        ../type/VoidType.cpp
+        ../type/VoidType.h
+        ../type/ByteType.cpp
+        ../type/ByteType.h
+        ../type/CharType.cpp
+        ../type/CharType.h
+        ../type/TypeFactory.cpp
+        ../type/TypeFactory.h
         ../ast/ReturnNode.h
         ../ast/ReturnNode.cpp
         ../ast/TernaryOperatorNode.h
         ../ast/TernaryOperatorNode.cpp
+        ../ast/MemberAccessNode.h
+        ../ast/MemberAccessNode.cpp
         ../ast/MethodCallNode.h
         ../ast/MethodCallNode.cpp
         ../ast/FieldAccessNode.h

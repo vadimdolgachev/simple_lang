@@ -34,14 +34,20 @@ enum class TokenType : std::uint8_t {
     Plus,                // +
     Minus,               // -
     Star,                // *
+    Multiply = Star,
     Slash,               // /
+    Divide = Slash,
     Assignment,          // =
 
     // Comparison and relational operators
     LeftAngleBracket,         // <
+    Less = LeftAngleBracket,
     LeftAngleBracketEqual,    // <=
+    LessEqual = LeftAngleBracketEqual,
     RightAngleBracket,        // >
+    Greater = RightAngleBracket,
     RightAngleBracketEqual,   // >=
+    GreaterEqual = RightAngleBracketEqual,
     Equal,                    // ==
     NotEqual,                 // !=
 
