@@ -186,16 +186,27 @@ int main() {
     // executeMain(cm, parser);
 
     CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
-        fn foo(i: int): int {
-            return i;
+        fn foo(i: double): int {
+            return 1;
         }
+
         fn main() {
             v1: double = 0;
             v2: bool = true;
             v3: str = "123";
+            v4: int = 0;
+
+            for (i: int = 0; i < 10; i++) {
+                foo(i);
+            }
             if (v1 != 0 && v2) {
                 v1 = 1;
+            } else {
+               v1 = 3.14;
+               v1 = v4;
             }
+            // comment
+            v2 ? v1 : 1;
         }
     )"));
     compiler.generateIR(llvmIRBuilder,

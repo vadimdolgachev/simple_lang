@@ -4,9 +4,6 @@
 
 #include "SemanticAnalyzer.h"
 
-#include <cassert>
-#include <iostream>
-
 #include "ast/AssignmentNode.h"
 #include "ast/BinOpNode.h"
 #include "ast/BlockNode.h"
@@ -122,6 +119,10 @@ void SemanticAnalyzer::visit(AssignmentNode *node) {
     node->lvalue->visit(this);
     node->rvalue->visit(this);
     node->rvalue = castIfNeeded(node->lvalue->getType(), std::move(node->rvalue));
+    if (*node->rvalue->getType() != *node->lvalue->getType()) {
+        throw SemanticError("Type mismatch after conversion");
+    }
+    node->setType(node->lvalue->getType());
 }
 
 void SemanticAnalyzer::visit(FunctionCallNode *node) {
@@ -147,6 +148,14 @@ void SemanticAnalyzer::visit(IfStatement *node) {
     }
     node->ifBranch.cond = castIfNeeded(boolType, std::move(node->ifBranch.cond));
     node->ifBranch.then->visit(this);
+    for (auto &[cond, then]: node->elseIfBranches) {
+        cond->visit(this);
+        cond = castIfNeeded(boolType, std::move(cond));
+        then->visit(this);
+    }
+    if (node->elseBranch) {
+        node->elseBranch.value()->visit(this);
+    }
 }
 
 void SemanticAnalyzer::visit(UnaryOpNode *node) {
@@ -159,6 +168,13 @@ void SemanticAnalyzer::visit(UnaryOpNode *node) {
 void SemanticAnalyzer::visit(LoopCondNode *node) {
     if (node->init.has_value()) {
         node->init.value()->visit(this);
+        node->condBranch.cond->visit(this);
+        node->condBranch.cond = castIfNeeded(TypeFactory::makePrimitiveType(TypeKind::Boolean),
+                                             std::move(node->condBranch.cond));
+        if (node->increment) {
+            node->increment.value()->visit(this);
+        }
+        node->condBranch.then->visit(this);
     }
 }
 
@@ -179,6 +195,8 @@ void SemanticAnalyzer::visit(DeclarationNode *node) {
     if (node->init) {
         node->init.value()->visit(this);
         node->init = castIfNeeded(node->type, std::move(node->init.value()));
+    } else if (!node->isConst) {
+        throw SemanticError("Const declaration must be initialized");
     }
 }
 
@@ -196,8 +214,27 @@ void SemanticAnalyzer::visit(ReturnNode *node) {
 
 void SemanticAnalyzer::visit(TernaryOperatorNode *node) {
     node->cond->visit(this);
+    if (!node->cond->getType()->isBoolean()) {
+        throw SemanticError("Condition in ternary operator must be boolean, got: " +
+                            node->cond->getType()->getName());
+    }
+
     node->trueExpr->visit(this);
     node->falseExpr->visit(this);
+    const auto trueType = node->trueExpr->getType();
+    const auto falseType = node->falseExpr->getType();
+
+    const auto commonType = trueType->getCommonType(falseType);
+    if (!commonType) {
+        throw SemanticError("Incompatible types in ternary operator: " +
+                            trueType->getName() + " and " +
+                            falseType->getName());
+    }
+
+    node->trueExpr = castIfNeeded(*commonType, std::move(node->trueExpr));
+    node->falseExpr = castIfNeeded(*commonType, std::move(node->falseExpr));
+
+    node->setType(*commonType);
 }
 
 void SemanticAnalyzer::visit(MethodCallNode *node) {

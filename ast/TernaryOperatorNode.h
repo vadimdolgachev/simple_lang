@@ -11,20 +11,20 @@
 
 class TernaryOperatorNode final : public ExpressionNode {
 public:
-    TernaryOperatorNode(std::shared_ptr<ExpressionNode> cond,
-                        std::shared_ptr<ExpressionNode> trueExpr,
-                        std::shared_ptr<ExpressionNode> falseExpr);
+    TernaryOperatorNode(ExprNodePtr cond,
+                        ExprNodePtr trueExpr,
+                        ExprNodePtr falseExpr);
 
     void visit(NodeVisitor *visitor) override;
 
     [[nodiscard]] std::string toString() const override;
 
-    TypePtr getType() const override;
+    [[nodiscard]] TypePtr getType() const override;
     void setType(TypePtr type) override;
 
-    std::shared_ptr<ExpressionNode> cond;
-    std::shared_ptr<ExpressionNode> trueExpr;
-    std::shared_ptr<ExpressionNode> falseExpr;
+    ExprNodePtr cond;
+    ExprNodePtr trueExpr;
+    ExprNodePtr falseExpr;
 };
 
 #endif //TERNARYOPERATORNODE_H

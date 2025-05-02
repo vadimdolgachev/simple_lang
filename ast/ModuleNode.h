@@ -15,7 +15,7 @@ public:
 
     [[nodiscard]] std::string toString() const override;
 
-    std::vector<std::shared_ptr<BaseNode>> statements;
+    std::vector<BaseNodePtr> statements;
 };
 
 #endif //MODULENODE_H

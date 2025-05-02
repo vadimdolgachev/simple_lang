@@ -4,9 +4,9 @@
 
 #include "TernaryOperatorNode.h"
 
-TernaryOperatorNode::TernaryOperatorNode(std::shared_ptr<ExpressionNode> cond,
-                                         std::shared_ptr<ExpressionNode> trueExpr,
-                                         std::shared_ptr<ExpressionNode> falseExpr):
+TernaryOperatorNode::TernaryOperatorNode(ExprNodePtr cond,
+                                         ExprNodePtr trueExpr,
+                                         ExprNodePtr falseExpr):
     cond(std::move(cond)),
     trueExpr(std::move(trueExpr)),
     falseExpr(std::move(falseExpr)) {}

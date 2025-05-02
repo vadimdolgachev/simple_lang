@@ -18,7 +18,7 @@ public:
 
     void visit(NodeVisitor *visitor) override;
 
-    TypePtr getType() const override;
+    [[nodiscard]] TypePtr getType() const override;
     void setType(TypePtr type) override;
 
     std::unique_ptr<IdentNode> lvalue;

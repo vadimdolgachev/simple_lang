@@ -55,6 +55,10 @@ public:
     void visit(TypeCastNode *node) override;
 
 private:
+    void printIndent() const;
+    [[nodiscard]] static bool needSemicolon(const std::unique_ptr<BaseNode> &node);
+
+    size_t indent = 0;
     std::ostream &ostream;
 };
 

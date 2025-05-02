@@ -4,7 +4,7 @@
 
 #include "ReturnNode.h"
 
-ReturnNode::ReturnNode(std::unique_ptr<ExpressionNode> expr):
+ReturnNode::ReturnNode(ExprNodePtr expr):
     expr(std::move(expr)) {}
 
 void ReturnNode::visit(NodeVisitor *visitor) {

@@ -37,8 +37,9 @@ ResultType NumericType::getCommonType(const TypePtr &other) const {
         if (getKind() == TypeKind::Double || numType->getKind() == TypeKind::Double) {
             return TypeFactory::makePrimitiveType(TypeKind::Double);
         }
+        return shared_from_this();
     }
-    return shared_from_this();
+    return std::unexpected(std::format("Cannot cast numeric type to {}", other->getName()));
 }
 
 ResultType NumericType::getComparableType(const TypePtr &type) const {

@@ -5,6 +5,7 @@
 #include "CompilerFronted.h"
 #include "Parser.h"
 #include "Lexer.h"
+#include "NodePrinter.h"
 #include "SemanticAnalyzer.h"
 
 #include "ast/ModuleNode.h"
@@ -15,6 +16,9 @@ CompilerFronted::CompilerFronted(std::unique_ptr<std::istream> stream):
 void CompilerFronted::generateIR(const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
                                  const std::unique_ptr<llvm::Module> &llvmModule) {
     auto module = compile();
+
+    NodePrinter printer;
+    module->visit(&printer);
 }
 
 std::unique_ptr<ModuleNode> CompilerFronted::compile() {

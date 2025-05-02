@@ -3,6 +3,10 @@
 //
 
 #include "NodePrinter.h"
+
+#include <algorithm>
+#include <iterator>
+
 #include "ast/BinOpNode.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
@@ -11,9 +15,15 @@
 #include "ast/IdentNode.h"
 #include "ast/AssignmentNode.h"
 #include "ast/BooleanNode.h"
+#include "ast/CommentNode.h"
+#include "ast/IfStatement.h"
+#include "ast/LoopCondNode.h"
 #include "ast/ModuleNode.h"
 #include "ast/ProtoFunctionStatement.h"
+#include "ast/ReturnNode.h"
 #include "ast/StringNode.h"
+#include "ast/TernaryOperatorNode.h"
+#include "ast/TypeCastNode.h"
 
 namespace {
     std::ostream &operator<<(std::ostream &os, const TokenType token) {
@@ -36,6 +46,30 @@ namespace {
             case TokenType::MinusMinus:
                 os << "--";
                 break;
+            case TokenType::Less:
+                os << "<";
+                break;
+            case TokenType::LessEqual:
+                os << "<=";
+                break;
+            case TokenType::Greater:
+                os << ">";
+                break;
+            case TokenType::GreaterEqual:
+                os << ">=";
+                break;
+            case TokenType::Equal:
+                os << "==";
+                break;
+            case TokenType::NotEqual:
+                os << "!=";
+                break;
+            case TokenType::LogicalAnd:
+                os << "&&";
+                break;
+            case TokenType::LogicalOr:
+                os << "||";
+                break;
             default:
                 os << "unknown token";
         }
@@ -43,78 +77,144 @@ namespace {
     }
 } // namespace
 
-NodePrinter::NodePrinter(std::ostream &os)
-    : ostream(os) {
-}
+NodePrinter::NodePrinter(std::ostream &os) :
+    ostream(os) {}
 
 void NodePrinter::visit(IdentNode *node) {
-    ostream << "VariableAccess: name=" << node->name << ", ";
+    ostream << node->name;
 }
 
 void NodePrinter::visit(NumberNode *node) {
-    ostream << "Number value=" << node->value;
+    ostream << node->value;
 }
 
 void NodePrinter::visit(StringNode *node) {
-    ostream << "String value=" << node->str;
+    ostream << "\"" << node->str << "\"";
 }
 
 void NodePrinter::visit(BinOpNode *node) {
-    ostream << "BinOp: op=" << node->binOp;
-    ostream << ", lhs=(";
     node->lhs->visit(this);
-    ostream << ")";
-    ostream << ", rhs=(";
+    ostream << node->binOp;
     node->rhs->visit(this);
-    ostream << ")";
 }
 
 void NodePrinter::visit(BooleanNode *node) {
-    ostream << "Boolean value=" << node->value;
+    ostream << std::boolalpha << node->value;
 }
 
 void NodePrinter::visit(FunctionNode *node) {
-    ostream << "Function: name=" << node->proto->toString();
+    node->proto->visit(this);
+    node->body->visit(this);
 }
 
 void NodePrinter::visit(ProtoFunctionStatement *node) {
-    ostream << "ProtoFunction: name=" << node->name;
+    ostream << "fn " << node->name << "(";
+    for (size_t i = 0; i < node->params.size(); i++) {
+        node->params[i]->visit(this);
+        ostream << (i < node->params.size() - 1 ? ", " : "");
+    }
+    ostream << "):" << node->returnType->getName();
 }
 
 void NodePrinter::visit(AssignmentNode *node) {
-    ostream << "VariableDefinition: var=" << node->lvalue;
+    node->lvalue->visit(this);
+    ostream << "=";
+    node->rvalue->visit(this);
 }
 
 void NodePrinter::visit(FunctionCallNode *node) {
-    ostream << "CallFunctionNode: name=" << node->ident->name;
+    node->ident->visit(this);
+    ostream << "(";
+    for (size_t i = 0; i < node->args.size(); i++) {
+        node->args[i]->visit(this);
+        ostream << (i < node->args.size() - 1 ? ", " : "");
+    }
+    ostream << ")";
 }
 
 void NodePrinter::visit(IfStatement *node) {
-    ostream << "IfStatement";
+    ostream << "if (";
+    node->ifBranch.cond->visit(this);
+    ostream << ") ";
+    node->ifBranch.then->visit(this);
+    for (const auto &[cond, then]: node->elseIfBranches) {
+        ostream << " else if (";
+        cond->visit(this);
+        ostream << ") ";
+        then->visit(this);
+    }
+    if (node->elseBranch) {
+        ostream << " else ";
+        node->elseBranch.value()->visit(this);
+    }
 }
 
 void NodePrinter::visit(UnaryOpNode *node) {
-    ostream << "UnaryOp: name=" << node->operatorType;
+    if (node->unaryPosType == UnaryOpNode::UnaryOpType::Prefix) {
+        ostream << node->operatorType;
+    }
+    node->expr->visit(this);
+    if (node->unaryPosType == UnaryOpNode::UnaryOpType::Postfix) {
+        ostream << node->operatorType;
+    }
 }
 
 void NodePrinter::visit(LoopCondNode *node) {
-    ostream << "WhileLoop";
+    if (node->loopType == LoopCondNode::Type::For) {
+        ostream << "for(";
+        if (node->init) {
+            node->init.value()->visit(this);
+        }
+        ostream << ";";
+        node->condBranch.cond->visit(this);
+        ostream << ";";
+        if (node->increment) {
+            node->increment.value()->visit(this);
+        }
+        ostream << ") ";
+        node->condBranch.then->visit(this);
+    }
 }
 
 void NodePrinter::visit(BlockNode *node) {
-    ostream << "Block";
+    ostream << "{";
+    if (!node->statements.empty()) {
+        ostream << "\n";
+        indent += 2;
+        for (const auto &statement: node->statements) {
+            printIndent();
+            statement->visit(this);
+            if (needSemicolon(statement)) {
+                ostream << ";";
+            }
+            ostream << "\n";
+        }
+        indent -= 2;
+        printIndent();
+    }
+    ostream << "}";
 }
 
 void NodePrinter::visit(DeclarationNode *node) {
-    ostream << "DeclarationNode";
+    node->ident->visit(this);
+    ostream << ":" << node->type->getName();
+    if (node->init) {
+        ostream << "=";
+        node->init.value()->visit(this);
+    }
 }
 
 void NodePrinter::visit(ReturnNode *node) {
-    ostream << "ReturnNode";
+    ostream << "return ";
+    node->expr->visit(this);
 }
 
 void NodePrinter::visit(TernaryOperatorNode *node) {
-    ostream << "TernaryOperatorNode";
+    node->cond->visit(this);
+    ostream << "?";
+    node->trueExpr->visit(this);
+    ostream << ":";
+    node->falseExpr->visit(this);
 }
 
 void NodePrinter::visit(MethodCallNode *node) {
@@ -126,13 +226,28 @@ void NodePrinter::visit(FieldAccessNode *node) {
 }
 
 void NodePrinter::visit(CommentNode *node) {
-
+    ostream << "//" << node->text;
 }
 
 void NodePrinter::visit(ModuleNode *node) {
-
+    ostream << "module:\n";
+    for (const auto &stmt: node->statements) {
+        stmt->visit(this);
+        ostream << "\n";
+    }
 }
 
 void NodePrinter::visit(TypeCastNode *node) {
-    ostream << "TypeCastNode";
+    ostream << "(" << node->targetType->getName() << ")";
+    node->expr->visit(this);
+}
+
+void NodePrinter::printIndent() const {
+    std::fill_n(std::ostream_iterator<char>(ostream), indent, ' ');
+}
+
+bool NodePrinter::needSemicolon(const std::unique_ptr<BaseNode> &node) {
+    return dynamic_cast<ExpressionNode *>(node.get())
+           || dynamic_cast<DeclarationNode *>(node.get())
+           || dynamic_cast<ReturnNode *>(node.get());
 }
