@@ -20,14 +20,14 @@ bool SymbolTable::isDeclaredInCurrentScope(const std::string &name) const {
     return !scopes.empty() && scopes.back().contains(name);
 }
 
-void SymbolTable::insert(const std::string &name, std::shared_ptr<SymbolInfo> symbolInfo) {
+void SymbolTable::insert(const std::string &name, const std::shared_ptr<const SymbolInfo> &symbolInfo) {
     if (isDeclaredInCurrentScope(name)) {
         throw std::logic_error("Symbol " + name + " already declared");
     }
     scopes.back().emplace(name, symbolInfo);
 }
 
-std::optional<std::shared_ptr<SymbolInfo>> SymbolTable::lookup(const std::string &name) const {
+std::optional<std::shared_ptr<const SymbolInfo>> SymbolTable::lookup(const std::string &name) const {
     for (const auto &scope: std::ranges::reverse_view(scopes)) {
         if (auto found = scope.find(name); found != scope.end()) {
             return found->second;
@@ -36,13 +36,24 @@ std::optional<std::shared_ptr<SymbolInfo>> SymbolTable::lookup(const std::string
     return {};
 }
 
-void SymbolTable::insertGlobal(const std::string &name, std::shared_ptr<SymbolInfo> type) {
-    globalValues.emplace(name, type);
+void SymbolTable::insertGlobal(const std::string &name, SymbolInfoPtr type) {
+    globals.emplace(name, std::move(type));
 }
 
-std::optional<std::shared_ptr<SymbolInfo>> SymbolTable::lookupGlobal(const std::string &name) const {
-    const auto type = globalValues.find(name);
-    return type != globalValues.end() ? std::make_optional(type->second) : std::nullopt;
+void SymbolTable::insertFunction(const std::string &name, SymbolInfoPtr type) {
+    functions[name].push_back(std::move(type));
+}
+
+std::optional<SymbolInfoPtr> SymbolTable::lookupGlobal(const std::string &name) const {
+    const auto type = globals.find(name);
+    return type != globals.end() ? std::make_optional(type->second) : std::nullopt;
+}
+
+std::vector<SymbolInfoPtr> SymbolTable::lookupFunction(const std::string &name) const {
+    if (const auto signatures = functions.find(name); signatures != functions.end()) {
+        return signatures->second;
+    }
+    return {};
 }
 
 std::string SymbolTable::mangleFunction(const std::string &name, const std::vector<TypePtr> &params) {

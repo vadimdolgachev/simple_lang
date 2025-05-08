@@ -63,7 +63,7 @@ void SemanticAnalyzer::visit(BinOpNode *node) {
     TypePtr resultType;
     if (category == OperationCategory::Arithmetic) {
         auto commonType = node->lhs->getType()->getCommonType(node->rhs->getType());
-        if (commonType) {
+        if (!commonType) {
             throw SemanticError(std::format("Type mismatch error: {}", commonType.error()));
         }
         node->lhs = castIfNeeded(commonType.value(), std::move(node->lhs));
@@ -89,13 +89,13 @@ void SemanticAnalyzer::visit(BinOpNode *node) {
 }
 
 void SemanticAnalyzer::visit(FunctionNode *node) {
-    node->proto->visit(this);
     symbolTable.enterScope();
+    node->proto->visit(this);
     currentFunction = node->proto;
 
     for (const auto &param: node->proto->params) {
-        symbolTable.insertGlobal(param->ident->name,
-                                 std::make_shared<SymbolInfo>(param->type));
+        symbolTable.insertFunction(param->ident->name,
+                                   std::make_shared<SymbolInfo>(param->type));
     }
     for (const auto &stmt: node->body->statements) {
         stmt->visit(this);
@@ -107,12 +107,14 @@ void SemanticAnalyzer::visit(FunctionNode *node) {
 
 void SemanticAnalyzer::visit(ProtoFunctionStatement *node) {
     std::vector<TypePtr> params;
+    params.reserve(node->params.size());
     for (const auto &param: node->params) {
         params.push_back(param->type);
+        symbolTable.insert(param->ident->name, std::make_shared<SymbolInfo>(param->type));
     }
-    symbolTable.insertGlobal(node->name,
-                             std::make_shared<SymbolInfo>(
-                                     TypeFactory::makeFunction(node->returnType, params)));
+    symbolTable.insertFunction(node->name,
+                               std::make_shared<SymbolInfo>(
+                                       TypeFactory::makeFunction(node->returnType, params, node->isVarArgs)));
 }
 
 void SemanticAnalyzer::visit(AssignmentNode *node) {
@@ -126,16 +128,25 @@ void SemanticAnalyzer::visit(AssignmentNode *node) {
 }
 
 void SemanticAnalyzer::visit(FunctionCallNode *node) {
-    const auto optProto = symbolTable.lookupGlobal(node->ident->name);
-    if (!optProto.has_value()) {
+    const auto signatures = symbolTable.lookupFunction(node->ident->name);
+    if (signatures.empty()) {
         throw SemanticError("Function not defined");
     }
-    const auto functionType = std::dynamic_pointer_cast<const FunctionType>(optProto.value()->type);
-    for (size_t i = 0; i < node->args.size(); ++i) {
-        node->args[i]->visit(this);
-        node->args[i] = castIfNeeded(functionType->parametersType()[i], std::move(node->args[i]));
+    if (signatures.size() > 1) {
+        throw SemanticError("Function overloads are not supported yet");
     }
-    node->setType(functionType->returnType());
+    if (const auto functionType = std::dynamic_pointer_cast<const FunctionType>(signatures[0]->type)) {
+        const auto paramsType = functionType->parametersType();
+        for (size_t i = 0; i < node->args.size(); ++i) {
+            node->args[i]->visit(this);
+            if (i < paramsType.size()) {
+                node->args[i] = castIfNeeded(paramsType[i], std::move(node->args[i]));
+            } else if (!functionType->isVariadic()) {
+                throw SemanticError("Wrong number of arguments");
+            }
+        }
+        node->setType(functionType->returnType());
+    }
 }
 
 void SemanticAnalyzer::visit(IfStatement *node) {

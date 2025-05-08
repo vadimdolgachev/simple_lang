@@ -7,21 +7,21 @@
 
 #include "../SymbolTable.h"
 
-// template<typename SymbolType, typename BoundType>
-// struct SymbolInfo final {
-//     SymbolType type;
-//     bool isConst = false;
-//     BoundType bound = {};
-// };
-
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 
 struct ModuleContext final {
-    ModuleContext() = default;
+    ModuleContext(const std::unique_ptr<llvm::Module> &llvmContext,
+                  const std::unique_ptr<llvm::IRBuilder<>> &irBuilder):
+        module(llvmContext),
+        builder(irBuilder) {}
 
     ModuleContext(const ModuleContext &) = delete;
     ModuleContext &operator=(ModuleContext &) = delete;
 
     SymbolTable symTable;
+    const std::unique_ptr<llvm::Module> &module;
+    const std::unique_ptr<llvm::IRBuilder<>> &builder;
 };
 
 #endif //MODULECONTEXT_H

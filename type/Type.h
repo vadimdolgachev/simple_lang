@@ -31,7 +31,7 @@ using OptType = std::optional<TypePtr>;
 using ResultType = Result<TypePtr>;
 using BoolResult = std::expected<bool, std::string>;
 
-enum class OperationCategory {
+enum class OperationCategory: std::uint8_t {
     Arithmetic,
     Comparison,
     Logical,
@@ -73,6 +73,14 @@ public:
     bool isBoolean() const noexcept;
 
     bool isNumeric() const noexcept;
+
+    bool isVoid() const noexcept;
+
+    bool isDouble() const noexcept;
+
+    bool isInteger() const noexcept;
+
+    bool isStr() const noexcept;
 };
 
 class PrimitiveType : public Type {

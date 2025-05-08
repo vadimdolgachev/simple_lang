@@ -5,12 +5,17 @@
 #ifndef SEMAANALYZER_H
 #define SEMAANALYZER_H
 
+#include <utility>
+
 #include "ast/BaseNode.h"
 
 #include "SymbolTable.h"
 
 class SemanticAnalyzer final : public NodeVisitor {
 public:
+    explicit SemanticAnalyzer(SymbolTable symbolTable):
+        symbolTable(std::move(symbolTable)) {}
+
     void visit(IdentNode *node) override;
     void visit(NumberNode *node) override;
     void visit(StringNode *node) override;

@@ -4,10 +4,13 @@
 
 #include "FunctionType.h"
 
-FunctionType::FunctionType(TypePtr returnType, std::vector<TypePtr> paramsType):
+FunctionType::FunctionType(TypePtr returnType,
+                           std::vector<TypePtr> paramsType,
+                           const bool isVarArg):
     PrimitiveType(TypeKind::Function),
     retType(std::move(returnType)),
-    paramsType(std::move(paramsType)) {}
+    paramsType(std::move(paramsType)),
+    isVarArgs(isVarArg) {}
 
 bool FunctionType::operator==(const Type &other) const {
     if (const auto *fType = dynamic_cast<const FunctionType *>(&other)) {
@@ -38,4 +41,8 @@ std::string FunctionType::getName() const {
         params = params.substr(0, params.size() - 2);
     }
     return std::format("function({}) -> {}", params, retType->getName());
+}
+
+bool FunctionType::isVariadic() const {
+    return isVarArgs;
 }

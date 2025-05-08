@@ -505,8 +505,6 @@ StmtNodePtr Parser::parseFunctionDef() {
         lexer->nextToken();
         retTypeKind = typeKind->second;
     }
-    //TODO: process pointers
-    bool const isPtr = retTypeKind == TypeKind::Str;
     auto proto = std::make_unique<ProtoFunctionStatement>(fnName->name,
                                                           TypeFactory::makePrimitiveType(retTypeKind),
                                                           std::move(params));
@@ -550,8 +548,6 @@ NodePtr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemi
     if (needConsumeSemicolon) {
         consumeSemicolon();
     }
-    //TODO: process pointers
-    bool const isPtr = typeKind->second == TypeKind::Str;
     return std::make_unique<DeclarationNode>(std::move(ident),
                                              TypeFactory::makePrimitiveType(typeKind->second),
                                              std::move(init),

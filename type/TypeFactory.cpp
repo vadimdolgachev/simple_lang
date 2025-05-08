@@ -55,6 +55,6 @@ TypePtr TypeFactory::makePointer(const TypePtr& base) {
     return pointerCache[base];
 }
 
-FunctionPtr TypeFactory::makeFunction(const TypePtr &returnType, const std::vector<TypePtr> &paramTypes) {
-    return std::make_shared<FunctionType>(returnType, paramTypes);
+FunctionPtr TypeFactory::makeFunction(const TypePtr &returnType, const std::vector<TypePtr> &paramTypes, bool isVarArg) {
+    return std::make_shared<FunctionType>(returnType, paramTypes, isVarArg);
 }

@@ -75,7 +75,23 @@ bool Type::isBoolean() const noexcept {
 }
 
 bool Type::isNumeric() const noexcept {
-    return getKind() == TypeKind::Integer || getKind() == TypeKind::Double;
+    return isInteger() || isDouble();
+}
+
+bool Type::isVoid() const noexcept {
+    return getKind() == TypeKind::Void;
+}
+
+bool Type::isDouble() const noexcept {
+    return getKind() == TypeKind::Double;
+}
+
+bool Type::isInteger() const noexcept {
+    return getKind() == TypeKind::Integer;
+}
+
+bool Type::isStr() const noexcept {
+    return getKind() == TypeKind::Str;
 }
 
 OperationCategory getOperationCategory(const TokenType op) {

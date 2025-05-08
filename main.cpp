@@ -20,15 +20,9 @@
 #include <llvm/Transforms/Scalar/SimplifyCFG.h>
 #include <llvm/Transforms/Utils/Mem2Reg.h>
 
+#include "BuiltinSymbols.h"
 #include "CompilerFronted.h"
 #include "KaleidoscopeJIT.h"
-#include "Lexer.h"
-#include "Parser.h"
-#include "ast/ProtoFunctionStatement.h"
-#include "type/Type.h"
-#include "ir/LLVMCodegen.h"
-#include "type/FunctionType.h"
-#include "type/TypeFactory.h"
 
 namespace {
     std::unique_ptr<llvm::LLVMContext> llvmContext;
@@ -113,15 +107,7 @@ namespace {
         putchar('\n');
     }
 
-    void executeMain(ModuleContext &cm, const std::unique_ptr<Parser> &parser) {
-        while (parser->hasNextNode()) {
-            auto node = parser->nextNode();
-            LLVMCodegen::generate(node.get(),
-                                  llvmIRBuilder,
-                                  llvmModule,
-                                  cm);
-        }
-
+    void executeMain() {
         const auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
         print(llvmModule.get());
         ExitOnError(llvmJit->addModule(
@@ -138,25 +124,14 @@ namespace {
                                             llvmJit->getDataLayout());
         llvm::orc::SymbolMap symbols;
 
-        constexpr auto printlnName = "println";
-        auto printType = TypeFactory::makeFunction(TypeFactory::makePrimitiveType(TypeKind::Void),
-                                                        std::vector{TypeFactory::makePrimitiveType(TypeKind::Str)});
-        cm.symTable.insertGlobal(SymbolTable::mangleFunction(printlnName, printType->parametersType()),
-                                 std::make_shared<SymbolInfo>(printType));
-        symbols[mangle(printlnName)] = {
-                llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
-                llvm::JITSymbolFlags(
-                        llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
-        };
-
-        constexpr auto printName = "print";
-        cm.symTable.insertGlobal(SymbolTable::mangleFunction(printName, printType->parametersType()),
-                                 std::make_shared<SymbolInfo>(printType));
-        symbols[mangle(printName)] = {
-                llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
-                llvm::JITSymbolFlags(
-                        llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
-        };
+        for (const auto &[name, signatures]: BuiltinSymbols::getInstance().getFunctions()) {
+            cm.symTable.insertFunction(name, signatures[0]);
+            symbols[mangle(name)] = {
+                    llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
+                    llvm::JITSymbolFlags(
+                            llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
+            };
+        }
 
         ExitOnError(llvmJit->getMainJITDylib().define(absoluteSymbols(std::move(symbols))));
     }
@@ -168,48 +143,23 @@ int main() {
     llvm::InitializeNativeTargetAsmParser();
     llvmJit = ExitOnError(llvm::orc::KaleidoscopeJIT::Create());
     initLlvmModules();
-    ModuleContext cm;
-    defineEmbeddedFunctions(cm);
-
-    // const auto parser = std::make_unique<Parser>(std::make_unique<Lexer>(
-    //         std::make_unique<std::istringstream>(R"(
-    //     fn foo(a: int): int {
-    //         return -a;
-    //     }
-    //     global: int = 10;
-    //     fn main() {
-    //         s: str = "123";
-    //         println("str len=%d", global + foo(2) + s.len());
-    //     }
-    // )")));
-    //
-    // executeMain(cm, parser);
+    ModuleContext moduleContext(llvmModule, llvmIRBuilder);
+    defineEmbeddedFunctions(moduleContext);
 
     CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
-        fn foo(i: double): int {
-            return 1;
+        fn foo(i: double): double {
+            v1: double = i;
+            v: double = v1 + 2;
+            return v;
         }
-
         fn main() {
             v1: double = 0;
-            v2: bool = true;
-            v3: str = "123";
-            v4: int = 0;
-
-            for (i: int = 0; i < 10; i++) {
-                foo(i);
-            }
-            if (v1 != 0 && v2) {
-                v1 = 1;
-            } else {
-               v1 = 3.14;
-               v1 = v4;
-            }
-            // comment
-            v2 ? v1 : 1;
+            v1 = 1;
+            println("%f", foo(1));
         }
-    )"));
-    compiler.generateIR(llvmIRBuilder,
-                        llvmModule);
+    )"), BuiltinSymbols::getInstance().getFunctions());
+
+    compiler.generateIR(moduleContext);
+    executeMain();
     return 0;
 }

@@ -4,7 +4,7 @@
             "name": "(gdb) Launch",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/simple_ast_parser",
+            "program": "${workspaceFolder}/build/simple_lang",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.26)
-project(simple_ast_parser)
+project(simple_lang)
 
 find_package(LLVM REQUIRED CONFIG)
 
@@ -19,7 +19,7 @@ add_definitions(${LLVM_DEFINITIONS})
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(simple_ast_parser
+add_executable(simple_lang
         main.cpp
         KaleidoscopeJIT.h
         ast/BaseNode.h
@@ -124,11 +124,27 @@ add_executable(simple_ast_parser
         type/CharType.h
         type/ByteType.cpp
         type/ByteType.h
+        BuiltinSymbols.cpp
+        BuiltinSymbols.h
 )
 
-target_include_directories(simple_ast_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_compile_options(simple_ast_parser PRIVATE
+target_compile_options(simple_lang PRIVATE
+    $<$<CONFIG:Debug>:
+        -fsanitize=address
+        -fno-omit-frame-pointer
+    >
+)
+
+target_link_options(simple_lang PRIVATE
+    $<$<CONFIG:Debug>:
+        -fsanitize=address
+    >
+)
+
+target_include_directories(simple_lang PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+target_compile_options(simple_lang PRIVATE
         -Wall
         -Wpedantic
 #        -Wextra
@@ -154,4 +170,4 @@ llvm_map_components_to_libnames(llvm_libs
 )
 
 # Link against LLVM libraries
-target_link_libraries(simple_ast_parser ${llvm_libs})
+target_link_libraries(simple_lang ${llvm_libs})

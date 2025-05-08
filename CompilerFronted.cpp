@@ -9,26 +9,42 @@
 #include "SemanticAnalyzer.h"
 
 #include "ast/ModuleNode.h"
+#include "ir/LLVMCodegen.h"
+#include "type/TypeFactory.h"
 
-CompilerFronted::CompilerFronted(std::unique_ptr<std::istream> stream):
-    stream(std::move(stream)) {}
+CompilerFronted::CompilerFronted(std::unique_ptr<std::istream> stream,
+                                 std::unordered_map<std::string, std::vector<SymbolInfoPtr>> builtinSymbols):
+    stream(std::move(stream)),
+    builtinSymbols(std::move(builtinSymbols)) {}
 
-void CompilerFronted::generateIR(const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
-                                 const std::unique_ptr<llvm::Module> &llvmModule) {
+void CompilerFronted::generateIR(ModuleContext &moduleContext) {
     auto module = compile();
 
     NodePrinter printer;
     module->visit(&printer);
+
+    for (const auto &stmt: module->statements) {
+        LLVMCodegen::generate(stmt.get(), moduleContext);
+    }
 }
 
 std::unique_ptr<ModuleNode> CompilerFronted::compile() {
     auto module = parse();
-    module = semanticAnalysis(std::move(module));
+    module = semanticAnalysis(std::move(module), builtinSymbols);
     return module;
 }
 
-std::unique_ptr<ModuleNode> CompilerFronted::semanticAnalysis(std::unique_ptr<ModuleNode> module) {
-    SemanticAnalyzer analyzer;
+std::unique_ptr<ModuleNode> CompilerFronted::semanticAnalysis(std::unique_ptr<ModuleNode> module,
+                                                              const std::unordered_map<
+                                                                  std::string, std::vector<SymbolInfoPtr>> &
+                                                              builtinSymbols) {
+    SymbolTable symbolTable;
+    for (const auto &[name, signatures]: builtinSymbols) {
+        for (const auto &signature: signatures) {
+            symbolTable.insertFunction(name, signature);
+        }
+    }
+    SemanticAnalyzer analyzer(symbolTable);
     module->visit(&analyzer);
     return module;
 }

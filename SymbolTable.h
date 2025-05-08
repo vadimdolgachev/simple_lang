@@ -8,6 +8,7 @@
 #include <deque>
 #include <unordered_map>
 #include <string>
+#include <utility>
 
 #include <llvm/IR/Instructions.h>
 
@@ -16,25 +17,27 @@
 struct SymbolInfo {
     virtual ~SymbolInfo() = default;
 
-    explicit SymbolInfo(const TypePtr &type, const bool isConst = false) :
-        type(type), isConst(isConst) {}
+    explicit SymbolInfo(TypePtr type, const bool isConst = false) :
+        type(std::move(type)), isConst(isConst) {}
 
     TypePtr type;
     bool isConst = false;
 };
 
-struct AllocaInstSymbol final : SymbolInfo {
-    AllocaInstSymbol(const TypePtr &type,
-                     llvm::AllocaInst *const inst) :
+using SymbolInfoPtr = std::shared_ptr<const SymbolInfo>;
+
+struct AllocaInstSymbolInfo final : SymbolInfo {
+    AllocaInstSymbolInfo(const TypePtr &type,
+                         llvm::AllocaInst *const inst) :
         SymbolInfo(type),
         inst(inst) {}
 
     llvm::AllocaInst *const inst = nullptr;
 };
 
-struct GlobalSymbol final : SymbolInfo {
-    GlobalSymbol(const TypePtr &type,
-                 llvm::GlobalVariable *const var) :
+struct GlobalSymbolInfo final : SymbolInfo {
+    GlobalSymbolInfo(const TypePtr &type,
+                     llvm::GlobalVariable *const var) :
         SymbolInfo(type),
         var(var) {}
 
@@ -49,19 +52,24 @@ public:
 
     bool isDeclaredInCurrentScope(const std::string &name) const;
 
-    void insert(const std::string &name, std::shared_ptr<SymbolInfo> symbolInfo);
+    void insert(const std::string &name, const SymbolInfoPtr &symbolInfo);
 
-    [[nodiscard]] std::optional<std::shared_ptr<SymbolInfo>> lookup(const std::string &name) const;
+    [[nodiscard]] std::optional<SymbolInfoPtr> lookup(const std::string &name) const;
 
-    void insertGlobal(const std::string &name, std::shared_ptr<SymbolInfo> type);
+    void insertGlobal(const std::string &name, SymbolInfoPtr type);
 
-    [[nodiscard]] std::optional<std::shared_ptr<SymbolInfo>> lookupGlobal(const std::string &name) const;
+    void insertFunction(const std::string &name, SymbolInfoPtr type);
+
+    [[nodiscard]] std::optional<SymbolInfoPtr> lookupGlobal(const std::string &name) const;
+
+    [[nodiscard]] std::vector<SymbolInfoPtr> lookupFunction(const std::string &name) const;
 
     static std::string mangleFunction(const std::string &name, const std::vector<TypePtr> &params);
 
 private:
-    std::deque<std::unordered_map<std::string, std::shared_ptr<SymbolInfo>>> scopes;
-    std::unordered_map<std::string, std::shared_ptr<SymbolInfo>> globalValues;
+    std::deque<std::unordered_map<std::string, SymbolInfoPtr>> scopes;
+    std::unordered_map<std::string, SymbolInfoPtr> globals;
+    std::unordered_map<std::string, std::vector<SymbolInfoPtr>> functions;
 };
 
 #endif //SYMBOLTABLE_H

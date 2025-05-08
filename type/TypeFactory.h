@@ -17,8 +17,10 @@ public:
     TypeFactory &operator=(const TypeFactory &) = delete;
 
     static TypePtr makePrimitiveType(TypeKind kind);
-    static TypePtr makePointer(const TypePtr& base);
-    static FunctionPtr makeFunction(const TypePtr& returnType, const std::vector<TypePtr>& paramTypes);
+    static TypePtr makePointer(const TypePtr &base);
+    static FunctionPtr makeFunction(const TypePtr &returnType,
+                                    const std::vector<TypePtr> &paramTypes,
+                                    bool isVarArg = false);
 
 private:
     static std::unordered_map<TypeKind, TypePtr> typeCache;

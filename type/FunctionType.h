@@ -10,7 +10,8 @@
 class FunctionType final : public PrimitiveType {
 public:
     FunctionType(TypePtr returnType,
-                 std::vector<TypePtr> paramsType);
+                 std::vector<TypePtr> paramsType,
+                 bool isVarArg);
 
     bool operator==(const Type &other) const override;
 
@@ -20,9 +21,12 @@ public:
 
     [[nodiscard]] std::string getName() const override;
 
+    bool isVariadic() const;
+
 private:
     TypePtr retType;
     std::vector<TypePtr> paramsType;
+    bool isVarArgs;
 };
 
 using FunctionPtr = std::shared_ptr<const FunctionType>;

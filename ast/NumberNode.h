@@ -19,9 +19,9 @@ public:
 
     void setType(TypePtr type) override;
 
-    const TypePtr type;
     const double value;
     const bool isFloat;
+    const TypePtr type;
 };
 
 #endif //NUMBER_NODE_H

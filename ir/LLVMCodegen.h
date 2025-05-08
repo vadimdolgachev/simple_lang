@@ -13,10 +13,7 @@
 
 class LLVMCodegen final : public NodeVisitor {
 public:
-    LLVMCodegen(const std::unique_ptr<llvm::IRBuilder<>> &builder,
-                const std::unique_ptr<llvm::Module> &module,
-                ModuleContext &mc,
-                ExpressionNode *object = nullptr);
+    explicit LLVMCodegen(ModuleContext &moduleContext);
 
     void visit(IdentNode *node) override;
 
@@ -63,18 +60,14 @@ public:
     [[nodiscard]] llvm::Value *value() const;
 
     static llvm::Value *generate(BaseNode *const node,
-                                 const std::unique_ptr<llvm::IRBuilder<>> &llvmIRBuilder,
-                                 const std::unique_ptr<llvm::Module> &llvmModule,
                                  ModuleContext &mc) {
-        LLVMCodegen codegen(llvmIRBuilder, llvmModule, mc);
+        LLVMCodegen codegen(mc);
         node->visit(&codegen);
         return codegen.value();
     }
 
 private:
     llvm::Value *value_ = nullptr;
-    const std::unique_ptr<llvm::IRBuilder<>> &builder;
-    const std::unique_ptr<llvm::Module> &module;
     ModuleContext &mc;
 };
 
