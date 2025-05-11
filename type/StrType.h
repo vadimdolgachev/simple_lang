@@ -16,6 +16,11 @@ public:
     bool operator==(const Type &other) const override;
 
     std::string getName() const override;
+
+    const std::vector<CallableInfoPtr> &getMethodTypes() const override;
+
+private:
+    std::vector<std::shared_ptr<CallableInfo>> methods;
 };
 
 #endif //STRTYPE_H

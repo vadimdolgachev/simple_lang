@@ -24,7 +24,9 @@ public:
     void setType(TypePtr type) override;
 
     std::unique_ptr<FunctionCallNode> method;
-};
 
+private:
+    TypePtr retType;
+};
 
 #endif //METHODCALLNODE_H

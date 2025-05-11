@@ -153,9 +153,17 @@ int main() {
             return v;
         }
         fn main() {
-            v1: double = 0;
+            v1: double = 0.0;
             v1 = 1;
-            println("%f", foo(1));
+            for (i: int = 0; i < 10; ++i) {
+                println("%f", foo(i));
+            }
+            if (v1 != 0) {
+                println("v1 != 0");
+            }
+            text: str = "1234";
+            len: int = text.len();
+            println("text:'%s' length=%d", text, len);
         }
     )"), BuiltinSymbols::getInstance().getFunctions());
 

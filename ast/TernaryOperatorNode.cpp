@@ -20,9 +20,9 @@ std::string TernaryOperatorNode::toString() const {
 }
 
 TypePtr TernaryOperatorNode::getType() const {
-    throw std::runtime_error("not implemented");
+    throw std::runtime_error("Not implemented");
 }
 
 void TernaryOperatorNode::setType(TypePtr type) {
-
+    throw std::runtime_error("Not implemented");
 }

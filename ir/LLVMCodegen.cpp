@@ -26,10 +26,10 @@
 #include "ast/MethodCallNode.h"
 
 #include "LLVMCodegen.h"
-#include "IRType.h"
 #include "IRTypeFactory.h"
 #include "ast/TypeCastNode.h"
 #include "type/TypeFactory.h"
+#include "type/FunctionType.h"
 
 namespace {
     llvm::Function *getModuleFunction(const std::string &name,
@@ -44,25 +44,23 @@ namespace {
 
         if (const auto &proto = mc.symTable.lookupFunction(name);
             !proto.empty()) {
-            if (const auto functionType = std::dynamic_pointer_cast<const FunctionType>(proto[0]->type)) {
+            if (const auto functionType = proto[0]->type->asFunction()) {
                 std::vector<llvm::Type *> functionParams;
-                functionParams.reserve(functionType->parametersType().size());
-                for (const auto &param: functionType->parametersType()) {
+                functionParams.reserve(functionType.value()->parametersType().size());
+                for (const auto &param: functionType.value()->parametersType()) {
                     functionParams.push_back(IRTypeFactory::from(param)->getLLVMType(mc.module->getContext()));
                 }
-                auto *retType = IRTypeFactory::from(functionType->returnType())->
+                auto *retType = IRTypeFactory::from(functionType.value()->returnType())->
                         getLLVMType(mc.module->getContext());
                 auto *const llvmFunctionType = llvm::FunctionType::get(
                         retType, functionParams,
-                        functionType->isVariadic());
+                        functionType.value()->isVariadic());
                 return llvm::Function::Create(llvmFunctionType,
                                               llvm::Function::ExternalLinkage,
                                               name,
                                               mc.module.get());
             }
-
         }
-
         // If no existing prototype exists, return null.
         return nullptr;
     }
@@ -287,9 +285,15 @@ void LLVMCodegen::visit(BinOpNode *node) {
     if (lhsValue->getType()->isPointerTy() || rhsValue->getType()->isPointerTy()) {
         throw std::logic_error("Unsupported operation");
     }
-
-    const auto resultTypeNode = IRTypeFactory::from(node->getType());
-    value_ = resultTypeNode->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp");
+    if (const auto category = getOperationCategory(node->binOp); category == OperationCategory::Comparison) {
+        value_ = IRTypeFactory::from(node->lhs->getType())
+                ->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp");
+    } else if (category == OperationCategory::Arithmetic) {
+        const auto resultTypeNode = IRTypeFactory::from(node->getType());
+        value_ = resultTypeNode->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp");
+    } else {
+        throw std::logic_error("Unsupported operation");
+    }
 }
 
 void LLVMCodegen::visit(ProtoFunctionStatement *node) {
@@ -624,19 +628,21 @@ void LLVMCodegen::visit(TernaryOperatorNode *node) {
 
 void LLVMCodegen::visit(MethodCallNode *node) {
     const auto objectType = IRTypeFactory::from(node->object->getType());
-    if (!objectType->isMethodSupported(node->method->ident->name)) {
-        throw std::runtime_error("Method not supported");
-    }
     std::vector<llvm::Value *> args;
     args.reserve(node->method->args.size());
     for (const auto &arg: node->method->args) {
         args.push_back(generate(arg.get(), mc));
     }
-    value_ = objectType->createMethodCall(*mc.builder,
-                                          node->method->ident->name,
-                                          generate(node->object.get(), mc),
-                                          args,
-                                          node->method->ident->name);
+
+    if (const auto fType = node->method->getType()->asFunction()) {
+        const auto methodInfo = MethodInfo::create(node->method->ident->name,
+                                                   fType.value());
+        auto *object = generate(node->object.get(), mc);
+        value_ = objectType->createMethodCall(*mc.builder,
+                                              methodInfo,
+                                              object,
+                                              args);
+    }
 }
 
 void LLVMCodegen::visit(FieldAccessNode *node) {

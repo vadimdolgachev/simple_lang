@@ -13,15 +13,11 @@ class StrIRType final : public IRType {
 public:
     explicit StrIRType(bool isPointer = true);
 
-    [[nodiscard]] bool isOperationSupported(TokenType op, const IRType *rhs) const override;
-
     llvm::Value *createBinaryOp(llvm::IRBuilder<> &builder,
                                 TokenType op,
                                 llvm::Value *lhs,
                                 llvm::Value *rhs,
                                 const std::string &name) const override;
-
-    [[nodiscard]] bool isUnaryOperationSupported(TokenType op) const override;
 
     llvm::Value *createUnaryOp(llvm::IRBuilder<> &builder,
                                TokenType op,
@@ -34,19 +30,13 @@ public:
     llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
 
     llvm::Value *createMethodCall(llvm::IRBuilder<> &builder,
-                                  const std::string &method,
+                                  const MethodInfoPtr &methodInfo,
                                   llvm::Value *object,
-                                  const std::vector<llvm::Value *> &args,
-                                  const std::string &name) const override;
-
-    const MethodLists &methodList() const override;
-
+                                  const std::vector<llvm::Value *> &args) const override;
 private:
     llvm::Function *getOrDeclareStrcmp(llvm::Module *module) const;
 
     llvm::Function *getOrDeclareStrlen(llvm::Module *module) const;
-
-    MethodLists methods;
 };
 
 

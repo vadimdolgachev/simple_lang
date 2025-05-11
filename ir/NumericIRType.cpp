@@ -16,39 +16,6 @@ llvm::Type *NumericIRType::getLLVMType(llvm::LLVMContext &context) const {
     return isPointer ? baseType->getPointerTo() : baseType;
 }
 
-bool NumericIRType::isOperationSupported(const TokenType op, const IRType *rhs) const {
-    if (dynamic_cast<const NumericIRType *>(rhs)) {
-        switch (op) {
-            case TokenType::Plus:
-            case TokenType::Minus:
-            case TokenType::Star:
-            case TokenType::Slash:
-            case TokenType::Equal:
-            case TokenType::NotEqual:
-            case TokenType::LeftAngleBracket:
-            case TokenType::LeftAngleBracketEqual:
-            case TokenType::RightAngleBracket:
-            case TokenType::RightAngleBracketEqual:
-                return true;
-            default:
-                return false;
-        }
-    }
-    return false;
-}
-
-bool NumericIRType::isUnaryOperationSupported(const TokenType op) const {
-    switch (op) {
-        case TokenType::PlusPlus:
-        case TokenType::MinusMinus:
-        case TokenType::Plus:
-        case TokenType::Minus:
-            return true;
-        default:
-            return false;
-    }
-}
-
 llvm::Value *NumericIRType::createBinaryOp(llvm::IRBuilder<> &builder,
                                            const TokenType op,
                                            llvm::Value *lhs,
@@ -189,10 +156,18 @@ llvm::CmpInst::Predicate NumericIRType::getComparePredicate(const TokenType op) 
             }
             break;
         case TokenType::Equal:
-            pred = llvm::CmpInst::ICMP_EQ;
+            if (isFloat) {
+                pred = llvm::CmpInst::FCMP_UEQ;
+            } else {
+                pred = llvm::CmpInst::ICMP_EQ;
+            }
             break;
         case TokenType::NotEqual:
-            pred = llvm::CmpInst::ICMP_NE;
+            if (isFloat) {
+                pred = llvm::CmpInst::FCMP_UNE;
+            } else {
+                pred = llvm::CmpInst::ICMP_NE;
+            }
             break;
         default:
             throw std::logic_error("Unsupported integer comparison");

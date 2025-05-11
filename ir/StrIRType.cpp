@@ -7,24 +7,12 @@
 #include "ast/StringNode.h"
 #include "../type/Type.h"
 #include "ast/ProtoFunctionStatement.h"
-#include "type/TypeFactory.h"
 
 StrIRType::StrIRType(const bool isPointer):
     IRType(isPointer) {
     if (!isPointer) {
         throw std::invalid_argument("String type must be a pointer");
     }
-    methods.insert(std::make_unique<ProtoFunctionStatement>("len",
-                                                            TypeFactory::makePrimitiveType(TypeKind::Integer),
-                                                            std::vector<std::unique_ptr<DeclarationNode>>{}));
-}
-
-bool StrIRType::isOperationSupported(const TokenType op, const IRType *rhs) const {
-    if (!dynamic_cast<const StrIRType *>(rhs)) {
-        return false;
-    }
-
-    return op == TokenType::Equal || op == TokenType::NotEqual;
 }
 
 llvm::Value *StrIRType::createBinaryOp(llvm::IRBuilder<> &builder,
@@ -54,10 +42,6 @@ llvm::Value *StrIRType::createBinaryOp(llvm::IRBuilder<> &builder,
     }
 }
 
-bool StrIRType::isUnaryOperationSupported(TokenType op) const {
-    return false;
-}
-
 llvm::Value *StrIRType::createUnaryOp(llvm::IRBuilder<> &builder,
                                       TokenType op,
                                       llvm::Value *operand,
@@ -84,22 +68,13 @@ llvm::Value *StrIRType::createValue(const BaseNode *node,
 }
 
 llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,
-                                         const std::string &method,
+                                         const MethodInfoPtr &methodInfo,
                                          llvm::Value *object,
-                                         const std::vector<llvm::Value *> &args,
-                                         const std::string &name) const {
-    if (method == "len") {
-        if (!args.empty()) {
-            throw std::invalid_argument("len() does not take arguments");
-        }
-        auto *const strlenFunc = getOrDeclareStrlen(builder.GetInsertBlock()->getModule());
-        return builder.CreateCall(strlenFunc, {object}, name);
+                                         const std::vector<llvm::Value *> &args) const {
+    if (methodInfo->name == "len") {
+        return builder.CreateCall(getOrDeclareStrlen(builder.GetInsertBlock()->getModule()), {object});
     }
-    return IRType::createMethodCall(builder, method, object, args, name);
-}
-
-const IRType::MethodLists &StrIRType::methodList() const {
-    return methods;
+    return IRType::createMethodCall(builder, methodInfo, object, args);
 }
 
 llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) const {
@@ -107,9 +82,7 @@ llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) const {
     auto *const funcType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context),
                                                    {getLLVMType(context), getLLVMType(context)},
                                                    false);
-    return llvm::cast<llvm::Function>(
-            module->getOrInsertFunction("strcmp", funcType).getCallee()
-            );
+    return llvm::cast<llvm::Function>(module->getOrInsertFunction("strcmp", funcType).getCallee());
 }
 
 llvm::Function *StrIRType::getOrDeclareStrlen(llvm::Module *module) const {
@@ -117,7 +90,5 @@ llvm::Function *StrIRType::getOrDeclareStrlen(llvm::Module *module) const {
     auto *const funcType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context),
                                                    {getLLVMType(context)},
                                                    false);
-    return llvm::cast<llvm::Function>(
-            module->getOrInsertFunction("strlen", funcType).getCallee()
-            );
+    return llvm::cast<llvm::Function>(module->getOrInsertFunction("strlen", funcType).getCallee());
 }

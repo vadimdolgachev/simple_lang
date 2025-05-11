@@ -4,10 +4,6 @@
 
 #include "VoidIRType.h"
 
-bool VoidIRType::isOperationSupported(TokenType /*op*/, const IRType * /*other*/) const {
-    return false;
-}
-
 llvm::Type *VoidIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::Type::getVoidTy(context);
 }
@@ -18,10 +14,6 @@ llvm::Value *VoidIRType::createBinaryOp(llvm::IRBuilder<> &builder,
                                         llvm::Value *rhs,
                                         const std::string &name) const {
     return nullptr;
-}
-
-bool VoidIRType::isUnaryOperationSupported(TokenType /*op*/) const {
-    return false;
 }
 
 llvm::Value *VoidIRType::createUnaryOp(llvm::IRBuilder<> &builder,

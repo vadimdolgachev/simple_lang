@@ -48,13 +48,15 @@ TypePtr TypeFactory::makePrimitiveType(TypeKind kind) {
     return typeCache[kind];
 }
 
-TypePtr TypeFactory::makePointer(const TypePtr& base) {
+TypePtr TypeFactory::makePointer(const TypePtr &base) {
     if (!pointerCache.contains(base)) {
         pointerCache[base] = std::make_shared<PointerType>(base);
     }
     return pointerCache[base];
 }
 
-FunctionPtr TypeFactory::makeFunction(const TypePtr &returnType, const std::vector<TypePtr> &paramTypes, bool isVarArg) {
+FunctionTypePtr TypeFactory::makeFunction(const TypePtr &returnType,
+                                          const std::vector<TypePtr> &paramTypes,
+                                          bool isVarArg) {
     return std::make_shared<FunctionType>(returnType, paramTypes, isVarArg);
 }

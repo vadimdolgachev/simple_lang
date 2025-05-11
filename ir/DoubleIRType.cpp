@@ -4,14 +4,12 @@
 
 #include "DoubleIRType.h"
 
-#include "IntIRType.h"
-
 #include "ast/NumberNode.h"
 
 DoubleIRType::DoubleIRType(const bool isPointer):
     NumericIRType(isPointer, false, true) {}
 
-llvm::Value *DoubleIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+llvm::Value *DoubleIRType::createValue(const BaseNode *node, llvm::IRBuilder<> & /*builder*/, llvm::Module &module) {
     const auto *const numberNode = dynamic_cast<const NumberNode *>(node);
     return llvm::ConstantFP::get(getLLVMType(module.getContext()),
                                  llvm::APFloat(numberNode->value));

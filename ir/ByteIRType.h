@@ -12,9 +12,6 @@ public:
     explicit ByteIRType(const bool isPointer = false) :
         NumericIRType(isPointer, false, false) {}
 
-    [[nodiscard]] bool isOperationSupported(TokenType op,
-                                            const IRType *rhs) const override;
-
     llvm::Value *createBinaryOp(llvm::IRBuilder<> &builder,
                                 TokenType op,
                                 llvm::Value *lhs,

@@ -5,8 +5,6 @@
 #ifndef MEMBERACCESSNODE_H
 #define MEMBERACCESSNODE_H
 
-#include <memory>
-
 #include "BaseNode.h"
 
 class MemberAccessNode : public ExpressionNode {

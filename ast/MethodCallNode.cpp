@@ -4,6 +4,8 @@
 
 #include "MethodCallNode.h"
 
+#include "type/FunctionType.h"
+
 void MethodCallNode::visit(NodeVisitor *visitor) {
     visitor->visit(this);
 }
@@ -13,9 +15,14 @@ std::string MethodCallNode::toString() const {
 }
 
 TypePtr MethodCallNode::getType() const {
-    throw std::runtime_error("not implemented");
+    return retType;
 }
 
-void MethodCallNode::setType(TypePtr type) {
-
+void MethodCallNode::setType(const TypePtr type) {
+    if (const auto fType = type->asFunction()) {
+        retType = fType.value()->returnType();
+        method->setType(fType.value());
+    } else {
+        throw std::runtime_error("Unknown type in method call");
+    }
 }

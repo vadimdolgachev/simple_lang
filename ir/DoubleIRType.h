@@ -2,8 +2,8 @@
 // Created by vadim on 19.03.25.
 //
 
-#ifndef FLOATIRTYPE_H
-#define FLOATIRTYPE_H
+#ifndef DOUBLEIRTYPE_H
+#define DOUBLEIRTYPE_H
 
 #include "NumericIRType.h"
 
@@ -18,4 +18,4 @@ protected:
 };
 
 
-#endif //FLOATIRTYPE_H
+#endif //DOUBLEIRTYPE_H

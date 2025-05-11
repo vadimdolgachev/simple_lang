@@ -3,7 +3,6 @@
 //
 
 #include "IntIRType.h"
-#include "DoubleIRType.h"
 #include "ast/NumberNode.h"
 
 #include <llvm/IR/Type.h>

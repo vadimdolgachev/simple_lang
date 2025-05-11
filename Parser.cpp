@@ -219,6 +219,7 @@ StmtNodePtr Parser::parseIfStatement() {
 }
 
 NodePtr<BlockNode> Parser::parseCurlyBracketBlock() {
+    const bool isLocalScopePrev = isLocalScope;
     isLocalScope = true;
     BlockNode::Statements body;
     if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
@@ -232,7 +233,7 @@ NodePtr<BlockNode> Parser::parseCurlyBracketBlock() {
         }
     }
     lexer->nextToken(); // }
-    isLocalScope = false;
+    isLocalScope = isLocalScopePrev;
     return std::make_unique<BlockNode>(std::move(body));
 }
 

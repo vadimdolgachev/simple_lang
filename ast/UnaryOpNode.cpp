@@ -20,4 +20,5 @@ TypePtr UnaryOpNode::getType() const {
 }
 
 void UnaryOpNode::setType(TypePtr type) {
+    throw std::runtime_error("Unsupported operation");
 }

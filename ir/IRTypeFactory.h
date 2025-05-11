@@ -5,12 +5,9 @@
 #ifndef IRTYPEFACTORY_H
 #define IRTYPEFACTORY_H
 
-#include "ModuleContext.h"
-#include "StrIRType.h"
 
-#include "ast/BaseNode.h"
-#include "ast/AssignmentNode.h"
 #include "../type/Type.h"
+#include "ir/IRType.h"
 
 class IRTypeFactory final {
 public:

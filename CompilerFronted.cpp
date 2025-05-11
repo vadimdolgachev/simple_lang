@@ -18,7 +18,7 @@ CompilerFronted::CompilerFronted(std::unique_ptr<std::istream> stream,
     builtinSymbols(std::move(builtinSymbols)) {}
 
 void CompilerFronted::generateIR(ModuleContext &moduleContext) {
-    auto module = compile();
+    const auto module = compile();
 
     NodePrinter printer;
     module->visit(&printer);

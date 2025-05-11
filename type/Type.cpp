@@ -4,6 +4,8 @@
 
 #include "Type.h"
 
+#include "FunctionType.h"
+
 BoolResult Type::canCastTo(const TypePtr &target, CastMode /*mode*/) const {
     if (*this == *target) {
         return true;
@@ -24,6 +26,10 @@ ResultType Type::getCommonType(const TypePtr &other) const {
 
 std::vector<TypePtr> Type::getFieldTypes() const {
     throw std::logic_error("Not a composite type");
+}
+
+const std::vector<CallableInfoPtr> &Type::getMethodTypes() const {
+    throw std::logic_error("Type does not contain methods");
 }
 
 TypePtr Type::getElementType() const {
@@ -92,6 +98,10 @@ bool Type::isInteger() const noexcept {
 
 bool Type::isStr() const noexcept {
     return getKind() == TypeKind::Str;
+}
+
+std::optional<FunctionTypePtr> Type::asFunction() const {
+    return std::dynamic_pointer_cast<const FunctionType>(shared_from_this());
 }
 
 OperationCategory getOperationCategory(const TokenType op) {

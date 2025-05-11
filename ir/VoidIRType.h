@@ -12,8 +12,6 @@ public:
     VoidIRType() :
         IRType(false) {}
 
-    [[nodiscard]] bool isOperationSupported(TokenType op, const IRType *other) const override;
-
     llvm::Type *getLLVMType(llvm::LLVMContext &context) const override;
 
     llvm::Value *createBinaryOp(llvm::IRBuilder<> &builder,
@@ -21,8 +19,6 @@ public:
                                 llvm::Value *lhs,
                                 llvm::Value *rhs,
                                 const std::string &name) const override;
-
-    [[nodiscard]] bool isUnaryOperationSupported(TokenType op) const override;
 
     llvm::Value *createUnaryOp(llvm::IRBuilder<> &builder,
                                TokenType op,

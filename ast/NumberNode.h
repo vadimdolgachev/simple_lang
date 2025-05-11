@@ -21,6 +21,8 @@ public:
 
     const double value;
     const bool isFloat;
+
+private:
     const TypePtr type;
 };
 

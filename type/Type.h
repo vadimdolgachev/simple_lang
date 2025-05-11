@@ -27,9 +27,18 @@ enum class TypeKind : std::uint8_t {
 
 class Type;
 using TypePtr = std::shared_ptr<const Type>;
+
 using OptType = std::optional<TypePtr>;
+
 using ResultType = Result<TypePtr>;
+
 using BoolResult = std::expected<bool, std::string>;
+
+struct CallableInfo;
+using CallableInfoPtr = std::shared_ptr<CallableInfo>;
+
+class FunctionType;
+using FunctionTypePtr = std::shared_ptr<const FunctionType>;
 
 enum class OperationCategory: std::uint8_t {
     Arithmetic,
@@ -66,6 +75,8 @@ public:
 
     [[nodiscard]] virtual std::vector<TypePtr> getFieldTypes() const;
 
+    [[nodiscard]] virtual const std::vector<CallableInfoPtr> &getMethodTypes() const;
+
     [[nodiscard]] virtual TypePtr getElementType() const;
 
     virtual ResultType getComparableType(const TypePtr &type) const;
@@ -81,6 +92,8 @@ public:
     bool isInteger() const noexcept;
 
     bool isStr() const noexcept;
+
+    std::optional<FunctionTypePtr> asFunction() const;
 };
 
 class PrimitiveType : public Type {
@@ -97,5 +110,37 @@ protected:
     const TypeKind kind;
     const bool isConst;
 };
+
+struct CallableInfo {
+    std::string name;
+    FunctionTypePtr type;
+
+    virtual ~CallableInfo() = default;
+};
+
+struct FunctionInfo final : CallableInfo {
+    bool isBuiltin = false;
+
+    static std::shared_ptr<FunctionInfo> create(std::string name, FunctionTypePtr type, bool isBuiltin = false) {
+        auto info = std::make_shared<FunctionInfo>();
+        info->name = std::move(name);
+        info->type = std::move(type);
+        info->isBuiltin = isBuiltin;
+        return info;
+    }
+};
+
+struct MethodInfo final : CallableInfo {
+    bool isStatic = false;
+
+    static std::shared_ptr<MethodInfo> create(std::string name, FunctionTypePtr type, bool isStatic = false) {
+        auto info = std::make_shared<MethodInfo>();
+        info->name = std::move(name);
+        info->type = std::move(type);
+        info->isStatic = isStatic;
+        return info;
+    }
+};
+using MethodInfoPtr = std::shared_ptr<MethodInfo>;
 
 #endif //TYPE_H

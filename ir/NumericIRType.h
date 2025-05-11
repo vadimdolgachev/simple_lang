@@ -16,10 +16,6 @@ protected:
 public:
     llvm::Type *getLLVMType(llvm::LLVMContext &context) const override;
 
-    [[nodiscard]] bool isOperationSupported(TokenType op, const IRType *rhs) const override;
-
-    [[nodiscard]] bool isUnaryOperationSupported(TokenType op) const override;
-
     llvm::Value *createBinaryOp(llvm::IRBuilder<> &builder,
                                 TokenType op,
                                 llvm::Value *lhs,

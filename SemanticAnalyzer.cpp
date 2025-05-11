@@ -135,17 +135,17 @@ void SemanticAnalyzer::visit(FunctionCallNode *node) {
     if (signatures.size() > 1) {
         throw SemanticError("Function overloads are not supported yet");
     }
-    if (const auto functionType = std::dynamic_pointer_cast<const FunctionType>(signatures[0]->type)) {
-        const auto paramsType = functionType->parametersType();
+    if (const auto functionType = signatures[0]->type->asFunction()) {
+        const auto paramsType = functionType.value()->parametersType();
         for (size_t i = 0; i < node->args.size(); ++i) {
             node->args[i]->visit(this);
             if (i < paramsType.size()) {
                 node->args[i] = castIfNeeded(paramsType[i], std::move(node->args[i]));
-            } else if (!functionType->isVariadic()) {
+            } else if (!functionType.value()->isVariadic()) {
                 throw SemanticError("Wrong number of arguments");
             }
         }
-        node->setType(functionType->returnType());
+        node->setType(functionType.value()->returnType());
     }
 }
 
@@ -250,7 +250,12 @@ void SemanticAnalyzer::visit(TernaryOperatorNode *node) {
 
 void SemanticAnalyzer::visit(MethodCallNode *node) {
     node->object->visit(this);
-    node->method->visit(this);
+    const auto &methods = node->object->getType()->getMethodTypes();
+    if (const auto methodType = std::ranges::find_if(methods, [&node](const auto &method) {
+        return method->name == node->method->ident->name;
+    }); methodType != methods.end()) {
+        node->setType((*methodType)->type);
+    }
 }
 
 void SemanticAnalyzer::visit(FieldAccessNode *node) {

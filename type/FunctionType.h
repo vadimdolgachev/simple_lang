@@ -29,6 +29,4 @@ private:
     bool isVarArgs;
 };
 
-using FunctionPtr = std::shared_ptr<const FunctionType>;
-
 #endif //FUNCTIONTYPE_H

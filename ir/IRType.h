@@ -15,21 +15,17 @@
 
 class IRType {
 public:
-    using MethodLists = std::unordered_set<std::unique_ptr<ProtoFunctionStatement>>;
+    using MethodLists = std::unordered_set<std::unique_ptr<IRType>>;
 
     explicit IRType(bool isPointer);
 
     virtual ~IRType() = default;
-
-    [[nodiscard]] virtual bool isOperationSupported(TokenType op, const IRType *other) const = 0;
 
     virtual llvm::Value *createBinaryOp(llvm::IRBuilder<> &builder,
                                         TokenType op,
                                         llvm::Value *lhs,
                                         llvm::Value *rhs,
                                         const std::string &name) const = 0;
-
-    [[nodiscard]] virtual bool isUnaryOperationSupported(TokenType op) const = 0;
 
     virtual llvm::Value *createUnaryOp(llvm::IRBuilder<> &builder,
                                        TokenType op,
@@ -44,19 +40,10 @@ public:
 
     virtual llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) = 0;
 
-    [[nodiscard]] virtual const MethodLists &methodList() const;
-
-    [[nodiscard]] virtual bool isMethodSupported(const std::string &method) const;
-
-    [[nodiscard]] const ProtoFunctionStatement *findMethodByName(const std::string &methodName) const;
-
-    [[nodiscard]] std::string findField(const std::string &fieldName) const;
-
     virtual llvm::Value *createMethodCall(llvm::IRBuilder<> &builder,
-                                          const std::string &method,
+                                          const MethodInfoPtr &methodInfo,
                                           llvm::Value *object,
-                                          const std::vector<llvm::Value *> &args,
-                                          const std::string &name) const;
+                                          const std::vector<llvm::Value *> &args) const;
 
 protected:
     bool isPointer;

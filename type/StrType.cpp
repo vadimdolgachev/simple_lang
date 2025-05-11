@@ -4,8 +4,16 @@
 
 #include "StrType.h"
 
+#include "TypeFactory.h"
+
 StrType::StrType():
-    PrimitiveType(TypeKind::Str) {}
+    PrimitiveType(TypeKind::Str) {
+    auto len = MethodInfo::create("len",
+                                  TypeFactory::makeFunction(TypeFactory::makePrimitiveType(TypeKind::Integer),
+                                                            {},
+                                                            false));
+    methods.push_back(std::move(len));
+}
 
 ResultType StrType::getResultTypeUnary(TokenType op) const {
     return std::unexpected("Unsupported operator for string type");
@@ -17,4 +25,8 @@ bool StrType::operator==(const Type &other) const {
 
 std::string StrType::getName() const {
     return "str";
+}
+
+const std::vector<CallableInfoPtr> &StrType::getMethodTypes() const {
+    return methods;
 }

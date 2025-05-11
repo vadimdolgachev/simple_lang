@@ -33,8 +33,8 @@ ResultType NumericType::getResultTypeUnary(const TokenType op) const {
 }
 
 ResultType NumericType::getCommonType(const TypePtr &other) const {
-    if (const auto numType = std::dynamic_pointer_cast<const NumericType>(other)) {
-        if (getKind() == TypeKind::Double || numType->getKind() == TypeKind::Double) {
+    if (other->isNumeric()) {
+        if (getKind() == TypeKind::Double || other->getKind() == TypeKind::Double) {
             return TypeFactory::makePrimitiveType(TypeKind::Double);
         }
         return shared_from_this();
