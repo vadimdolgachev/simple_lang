@@ -3,6 +3,7 @@
 #include <unordered_map>
 
 #include "Util.h"
+#include "ast/ArrayNode.h"
 #include "ast/BinOpNode.h"
 #include "ast/FunctionCallNode.h"
 #include "ast/FunctionNode.h"
@@ -17,6 +18,7 @@
 #include "ast/BlockNode.h"
 #include "ast/CommentNode.h"
 #include "ast/FieldAccessNode.h"
+#include "ast/IndexAccessNode.h"
 #include "ast/MethodCallNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
@@ -107,7 +109,7 @@ CondBranch Parser::parseCondBranch() {
 }
 
 NodePtr<AssignmentNode> Parser::tryParseAssignment() {
-    if (auto token = lexer->currToken(); token.type == TokenType::Identifier) {
+    if (const auto token = lexer->currToken(); token.type == TokenType::Identifier) {
         auto ident = parseIdent();
         if (lexer->currToken().type == TokenType::Assignment && token.value.has_value()) {
             lexer->nextToken();
@@ -251,8 +253,14 @@ ExprNodePtr Parser::parseExpr() {
         auto expr = parseBoolLogic();
         if (lexer->currToken().type == TokenType::Question) {
             expr = parseTernaryOperator(std::move(expr));
+        } else if (lexer->currToken().type == TokenType::LeftSquareBracket) {
+            expr = parseIndexAccess(std::move(expr));
         }
         return expr;
+    }
+    if (lexer->currToken().type == TokenType::LeftSquareBracket) {
+        lexer->nextToken();
+        return parseArray();
     }
     throw std::runtime_error(makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
 }
@@ -527,6 +535,48 @@ NodePtr<BlockNode> Parser::parseBlock() {
     return block;
 }
 
+TypePtr Parser::parseArrayType() {
+    TypePtr type;
+    if (lexer->currToken().type == TokenType::LeftSquareBracket) {
+        lexer->nextToken();
+        const auto elementType = parseType();
+        if (lexer->currToken().type != TokenType::Semicolon) {
+            throw std::runtime_error(
+                    makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
+        }
+        lexer->nextToken();
+        if (lexer->currToken().type != TokenType::Number) {
+            throw std::runtime_error(
+                    makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
+        }
+        const size_t arraySize = std::strtol(lexer->currToken().value.value().c_str(), nullptr, 10);
+        lexer->nextToken();
+        if (lexer->currToken().type != TokenType::RightSquareBracket) {
+            throw std::runtime_error(
+                    makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
+        }
+
+        type = TypeFactory::makeArrayType(elementType, arraySize);
+    }
+
+    lexer->nextToken();
+    return type;
+}
+
+TypePtr Parser::parseType() {
+    if (lexer->currToken().type == TokenType::LeftSquareBracket) {
+        return parseArrayType();
+    }
+    if (lexer->currToken().type == TokenType::Identifier && lexer->currToken().value) {
+        if (const auto it = TYPES.find(lexer->currToken().value.value()); it != TYPES.end()) {
+            const auto result = TypeFactory::makePrimitiveType(it->second);
+            lexer->nextToken();
+            return result;
+        }
+    }
+    throw std::runtime_error(makeErrorMsg("Unknown type name"));
+}
+
 NodePtr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemicolon, const bool isLocalScope) {
     auto ident = std::make_unique<IdentNode>(lexer->currToken().value.value());
     lexer->nextToken();
@@ -535,12 +585,8 @@ NodePtr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemi
                 makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
     }
     lexer->nextToken();
-    const auto typeName = lexer->currToken().value.value();
-    const auto typeKind = TYPES.find(typeName);
-    if (typeKind == TYPES.end()) {
-        throw std::runtime_error(makeErrorMsg("Unexpected type: " + lexer->currToken().toString()));
-    }
-    lexer->nextToken();
+
+    const auto nodeType = parseType();
     std::optional<ExprNodePtr> init = std::nullopt;
     if (lexer->currToken().type == TokenType::Assignment) {
         lexer->nextToken();
@@ -550,7 +596,7 @@ NodePtr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemi
         consumeSemicolon();
     }
     return std::make_unique<DeclarationNode>(std::move(ident),
-                                             TypeFactory::makePrimitiveType(typeKind->second),
+                                             nodeType,
                                              std::move(init),
                                              false,
                                              !isLocalScope);
@@ -614,4 +660,33 @@ ExprNodePtr Parser::parseObjectMember(ExprNodePtr object) {
         return member;
     }
     throw std::logic_error("Unexpected object member");
+}
+
+ExprNodePtr Parser::parseArray() {
+    std::vector<ExprNodePtr> elements;
+    while (lexer->hasNextToken() && lexer->currToken().type != TokenType::RightSquareBracket) {
+        elements.push_back(parseExpr());
+        if (lexer->currToken().type != TokenType::RightSquareBracket) {
+            lexer->nextToken();
+        }
+    }
+    if (lexer->currToken().type == TokenType::RightSquareBracket) {
+        lexer->nextToken();
+    } else {
+        throw std::runtime_error(makeErrorMsg("Expected ']' symbol"));
+    }
+    return std::make_unique<ArrayNode>(std::move(elements));
+}
+
+ExprNodePtr Parser::parseIndexAccess(ExprNodePtr object) {
+    if (lexer->currToken().type == TokenType::LeftSquareBracket) {
+        lexer->nextToken();
+        auto index = parseExpr();
+        if (lexer->currToken().type != TokenType::RightSquareBracket) {
+            throw std::runtime_error(makeErrorMsg("Expected ']' symbol"));
+        }
+        lexer->nextToken();
+        return std::make_unique<IndexAccessNode>(std::move(object), std::move(index));
+    }
+    throw std::runtime_error(makeErrorMsg("Expected '[' symbol"));
 }

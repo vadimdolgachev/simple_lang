@@ -37,6 +37,8 @@ public:
     void visit(CommentNode *node) override;
     void visit(ModuleNode *node) override;
     void visit(TypeCastNode *node) override;
+    void visit(ArrayNode *node) override;
+    void visit(IndexAccessNode *node) override;
 
 private:
     SymbolTable symbolTable;

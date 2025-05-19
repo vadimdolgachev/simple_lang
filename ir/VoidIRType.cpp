@@ -24,6 +24,6 @@ llvm::Value *VoidIRType::createUnaryOp(llvm::IRBuilder<> &builder,
     return nullptr;
 }
 
-llvm::Value * VoidIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+llvm::Constant *VoidIRType::createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
     throw std::logic_error("Not supported");
 }

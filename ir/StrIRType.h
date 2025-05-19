@@ -27,7 +27,7 @@ public:
 
     llvm::Type *getLLVMType(llvm::LLVMContext &context) const override;
 
-    llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
+    llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
 
     llvm::Value *createMethodCall(llvm::IRBuilder<> &builder,
                                   const MethodInfoPtr &methodInfo,

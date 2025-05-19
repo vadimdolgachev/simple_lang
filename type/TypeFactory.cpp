@@ -2,10 +2,9 @@
 // Created by vadim on 27.04.25.
 //
 
-#include "TypeFactory.h"
-
 #include <unordered_map>
 
+#include "TypeFactory.h"
 #include "BoolType.h"
 #include "ByteType.h"
 #include "CharType.h"
@@ -59,4 +58,8 @@ FunctionTypePtr TypeFactory::makeFunction(const TypePtr &returnType,
                                           const std::vector<TypePtr> &paramTypes,
                                           bool isVarArg) {
     return std::make_shared<FunctionType>(returnType, paramTypes, isVarArg);
+}
+
+ArrayTypePtr TypeFactory::makeArrayType(const TypePtr &elementType, size_t size) {
+    return std::make_shared<ArrayType>(elementType, size);
 }

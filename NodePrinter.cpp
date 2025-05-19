@@ -24,6 +24,8 @@
 #include "ast/StringNode.h"
 #include "ast/TernaryOperatorNode.h"
 #include "ast/TypeCastNode.h"
+#include "ast/ArrayNode.h"
+#include "ast/IndexAccessNode.h"
 
 namespace {
     std::ostream &operator<<(std::ostream &os, const TokenType token) {
@@ -240,6 +242,18 @@ void NodePrinter::visit(ModuleNode *node) {
 void NodePrinter::visit(TypeCastNode *node) {
     ostream << "(" << node->targetType->getName() << ")";
     node->expr->visit(this);
+}
+
+void NodePrinter::visit(ArrayNode *node) {
+    ostream << "[";
+    for (size_t i = 0; i < node->elements.size(); ++i) {
+        ostream << node->elements[i]->toString() << (i < node->elements.size() - 1 ? "," : "");
+    }
+    ostream << "]";
+}
+
+void NodePrinter::visit(IndexAccessNode *node) {
+    ostream << node->object->toString() << "[" << node->index->toString() << "]";
 }
 
 void NodePrinter::printIndent() const {

@@ -9,10 +9,11 @@
 #include "IntIRType.h"
 #include "StrIRType.h"
 #include "VoidIRType.h"
-
+#include "ArrayIRType.h"
 #include "../type/Type.h"
+#include "../type/ArrayType.h"
 
-std::shared_ptr<IRType> IRTypeFactory::from(const TypePtr &type) {
+std::shared_ptr<IRType> IRTypeFactory::from(const TypePtr &type, llvm::LLVMContext &context) {
     if (type->isStr()) {
         return std::make_shared<StrIRType>();
     }
@@ -27,6 +28,10 @@ std::shared_ptr<IRType> IRTypeFactory::from(const TypePtr &type) {
     }
     if (type->isBoolean()) {
         return std::make_shared<BooleanIRType>();
+    }
+    if (const auto arrayType = std::dynamic_pointer_cast<const ArrayType>(type)) {
+        return std::make_shared<ArrayIRType>(from(arrayType->getElementType(), context)->getLLVMType(context),
+                                             arrayType->size());
     }
 
     throw std::logic_error("Unknown type: " + type->getName());

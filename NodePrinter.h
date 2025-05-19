@@ -54,6 +54,10 @@ public:
 
     void visit(TypeCastNode *node) override;
 
+    void visit(ArrayNode *node) override;
+
+    void visit(IndexAccessNode *node) override;
+
 private:
     void printIndent() const;
     [[nodiscard]] static bool needSemicolon(const std::unique_ptr<BaseNode> &node);

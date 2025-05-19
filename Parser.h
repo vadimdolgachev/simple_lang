@@ -41,12 +41,16 @@ private:
     [[nodiscard]] StmtNodePtr parseWhileStatement();
     [[nodiscard]] StmtNodePtr parseDoWhileStatement();
     [[nodiscard]] NodePtr<BlockNode> parseBlock();
+    [[nodiscard]] TypePtr parseType();
+    [[nodiscard]] TypePtr parseArrayType();
     [[nodiscard]] NodePtr<DeclarationNode> parseDeclarationNode(bool needConsumeSemicolon, bool isLocalScope);
     [[nodiscard]] StmtNodePtr parseReturnStatement();
     [[nodiscard]] ExprNodePtr parseTernaryOperator(ExprNodePtr cond);
     void consumeSemicolon() const;
     [[nodiscard]] std::string makeErrorMsg(const std::string &msg) const;
     [[nodiscard]] ExprNodePtr parseObjectMember(ExprNodePtr object);
+    [[nodiscard]] ExprNodePtr parseArray();
+    [[nodiscard]] ExprNodePtr parseIndexAccess(ExprNodePtr object);
 
     std::unique_ptr<Lexer> lexer;
     bool isLocalScope = false;

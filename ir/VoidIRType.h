@@ -26,7 +26,7 @@ public:
                                llvm::Value *storage,
                                const std::string &name) const override;
 
-    llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
+    llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
 };
 
 #endif //VOIDIRTYPE_H

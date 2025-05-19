@@ -6,7 +6,6 @@
 
 #include "ast/StringNode.h"
 #include "../type/Type.h"
-#include "ast/ProtoFunctionStatement.h"
 
 StrIRType::StrIRType(const bool isPointer):
     IRType(isPointer) {
@@ -54,9 +53,9 @@ llvm::Type *StrIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
 }
 
-llvm::Value *StrIRType::createValue(const BaseNode *node,
-                                    llvm::IRBuilder<> & /*builder*/,
-                                    llvm::Module &module) {
+llvm::Constant *StrIRType::createConstant(const BaseNode *node,
+                                          llvm::IRBuilder<> & /*builder*/,
+                                          llvm::Module &module) {
     const auto *strNode = dynamic_cast<const StringNode *>(node);
     auto *gv = new llvm::GlobalVariable(module,
                                         getLLVMType(module.getContext()),
@@ -87,7 +86,7 @@ llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) const {
 
 llvm::Function *StrIRType::getOrDeclareStrlen(llvm::Module *module) const {
     auto &context = module->getContext();
-    auto *const funcType = llvm::FunctionType::get(llvm::Type::getInt32Ty(context),
+    auto *const funcType = llvm::FunctionType::get(llvm::Type::getInt64Ty(context),
                                                    {getLLVMType(context)},
                                                    false);
     return llvm::cast<llvm::Function>(module->getOrInsertFunction("strlen", funcType).getCallee());

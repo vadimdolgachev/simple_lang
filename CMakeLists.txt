@@ -71,6 +71,8 @@ add_executable(simple_lang
         ast/CondBranch.h
         ir/IRType.cpp
         ir/IRType.h
+        ir/ArrayIRType.h
+        ir/ArrayIRType.cpp
         ir/IntIRType.cpp
         ir/IntIRType.h
         ir/DoubleIRType.cpp
@@ -126,6 +128,12 @@ add_executable(simple_lang
         type/ByteType.h
         BuiltinSymbols.cpp
         BuiltinSymbols.h
+        ast/ArrayNode.cpp
+        ast/ArrayNode.h
+        type/ArrayType.cpp
+        type/ArrayType.h
+        ast/IndexAccessNode.cpp
+        ast/IndexAccessNode.h
 )
 
 

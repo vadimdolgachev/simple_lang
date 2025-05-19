@@ -18,7 +18,7 @@ public:
                                 llvm::Value *rhs,
                                 const std::string &name) const override;
 
-    llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
+    llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
 
 protected:
     [[nodiscard]] llvm::Type *getBaseLLVMType(llvm::LLVMContext &context) const override;

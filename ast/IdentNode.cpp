@@ -4,7 +4,7 @@ IdentNode::IdentNode(std::string name) :
     name(std::move(name)) {}
 
 std::string IdentNode::toString() const {
-    return "ident=" + name;
+    return name;
 }
 
 void IdentNode::visit(NodeVisitor *visitor) {

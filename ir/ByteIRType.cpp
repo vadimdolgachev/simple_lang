@@ -27,13 +27,13 @@ llvm::Value *ByteIRType::createBinaryOp(llvm::IRBuilder<> &builder,
     }
 }
 
-llvm::Value * ByteIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+llvm::Constant *ByteIRType::createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
     const auto *const numberNode = dynamic_cast<const NumberNode *>(node);
     return llvm::ConstantInt::get(getLLVMType(module.getContext()),
                                   static_cast<uint8_t>(numberNode->value),
-                                              false);
+                                  false);
 }
 
-llvm::Type * ByteIRType::getBaseLLVMType(llvm::LLVMContext &context) const {
+llvm::Type *ByteIRType::getBaseLLVMType(llvm::LLVMContext &context) const {
     return llvm::Type::getInt8Ty(context);
 }

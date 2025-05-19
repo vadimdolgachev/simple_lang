@@ -29,6 +29,9 @@
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
 #include "../type/Type.h"
+#include "ast/ArrayNode.h"
+#include "ast/IndexAccessNode.h"
+#include "type/ArrayType.h"
 
 namespace {
     class VarDefinitionTest : public testing::Test {};
@@ -1011,6 +1014,7 @@ namespace {
     }
 
     class TernaryOperatorTest : public testing::Test {};
+
     TEST_F(TernaryOperatorTest, TernaryOperatorExpr) {
         const std::string input = R"(true ? 10 : 100;)";
         const auto parser = std::make_unique<Parser>(
@@ -1108,6 +1112,128 @@ namespace {
         EXPECT_EQ(" comment text", commentNode->text) << "Wrong comment text: " << input;
     }
 
+    TEST_F(NodesTest, ArrayNodeWithElements) {
+        const std::string input = R"([0, 1, 2];)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [arrayNode, orig] = tryCast<ArrayNode>(std::move(node));
+        ASSERT_NE(arrayNode, nullptr) << "Not a ArrayNode: " << input;
+        EXPECT_EQ(arrayNode->elements.size(), 3) << "Incorrect size of elements: " << input;
+
+        auto *element0 = dynamic_cast<NumberNode *>(arrayNode->elements[0].get());
+        ASSERT_NE(element0, nullptr) << "Element 0 not a NumberNode: " << input;
+        EXPECT_EQ(element0->value, 0) << "Invalid value for element 0: " << input;
+        auto *element1 = dynamic_cast<NumberNode *>(arrayNode->elements[1].get());
+        ASSERT_NE(element1, nullptr) << "Element 0 not a NumberNode: " << input;
+        EXPECT_EQ(element1->value, 1) << "Invalid value for element 1: " << input;
+        auto *element2 = dynamic_cast<NumberNode *>(arrayNode->elements[2].get());
+        ASSERT_NE(element2, nullptr) << "Element 0 not a NumberNode: " << input;
+        EXPECT_EQ(element2->value, 2) << "Invalid value for element 2: " << input;
+    }
+
+    TEST_F(NodesTest, ArrayNodeEmpty) {
+        const std::string input = R"([];)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [arrayNode, orig] = tryCast<ArrayNode>(std::move(node));
+        ASSERT_NE(arrayNode, nullptr) << "Not a ArrayNode: " << input;
+        EXPECT_TRUE(arrayNode->elements.empty()) << "Array should be empty: " << input;
+    }
+
+    TEST_F(NodesTest, ArrayNodeDeclarationWithElements) {
+        const std::string input = R"(arr: [int; 1] = [0];)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [declNode, orig] = tryCast<DeclarationNode>(std::move(node));
+        ASSERT_NE(declNode, nullptr) << "Not a DeclarationNode: " << input;
+
+        const auto arrayType = declNode->type->asArray();
+        ASSERT_TRUE(arrayType.has_value()) << "Not an array type";
+
+        ASSERT_EQ(arrayType.value()->getElementType()->getKind(), TypeKind::Integer);
+        ASSERT_EQ(arrayType.value()->size(), 1);
+    }
+
+    TEST_F(NodesTest, ArrayNodeDeclarationNoElements) {
+        const std::string input = R"(arr: [int; 0] = [];)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [declNode, orig] = tryCast<DeclarationNode>(std::move(node));
+        ASSERT_NE(declNode, nullptr) << "Not a DeclarationNode: " << input;
+
+        const auto arrayType = declNode->type->asArray();
+        ASSERT_TRUE(arrayType.has_value()) << "Not an array type";
+
+        ASSERT_EQ(arrayType.value()->getElementType()->getKind(), TypeKind::Integer);
+        ASSERT_EQ(arrayType.value()->size(), 0);
+    }
+
+    TEST_F(NodesTest, ArrayNodeDeclarationMultiDimensionInit) {
+        const std::string input = R"(arr: [[int; 1]; 1] = [[1], [1]];)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [declNode, orig] = tryCast<DeclarationNode>(std::move(node));
+        ASSERT_NE(declNode, nullptr) << "Not a DeclarationNode: " << input;
+
+        const auto arrayType = declNode->type->asArray();
+        ASSERT_TRUE(arrayType.has_value()) << "Not an array type";
+
+        ASSERT_EQ(arrayType.value()->getElementType()->getKind(), TypeKind::Array);
+        ASSERT_EQ(arrayType.value()->size(), 1);
+
+        const auto elementType = arrayType.value()->getElementType()->asArray();
+        ASSERT_NE(elementType, std::nullopt);
+        ASSERT_EQ(elementType.value()->getElementType()->getKind(), TypeKind::Integer);
+        ASSERT_EQ(elementType.value()->size(), 1);
+
+        ASSERT_NE(declNode->init, std::nullopt);
+        auto [arrayNode, origInit] = tryCast<ArrayNode>(std::move(declNode->init.value()));
+        ASSERT_NE(arrayNode, nullptr) << "Not a ArrayNode: " << input;
+        EXPECT_EQ(arrayNode->elements.size(), 2) << "Incorrect array size" << input;
+
+        auto [subArrayNode, origInit2] = tryCast<ArrayNode>(std::move(arrayNode->elements[0]));
+        ASSERT_NE(subArrayNode, nullptr) << "Not a ArrayNode: " << input;
+        EXPECT_EQ(subArrayNode->elements.size(), 1) << "Incorrect array size" << input;
+    }
+
+    TEST_F(NodesTest, ArrayNodeElementAccess) {
+        const std::string input = R"(arr[1];)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [indexAccessNode, orig] = tryCast<IndexAccessNode>(std::move(node));
+        ASSERT_NE(indexAccessNode, nullptr) << "Not a DeclarationNode: " << input;
+
+        auto [identNode, origObject] = tryCast<IdentNode>(std::move(indexAccessNode->object));
+        ASSERT_NE(identNode, nullptr) << "Not a IdentNode: " << input;
+        ASSERT_EQ(identNode->name, "arr") << "Incorrect object name: " << input;
+        auto [numberNode, origIndex] = tryCast<NumberNode>(std::move(indexAccessNode->index));
+        ASSERT_NE(numberNode, nullptr) << "Not a NumberNode: " << input;
+        ASSERT_EQ(numberNode->value, 1) << "Incorrect index value: " << input;
+    }
 } // namespace
 
 int main(int argc, char *argv[]) {

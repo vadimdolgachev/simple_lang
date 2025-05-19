@@ -1,15 +1,15 @@
 //
-// Created by vadim on 25.03.25.
+// Created by vadim on 18.05.25.
 //
 
-#ifndef BOOLEANIRTYPE_H
-#define BOOLEANIRTYPE_H
+#ifndef ARRAYIRTYPE_H
+#define ARRAYIRTYPE_H
 
 #include "IRType.h"
 
-class BooleanIRType final : public IRType {
+class ArrayIRType final : public IRType {
 public:
-    explicit BooleanIRType(bool isPointer = false);
+    ArrayIRType(llvm::Type *elementType, size_t size, bool isPointer = false);
 
     llvm::Value *createBinaryOp(llvm::IRBuilder<> &builder,
                                 TokenType op,
@@ -26,7 +26,10 @@ public:
                                const std::string &name) const override;
 
     llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
+
+private:
+    llvm::Type *const elementType;
+    const size_t arraySize;
 };
 
-
-#endif //BOOLEANIRTYPE_H
+#endif //ARRAYIRTYPE_H

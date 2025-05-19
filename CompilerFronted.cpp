@@ -10,7 +10,6 @@
 
 #include "ast/ModuleNode.h"
 #include "ir/LLVMCodegen.h"
-#include "type/TypeFactory.h"
 
 CompilerFronted::CompilerFronted(std::unique_ptr<std::istream> stream,
                                  std::unordered_map<std::string, std::vector<SymbolInfoPtr>> builtinSymbols):

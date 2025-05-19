@@ -24,9 +24,11 @@
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
 #include "ast/MethodCallNode.h"
+#include "ast/ArrayNode.h"
 
 #include "LLVMCodegen.h"
 #include "IRTypeFactory.h"
+#include "ast/IndexAccessNode.h"
 #include "ast/TypeCastNode.h"
 #include "type/TypeFactory.h"
 #include "type/FunctionType.h"
@@ -48,9 +50,10 @@ namespace {
                 std::vector<llvm::Type *> functionParams;
                 functionParams.reserve(functionType.value()->parametersType().size());
                 for (const auto &param: functionType.value()->parametersType()) {
-                    functionParams.push_back(IRTypeFactory::from(param)->getLLVMType(mc.module->getContext()));
+                    functionParams.push_back(
+                            IRTypeFactory::from(param, mc.module->getContext())->getLLVMType(mc.module->getContext()));
                 }
-                auto *retType = IRTypeFactory::from(functionType.value()->returnType())->
+                auto *retType = IRTypeFactory::from(functionType.value()->returnType(), mc.module->getContext())->
                         getLLVMType(mc.module->getContext());
                 auto *const llvmFunctionType = llvm::FunctionType::get(
                         retType, functionParams,
@@ -201,7 +204,7 @@ namespace {
         for (auto &arg: func->args()) {
             const auto &paramType = node->proto->params[arg.getArgNo()]->type;
             auto *const alloca = mc.builder->CreateAlloca(
-                    IRTypeFactory::from(paramType)->getLLVMType(mc.module->getContext()),
+                    IRTypeFactory::from(paramType, mc.module->getContext())->getLLVMType(mc.module->getContext()),
                     nullptr,
                     arg.getName());
             mc.builder->CreateStore(&arg, alloca);
@@ -224,9 +227,13 @@ void LLVMCodegen::visit(IdentNode *node) {
             if (sia->inst == nullptr) {
                 throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
             }
-            value_ = mc.builder->CreateLoad(sia->inst->getAllocatedType(),
-                                            sia->inst,
-                                            node->name);
+            if (sia->type->isArray()) {
+                value_ = sia->inst;
+            } else {
+                value_ = mc.builder->CreateLoad(sia->inst->getAllocatedType(),
+                                                sia->inst,
+                                                node->name);
+            }
         }
     }
 }
@@ -263,15 +270,18 @@ void LLVMCodegen::visit(FunctionNode *const node) {
 }
 
 void LLVMCodegen::visit(NumberNode *node) {
-    value_ = IRTypeFactory::from(node->getType())->createValue(node, *mc.builder, *mc.module);
+    value_ = IRTypeFactory::from(node->getType(), mc.module->getContext())->createConstant(
+            node, *mc.builder, *mc.module);
 }
 
 void LLVMCodegen::visit(StringNode *node) {
-    value_ = IRTypeFactory::from(node->getType())->createValue(node, *mc.builder, *mc.module);
+    value_ = IRTypeFactory::from(node->getType(), mc.module->getContext())->createConstant(
+            node, *mc.builder, *mc.module);
 }
 
 void LLVMCodegen::visit(BooleanNode *node) {
-    value_ = IRTypeFactory::from(node->getType())->createValue(node, *mc.builder, *mc.module);
+    value_ = IRTypeFactory::from(node->getType(), mc.module->getContext())->createConstant(
+            node, *mc.builder, *mc.module);
 }
 
 void LLVMCodegen::visit(BinOpNode *node) {
@@ -286,10 +296,10 @@ void LLVMCodegen::visit(BinOpNode *node) {
         throw std::logic_error("Unsupported operation");
     }
     if (const auto category = getOperationCategory(node->binOp); category == OperationCategory::Comparison) {
-        value_ = IRTypeFactory::from(node->lhs->getType())
+        value_ = IRTypeFactory::from(node->lhs->getType(), mc.module->getContext())
                 ->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp");
     } else if (category == OperationCategory::Arithmetic) {
-        const auto resultTypeNode = IRTypeFactory::from(node->getType());
+        const auto resultTypeNode = IRTypeFactory::from(node->getType(), mc.module->getContext());
         value_ = resultTypeNode->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp");
     } else {
         throw std::logic_error("Unsupported operation");
@@ -300,11 +310,12 @@ void LLVMCodegen::visit(ProtoFunctionStatement *node) {
     std::vector<llvm::Type *> functionParams;
     functionParams.reserve(node->params.size());
     for (const auto &param: node->params) {
-        functionParams.push_back(IRTypeFactory::from(param->type)->getLLVMType(mc.module->getContext()));
+        functionParams.push_back(
+                IRTypeFactory::from(param->type, mc.module->getContext())->getLLVMType(mc.module->getContext()));
     }
 
     auto *const functionType = llvm::FunctionType::get(
-            IRTypeFactory::from(node->returnType)->getLLVMType(mc.module->getContext()),
+            IRTypeFactory::from(node->returnType, mc.module->getContext())->getLLVMType(mc.module->getContext()),
             functionParams,
             node->isVarArgs);
 
@@ -560,7 +571,7 @@ void LLVMCodegen::visit(BlockNode *node) {
 }
 
 void LLVMCodegen::visit(DeclarationNode *node) {
-    const auto type = IRTypeFactory::from(node->type);
+    const auto type = IRTypeFactory::from(node->type, mc.module->getContext());
     auto *const llvmType = type->getLLVMType(mc.module->getContext());
     if (llvmType == nullptr) {
         throw std::logic_error("Unknown type for variable: " + node->ident->name);
@@ -627,7 +638,7 @@ void LLVMCodegen::visit(TernaryOperatorNode *node) {
 }
 
 void LLVMCodegen::visit(MethodCallNode *node) {
-    const auto objectType = IRTypeFactory::from(node->object->getType());
+    const auto objectType = IRTypeFactory::from(node->object->getType(), mc.module->getContext());
     std::vector<llvm::Value *> args;
     args.reserve(node->method->args.size());
     for (const auto &arg: node->method->args) {
@@ -657,7 +668,32 @@ void LLVMCodegen::visit(ModuleNode *node) {}
 
 void LLVMCodegen::visit(TypeCastNode *node) {
     value_ = tryCastValue(mc.builder, generate(node->expr.get(), mc),
-                          IRTypeFactory::from(node->targetType)->getLLVMType(mc.module->getContext()));
+                          IRTypeFactory::from(node->targetType, mc.module->getContext())->getLLVMType(
+                                  mc.module->getContext()));
+}
+
+void LLVMCodegen::visit(ArrayNode *node) {
+    const auto arrayType = IRTypeFactory::from(node->getType(), mc.module->getContext());
+    value_ = arrayType->createConstant(node, *mc.builder, *mc.module);
+}
+
+void LLVMCodegen::visit(IndexAccessNode *node) {
+    auto *const objectValue = generate(node->object.get(), mc);
+    auto *const indexValue = generate(node->index.get(), mc);
+
+    if (node->object->getType()->isArray()) {
+        auto *const llvmArrayType = llvm::dyn_cast<llvm::ArrayType>(
+                IRTypeFactory::from(node->object->getType(),
+                                    mc.module->getContext())->getLLVMType(mc.module->getContext()));
+        const std::vector<llvm::Value *> indices = {
+                mc.builder->getInt64(0),
+                indexValue
+        };
+        value_ = mc.builder->CreateLoad(llvmArrayType->getElementType(),
+                                        mc.builder->CreateInBoundsGEP(llvmArrayType, objectValue, indices, "elem_ptr"));
+    } else {
+        throw std::runtime_error("Unsupported index access type");
+    }
 }
 
 llvm::Value *LLVMCodegen::value() const {

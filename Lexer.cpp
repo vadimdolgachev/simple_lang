@@ -36,6 +36,8 @@ namespace {
             {')', TokenType::RightParenthesis},
             {'{', TokenType::LeftCurlyBracket},
             {'}', TokenType::RightCurlyBracket},
+            {'[', TokenType::LeftSquareBracket},
+            {']', TokenType::RightSquareBracket},
             {',', TokenType::Comma},
             {'.', TokenType::Dot},
             {'?', TokenType::Question},

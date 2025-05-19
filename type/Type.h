@@ -22,7 +22,9 @@ enum class TypeKind : std::uint8_t {
     Str,
     Pointer,
     Function,
-    Custom
+    Array,
+    Custom,
+    Unknown
 };
 
 class Type;
@@ -40,6 +42,9 @@ using CallableInfoPtr = std::shared_ptr<CallableInfo>;
 class FunctionType;
 using FunctionTypePtr = std::shared_ptr<const FunctionType>;
 
+class ArrayType;
+using ArrayTypePtr = std::shared_ptr<const ArrayType>;
+
 enum class OperationCategory: std::uint8_t {
     Arithmetic,
     Comparison,
@@ -48,68 +53,6 @@ enum class OperationCategory: std::uint8_t {
 };
 
 OperationCategory getOperationCategory(TokenType op);
-
-class Type : public std::enable_shared_from_this<Type> {
-public:
-    enum class CastMode: std::uint8_t {
-        Implicit,
-        Explicit
-    };
-
-    Type() = default;
-    Type(const Type &) = delete;
-    Type &operator=(const Type &) = delete;
-    virtual ~Type() = default;
-
-    virtual bool operator==(const Type &other) const = 0;
-
-    [[nodiscard]] virtual BoolResult canCastTo(const TypePtr &target, CastMode mode) const;
-
-    virtual ResultType getResultTypeUnary([[maybe_unused]] TokenType op) const;
-
-    virtual ResultType getCommonType(const TypePtr &other) const;
-
-    [[nodiscard]] virtual std::string getName() const = 0;
-
-    [[nodiscard]] virtual TypeKind getKind() const noexcept = 0;
-
-    [[nodiscard]] virtual std::vector<TypePtr> getFieldTypes() const;
-
-    [[nodiscard]] virtual const std::vector<CallableInfoPtr> &getMethodTypes() const;
-
-    [[nodiscard]] virtual TypePtr getElementType() const;
-
-    virtual ResultType getComparableType(const TypePtr &type) const;
-
-    bool isBoolean() const noexcept;
-
-    bool isNumeric() const noexcept;
-
-    bool isVoid() const noexcept;
-
-    bool isDouble() const noexcept;
-
-    bool isInteger() const noexcept;
-
-    bool isStr() const noexcept;
-
-    std::optional<FunctionTypePtr> asFunction() const;
-};
-
-class PrimitiveType : public Type {
-public:
-    explicit PrimitiveType(TypeKind kind, bool isConst = false);
-
-    [[nodiscard]] TypeKind getKind() const noexcept override;
-
-    bool operator==(const Type &other) const override;
-
-    std::string getName() const override;
-
-protected:
-    const TypeKind kind;
-    const bool isConst;
-};
 
 struct CallableInfo {
     std::string name;
@@ -142,5 +85,75 @@ struct MethodInfo final : CallableInfo {
     }
 };
 using MethodInfoPtr = std::shared_ptr<MethodInfo>;
+using MethodInfoOpt = std::optional<MethodInfoPtr>;
+
+class Type : public std::enable_shared_from_this<Type> {
+public:
+    enum class CastMode: std::uint8_t {
+        Implicit,
+        Explicit
+    };
+
+    Type() = default;
+    Type(const Type &) = delete;
+    Type &operator=(const Type &) = delete;
+    virtual ~Type() = default;
+
+    virtual bool operator==(const Type &other) const = 0;
+
+    [[nodiscard]] virtual BoolResult canCastTo(const TypePtr &target, CastMode mode) const;
+
+    virtual ResultType getResultTypeUnary([[maybe_unused]] TokenType op) const;
+
+    virtual ResultType getCommonType(const TypePtr &other) const;
+
+    [[nodiscard]] virtual std::string getName() const = 0;
+
+    [[nodiscard]] virtual TypeKind getKind() const noexcept = 0;
+
+    [[nodiscard]] virtual std::vector<TypePtr> getFieldTypes() const;
+
+    [[nodiscard]] virtual MethodInfoOpt findMethod(const std::string &name,
+        const std::optional<std::vector<TypePtr>> &signature) const;
+
+    [[nodiscard]] virtual const std::vector<MethodInfoPtr> &getMethods() const;
+
+    [[nodiscard]] virtual TypePtr getElementType() const;
+
+    virtual ResultType getComparableType(const TypePtr &type) const;
+
+    bool isBoolean() const noexcept;
+
+    bool isNumeric() const noexcept;
+
+    bool isVoid() const noexcept;
+
+    bool isDouble() const noexcept;
+
+    bool isInteger() const noexcept;
+
+    bool isStr() const noexcept;
+
+    bool isArray() const noexcept;
+
+    std::optional<FunctionTypePtr> asFunction() const;
+
+    std::optional<ArrayTypePtr> asArray() const;
+};
+
+class PrimitiveType : public Type {
+public:
+    explicit PrimitiveType(TypeKind kind, bool isConst = false);
+
+    [[nodiscard]] TypeKind getKind() const noexcept override;
+
+    bool operator==(const Type &other) const override;
+
+    std::string getName() const override;
+
+protected:
+    const TypeKind kind;
+    const bool isConst;
+};
 
 #endif //TYPE_H

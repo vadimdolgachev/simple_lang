@@ -19,6 +19,8 @@
 #include "ast/TernaryOperatorNode.h"
 #include "ast/TypeCastNode.h"
 #include "ast/UnaryOpNode.h"
+#include "ast/ArrayNode.h"
+#include "ast/IndexAccessNode.h"
 #include "type/FunctionType.h"
 #include "type/TypeFactory.h"
 
@@ -250,11 +252,16 @@ void SemanticAnalyzer::visit(TernaryOperatorNode *node) {
 
 void SemanticAnalyzer::visit(MethodCallNode *node) {
     node->object->visit(this);
-    const auto &methods = node->object->getType()->getMethodTypes();
-    if (const auto methodType = std::ranges::find_if(methods, [&node](const auto &method) {
-        return method->name == node->method->ident->name;
-    }); methodType != methods.end()) {
-        node->setType((*methodType)->type);
+    std::vector<TypePtr> signature;
+    signature.reserve(node->method->args.size());
+    for (const auto &arg: node->method->args) {
+        arg->visit(this);
+        signature.push_back(arg->getType());
+    }
+    if (const auto method = node->object->getType()->findMethod(node->method->ident->name, signature)) {
+        node->setType((*method)->type);
+    } else {
+        throw SemanticError("Method '" + node->object->getType()->getName() + ":" + node->method->ident->name + "' does not exist");
     }
 }
 
@@ -273,4 +280,33 @@ void SemanticAnalyzer::visit(ModuleNode *node) {
 
 void SemanticAnalyzer::visit(TypeCastNode *node) {
     node->expr->visit(this);
+}
+
+void SemanticAnalyzer::visit(ArrayNode *node) {
+    std::optional<TypePtr> elementType;
+    for (const auto &element: node->elements) {
+        element->visit(this);
+        if (elementType && *element->getType() != *elementType.value()) {
+            throw SemanticError("Array elements must be of the same type");
+        }
+        if (!elementType) {
+            elementType = element->getType();
+        }
+    }
+    node->setType(TypeFactory::makeArrayType(elementType.value(), node->elements.size()));
+}
+
+void SemanticAnalyzer::visit(IndexAccessNode *node) {
+    node->object->visit(this);
+    node->index->visit(this);
+
+    if (const auto arrayType = node->object->getType()->asArray()) {
+        if (!node->index->getType()->isInteger()) {
+            throw SemanticError("Index type must be integer");
+        }
+        // TODO: node->index->getType() should it be unsigned int?
+        node->setType(arrayType.value()->getElementType());
+    } else {
+        throw SemanticError("Index not supported for type: " + node->object->getType()->getName());
+    }
 }

@@ -38,7 +38,7 @@ public:
     void registerCustomOperation(TokenType op,
                                  llvm::Function *function);
 
-    virtual llvm::Value *createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) = 0;
+    virtual llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) = 0;
 
     virtual llvm::Value *createMethodCall(llvm::IRBuilder<> &builder,
                                           const MethodInfoPtr &methodInfo,

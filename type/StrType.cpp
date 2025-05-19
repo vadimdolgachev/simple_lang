@@ -27,6 +27,6 @@ std::string StrType::getName() const {
     return "str";
 }
 
-const std::vector<CallableInfoPtr> &StrType::getMethodTypes() const {
+const std::vector<MethodInfoPtr> &StrType::getMethods() const {
     return methods;
 }

@@ -57,6 +57,10 @@ public:
 
     void visit(TypeCastNode *node) override;
 
+    void visit(ArrayNode *node) override;
+
+    void visit(IndexAccessNode *node) override;
+
     [[nodiscard]] llvm::Value *value() const;
 
     static llvm::Value *generate(BaseNode *const node,

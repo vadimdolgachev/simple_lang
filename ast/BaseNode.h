@@ -33,6 +33,8 @@ class MethodCallNode;
 class FieldAccessNode;
 class ModuleNode;
 class TypeCastNode;
+class ArrayNode;
+class IndexAccessNode;
 
 class NodeVisitor {
 public:
@@ -79,6 +81,10 @@ public:
     virtual void visit(ModuleNode *node) = 0;
 
     virtual void visit(TypeCastNode *node) = 0;
+
+    virtual void visit(ArrayNode *node) = 0;
+
+    virtual void visit(IndexAccessNode *node) = 0;
 };
 
 class BaseNode;
@@ -116,5 +122,10 @@ public:
 template<typename T>
 using NodePtr = std::unique_ptr<T>;
 using ExprNodePtr = NodePtr<ExpressionNode>;
+
+template<typename T>
+std::optional<T *> asNode(const BaseNode *node) {
+    return dynamic_cast<const T *>(node);
+}
 
 #endif //BASEASTNODE_H

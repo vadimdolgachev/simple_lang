@@ -8,7 +8,10 @@ NumberNode::NumberNode(const double value, const bool isFloat) :
     type(TypeFactory::makePrimitiveType(isFloat ? TypeKind::Double : TypeKind::Integer)) {}
 
 std::string NumberNode::toString() const {
-    return "number=" + std::to_string(value);
+    if (isFloat) {
+        return std::to_string(value);
+    }
+    return std::to_string(static_cast<int>(value));
 }
 
 void NumberNode::visit(NodeVisitor *visitor) {

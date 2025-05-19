@@ -11,7 +11,7 @@
 
 class IRTypeFactory final {
 public:
-    static std::shared_ptr<IRType> from(const TypePtr &type);
+    static std::shared_ptr<IRType> from(const TypePtr &type, llvm::LLVMContext &context);
 };
 
 #endif //IRTYPEFACTORY_H

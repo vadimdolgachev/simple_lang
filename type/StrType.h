@@ -17,10 +17,10 @@ public:
 
     std::string getName() const override;
 
-    const std::vector<CallableInfoPtr> &getMethodTypes() const override;
+    const std::vector<MethodInfoPtr> &getMethods() const override;
 
 private:
-    std::vector<std::shared_ptr<CallableInfo>> methods;
+    std::vector<MethodInfoPtr> methods;
 };
 
 #endif //STRTYPE_H

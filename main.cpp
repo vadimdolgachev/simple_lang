@@ -147,23 +147,10 @@ int main() {
     defineEmbeddedFunctions(moduleContext);
 
     CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
-        fn foo(i: double): double {
-            v1: double = i;
-            v: double = v1 + 2;
-            return v;
-        }
         fn main() {
-            v1: double = 0.0;
-            v1 = 1;
-            for (i: int = 0; i < 10; ++i) {
-                println("%f", foo(i));
-            }
-            if (v1 != 0) {
-                println("v1 != 0");
-            }
-            text: str = "1234";
-            len: int = text.len();
-            println("text:'%s' length=%d", text, len);
+            arr: [int; 3] = [10, 1, 2];
+            first: int = arr[0];
+            println("arr[0]=%d,arr[1]=%d,arr[2]=%d", first, arr[1], arr[2]);
         }
     )"), BuiltinSymbols::getInstance().getFunctions());
 

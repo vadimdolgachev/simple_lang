@@ -7,6 +7,7 @@
 
 #include <unordered_map>
 
+#include "ArrayType.h"
 #include "Type.h"
 
 class TypeFactory {
@@ -20,6 +21,7 @@ public:
     static FunctionTypePtr makeFunction(const TypePtr &returnType,
                                         const std::vector<TypePtr> &paramTypes,
                                         bool isVarArg = false);
+    static ArrayTypePtr makeArrayType(const TypePtr &elementType, size_t size);
 
 private:
     static std::unordered_map<TypeKind, TypePtr> typeCache;

@@ -4,6 +4,7 @@
 
 #include "BuiltinSymbols.h"
 #include "type/TypeFactory.h"
+#include "type/FunctionType.h"
 
 BuiltinSymbols::BuiltinSymbols() {
     const auto printType = TypeFactory::makeFunction(TypeFactory::makePrimitiveType(TypeKind::Void),

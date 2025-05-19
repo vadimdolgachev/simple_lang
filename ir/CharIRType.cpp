@@ -8,7 +8,7 @@
 CharIRType::CharIRType(const bool isPointer):
     NumericIRType(isPointer, true, false) {}
 
-llvm::Value * CharIRType::createValue(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+llvm::Constant *CharIRType::createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
     // return llvm::ConstantInt::get(getLLVMType(context),
     //                               static_cast<int8_t>(charNode->value));
     throw std::logic_error("Not supoported");

@@ -4,6 +4,7 @@
 
 #include "Type.h"
 
+#include "ArrayType.h"
 #include "FunctionType.h"
 
 BoolResult Type::canCastTo(const TypePtr &target, CastMode /*mode*/) const {
@@ -28,7 +29,16 @@ std::vector<TypePtr> Type::getFieldTypes() const {
     throw std::logic_error("Not a composite type");
 }
 
-const std::vector<CallableInfoPtr> &Type::getMethodTypes() const {
+MethodInfoOpt Type::findMethod(const std::string &name, const std::optional<std::vector<TypePtr>> &signature) const {
+    if (const auto it = std::ranges::find_if(getMethods(), [&name, &signature](const auto &method) {
+        return method->name == name && method->type->parametersType() == signature;
+    }); it != getMethods().end()) {
+        return *it;
+    }
+    return std::nullopt;
+}
+
+const std::vector<MethodInfoPtr> &Type::getMethods() const {
     throw std::logic_error("Type does not contain methods");
 }
 
@@ -100,8 +110,16 @@ bool Type::isStr() const noexcept {
     return getKind() == TypeKind::Str;
 }
 
+bool Type::isArray() const noexcept {
+    return getKind() == TypeKind::Array;
+}
+
 std::optional<FunctionTypePtr> Type::asFunction() const {
     return std::dynamic_pointer_cast<const FunctionType>(shared_from_this());
+}
+
+std::optional<ArrayTypePtr> Type::asArray() const {
+    return std::dynamic_pointer_cast<const ArrayType>(shared_from_this());
 }
 
 OperationCategory getOperationCategory(const TokenType op) {

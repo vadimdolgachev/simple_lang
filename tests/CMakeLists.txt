@@ -46,6 +46,22 @@ add_executable(tests main.cpp
         ../ast/BlockNode.cpp
         ../ast/DeclarationNode.cpp
         ../ast/DeclarationNode.h
+        ../ast/ArrayNode.cpp
+        ../ast/ArrayNode.h
+        ../ast/IndexAccessNode.h
+        ../ast/IndexAccessNode.cpp
+        ../ast/ReturnNode.h
+        ../ast/ReturnNode.cpp
+        ../ast/TernaryOperatorNode.h
+        ../ast/TernaryOperatorNode.cpp
+        ../ast/MemberAccessNode.h
+        ../ast/MemberAccessNode.cpp
+        ../ast/MethodCallNode.h
+        ../ast/MethodCallNode.cpp
+        ../ast/FieldAccessNode.h
+        ../ast/FieldAccessNode.cpp
+        ../ast/CommentNode.h
+        ../ast/CommentNode.cpp
         ../type/Type.cpp
         ../type/Type.h
         ../type/NumericType.cpp
@@ -64,18 +80,10 @@ add_executable(tests main.cpp
         ../type/CharType.h
         ../type/TypeFactory.cpp
         ../type/TypeFactory.h
-        ../ast/ReturnNode.h
-        ../ast/ReturnNode.cpp
-        ../ast/TernaryOperatorNode.h
-        ../ast/TernaryOperatorNode.cpp
-        ../ast/MemberAccessNode.h
-        ../ast/MemberAccessNode.cpp
-        ../ast/MethodCallNode.h
-        ../ast/MethodCallNode.cpp
-        ../ast/FieldAccessNode.h
-        ../ast/FieldAccessNode.cpp
-        ../ast/CommentNode.h
-        ../ast/CommentNode.cpp
+        ../type/FunctionType.h
+        ../type/FunctionType.cpp
+        ../type/ArrayType.h
+        ../type/ArrayType.cpp
         ../Lexer.cpp
         ../Lexer.h
         ../Parser.h
