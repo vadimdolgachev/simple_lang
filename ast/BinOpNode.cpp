@@ -5,8 +5,8 @@ BinOpNode::BinOpNode(const TokenType binOp, ExprNodePtr lhs,
     binOp(binOp), lhs(std::move(lhs)), rhs(std::move(rhs)) {}
 
 std::string BinOpNode::toString() const {
-    const bool isLhsBinOp = dynamic_cast<BinOpNode *>(lhs.get()) != nullptr;
-    const bool isRhsBinOp = dynamic_cast<BinOpNode *>(rhs.get()) != nullptr;
+    const bool isLhsBinOp = asNode<BinOpNode>(lhs.get()) != nullptr;
+    const bool isRhsBinOp = asNode<BinOpNode>(rhs.get()) != nullptr;
     return std::string("op=")
            .append(std::to_string(static_cast<int>(binOp)))
            .append(", lhs=")

@@ -12,7 +12,7 @@ std::string FunctionCallNode::toString() const {
     std::stringstream ss;
     ss << "call func: " << ident->name << "(";
     for (const auto &arg: args) {
-        const bool isBinOp = dynamic_cast<BinOpNode *>(arg.get()) != nullptr;
+        const bool isBinOp = isNode<BinOpNode>(arg.get());
         if (isBinOp) {
             ss << "(";
         }

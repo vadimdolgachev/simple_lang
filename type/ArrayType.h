@@ -21,9 +21,12 @@ public:
 
     size_t size() const noexcept;
 
+    const std::vector<MethodInfoPtr> &getMethods() const override;
+
 private:
     TypePtr elementType;
     const size_t arraySize;
+    std::vector<MethodInfoPtr> methods;
 };
 
 using ArrayTypePtr = std::shared_ptr<const ArrayType>;

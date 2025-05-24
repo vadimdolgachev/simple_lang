@@ -374,6 +374,13 @@ void LLVMCodegen::visit(FunctionCallNode *const node) {
     const auto *const funcType = calleeFunc->getFunctionType();
     for (size_t i = 0; i < node->args.size(); ++i) {
         auto *argValue = generate(node->args[i].get(), mc);
+        if (node->args[i]->getType()->isArray()) {
+            if (auto *const allocaInst = llvm::dyn_cast<llvm::AllocaInst>(argValue)) {
+                argValue = mc.builder->CreateLoad(allocaInst->getAllocatedType(),
+                    allocaInst,
+                    node->args[i]->toString());
+            }
+        }
         if (i < funcType->getNumParams()) {
             argValue = tryCastValue(mc.builder, argValue, funcType->getParamType(i));
         }
@@ -456,12 +463,6 @@ void LLVMCodegen::visit(UnaryOpNode *node) {
         }
         const auto symbolInfoAlloca = std::dynamic_pointer_cast<const AllocaInstSymbolInfo>(var.value());
         auto *const varType = symbolInfoAlloca->inst->getAllocatedType();
-
-        if (!varType->isIntOrIntVectorTy() &&
-            !varType->isFPOrFPVectorTy() &&
-            !varType->isPointerTy()) {
-            throw std::logic_error("Invalid type for increment/decrement");
-        }
 
         auto *const loadedVal = mc.builder->CreateLoad(varType,
                                                        symbolInfoAlloca->inst,
@@ -580,6 +581,13 @@ void LLVMCodegen::visit(DeclarationNode *node) {
     llvm::Value *initValue = nullptr;
     if (node->init.has_value()) {
         initValue = generate(node->init.value().get(), mc);
+        if (node->init.value()->getType()->isArray()
+            && isNode<IdentNode>(node->init.value().get())) {
+            auto *const inst = llvm::dyn_cast<llvm::AllocaInst>(initValue);
+            initValue = mc.builder->CreateLoad(inst->getAllocatedType(),
+                inst,
+                node->init.value()->toString());
+        }
         if (!initValue) {
             throw std::logic_error("Failed to generate initializer for: " + node->ident->name);
         }

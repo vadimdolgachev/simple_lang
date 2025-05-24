@@ -27,6 +27,8 @@ public:
 
     llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
 
+    llvm::Value *createMethodCall(llvm::IRBuilder<> &builder, const MethodInfoPtr &methodInfo, llvm::Value *object, const std::vector<llvm::Value *> &args) const override;
+
 private:
     llvm::Type *const elementType;
     const size_t arraySize;

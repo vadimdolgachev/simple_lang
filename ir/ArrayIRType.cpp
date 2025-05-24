@@ -32,30 +32,41 @@ llvm::Value *ArrayIRType::createUnaryOp(llvm::IRBuilder<> &builder,
 }
 
 llvm::Constant *ArrayIRType::createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
-    const auto *arrayNode = dynamic_cast<const ArrayNode *>(node);
+    const auto arrayNode = asNode<ArrayNode>(node);
     if (!arrayNode) {
         throw std::logic_error("Expected ArrayNode");
     }
-    // const auto *const arrayNode = *arrayNodeOpt;
-    if (arrayNode->elements.empty()) {
-        return llvm::ConstantAggregateZero::get(llvm::ArrayType::get(elementType, arrayNode->elements.size()));
+
+    if (arrayNode.value()->elements.empty()) {
+        return llvm::ConstantAggregateZero::get(llvm::ArrayType::get(elementType, arrayNode.value()->elements.size()));
     }
-    if (arrayNode->elements.size() != arraySize) {
+    if (arrayNode.value()->elements.size() != arraySize) {
         throw std::logic_error("Array size mismatch");
     }
 
     std::vector<llvm::Constant *> elements;
-    elements.reserve(arrayNode->elements.size());
+    elements.reserve(arrayNode.value()->elements.size());
 
     const auto elemIRType =
-            IRTypeFactory::from(arrayNode->getType()->getElementType(), module.getContext());
-    for (const auto &element: arrayNode->elements) {
-        auto *const elementConstant = llvm::dyn_cast<llvm::Constant>(
-                elemIRType->createConstant(element.get(), builder, module));
+            IRTypeFactory::from(arrayNode.value()->getType()->getElementType(), module.getContext());
+    for (const auto &element: arrayNode.value()->elements) {
+        auto *const elementConstant =
+                elemIRType->createConstant(element.get(), builder, module);
         if (!elementConstant) {
             throw std::logic_error("Array element type mismatch");
         }
         elements.push_back(elementConstant);
     }
     return llvm::ConstantArray::get(llvm::ArrayType::get(elementType, arraySize), elements);
+}
+
+llvm::Value *ArrayIRType::createMethodCall(llvm::IRBuilder<> &builder,
+                                           const MethodInfoPtr &methodInfo,
+                                           llvm::Value *object,
+                                           const std::vector<llvm::Value *> &args) const {
+    if (methodInfo->name == "len") {
+        return llvm::ConstantInt::get(getLLVMType(builder.getContext()),
+                                      llvm::APInt(32, static_cast<int64_t>(arraySize), true));
+    }
+    return IRType::createMethodCall(builder, methodInfo, object, args);
 }

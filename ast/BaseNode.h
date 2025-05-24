@@ -124,8 +124,16 @@ using NodePtr = std::unique_ptr<T>;
 using ExprNodePtr = NodePtr<ExpressionNode>;
 
 template<typename T>
-std::optional<T *> asNode(const BaseNode *node) {
-    return dynamic_cast<const T *>(node);
+std::optional<const T *> asNode(const BaseNode *node) {
+    if (const auto *ptr = dynamic_cast<const T *>(node)) {
+        return ptr;
+    }
+    return std::nullopt;
+}
+
+template<typename T>
+bool isNode(const BaseNode *node) {
+    return asNode<T>(node) != std::nullopt;
 }
 
 #endif //BASEASTNODE_H

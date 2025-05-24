@@ -3,10 +3,17 @@
 //
 
 #include "ArrayType.h"
+#include "TypeFactory.h"
 
 ArrayType::ArrayType(TypePtr elementType, const size_t size):
     elementType(std::move(elementType)),
-    arraySize(size) {}
+    arraySize(size) {
+    auto len = MethodInfo::create("len",
+                                  TypeFactory::makeFunction(TypeFactory::makePrimitiveType(TypeKind::Integer),
+                                                            {},
+                                                            false));
+    methods.push_back(std::move(len));
+}
 
 bool ArrayType::operator==(const Type &other) const {
     if (const auto *const otherArray = dynamic_cast<const ArrayType *>(&other)) {
@@ -29,4 +36,8 @@ TypePtr ArrayType::getElementType() const {
 
 size_t ArrayType::size() const noexcept {
     return arraySize;
+}
+
+const std::vector<MethodInfoPtr> &ArrayType::getMethods() const {
+    return methods;
 }

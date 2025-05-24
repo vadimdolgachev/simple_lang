@@ -377,6 +377,20 @@ namespace {
         EXPECT_EQ(binOp->binOp, TokenType::RightAngleBracketEqual) << "Wrong operator: " << input;
     }
 
+    TEST_F(ComparisonOpTest, BinOrderExpr) {
+        const std::string input = "i < arr.len() - 1;";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [binOp, orig] = tryCast<BinOpNode>(std::move(node));
+        ASSERT_NE(binOp, nullptr) << "Not a binary operation: " << input;
+
+        EXPECT_EQ(binOp->binOp, TokenType::Less) << "Wrong operator: " << input;
+    }
+
     class LogicalOpTest : public testing::Test {};
 
     TEST_F(LogicalOpTest, LogicalAnd) {

@@ -26,6 +26,7 @@
 #include "ast/TypeCastNode.h"
 #include "ast/ArrayNode.h"
 #include "ast/IndexAccessNode.h"
+#include "ast/MethodCallNode.h"
 
 namespace {
     std::ostream &operator<<(std::ostream &os, const TokenType token) {
@@ -220,7 +221,9 @@ void NodePrinter::visit(TernaryOperatorNode *node) {
 }
 
 void NodePrinter::visit(MethodCallNode *node) {
-    ostream << "MethodCallNode";
+    node->object->visit(this);
+    ostream << ".";
+    node->method->visit(this);
 }
 
 void NodePrinter::visit(FieldAccessNode *node) {

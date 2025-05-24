@@ -126,8 +126,9 @@ namespace {
 
         for (const auto &[name, signatures]: BuiltinSymbols::getInstance().getFunctions()) {
             cm.symTable.insertFunction(name, signatures[0]);
+            const auto printFun = name == "println" ? &libPrintln : &libPrint;
             symbols[mangle(name)] = {
-                    llvm::orc::ExecutorAddr::fromPtr<decltype(libPrintln)>(&libPrintln),
+                    llvm::orc::ExecutorAddr::fromPtr<std::remove_reference_t<decltype(*printFun)>>(printFun),
                     llvm::JITSymbolFlags(
                             llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
             };
@@ -147,10 +148,18 @@ int main() {
     defineEmbeddedFunctions(moduleContext);
 
     CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
+        fn printArray(arr: [int; 3]) {
+            print("[");
+            for (i: int = 0; i < arr.len(); ++i) {
+                print("%d", arr[i]);
+                if (i < arr.len() - 1) {
+                    print(",");
+                }
+            }
+            println("]");
+        }
         fn main() {
-            arr: [int; 3] = [10, 1, 2];
-            first: int = arr[0];
-            println("arr[0]=%d,arr[1]=%d,arr[2]=%d", first, arr[1], arr[2]);
+            printArray([10, 1, 2]);
         }
     )"), BuiltinSymbols::getInstance().getFunctions());
 

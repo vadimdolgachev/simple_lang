@@ -287,7 +287,7 @@ ExprNodePtr Parser::parseComparisonExpr() {
            || lexer->currToken().type == TokenType::NotEqual) {
         const auto op = lexer->currToken().type;
         lexer->nextToken();
-        auto rhs = parseFactor();
+        auto rhs = parseExpr();
         lhs = std::make_unique<BinOpNode>(op, std::move(lhs), std::move(rhs));
     }
     return lhs;
