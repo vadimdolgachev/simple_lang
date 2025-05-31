@@ -3,7 +3,7 @@
 //
 
 #include "StrIRType.h"
-
+#include "IRValue.h"
 #include "ast/StringNode.h"
 #include "../type/Type.h"
 
@@ -74,6 +74,10 @@ llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,
         return builder.CreateCall(getOrDeclareStrlen(builder.GetInsertBlock()->getModule()), {object});
     }
     return IRType::createMethodCall(builder, methodInfo, object, args);
+}
+
+llvm::Value *StrIRType::createLoad(llvm::IRBuilder<> & /*irBuilder*/, const IRValue &value) const {
+    return value.getRawValue();
 }
 
 llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) const {

@@ -10,6 +10,9 @@
 
 #include "ModuleContext.h"
 #include "ast/BaseNode.h"
+#include "ir/IRValue.h"
+
+using IRValueOpt = std::optional<IRValue>;
 
 class LLVMCodegen final : public NodeVisitor {
 public:
@@ -61,17 +64,17 @@ public:
 
     void visit(IndexAccessNode *node) override;
 
-    [[nodiscard]] llvm::Value *value() const;
+    [[nodiscard]] IRValueOpt value() const;
 
-    static llvm::Value *generate(BaseNode *const node,
-                                 ModuleContext &mc) {
+    static IRValueOpt generate(BaseNode *const node,
+                               ModuleContext &mc) {
         LLVMCodegen codegen(mc);
         node->visit(&codegen);
         return codegen.value();
     }
 
 private:
-    llvm::Value *value_ = nullptr;
+    IRValueOpt res;
     ModuleContext &mc;
 };
 

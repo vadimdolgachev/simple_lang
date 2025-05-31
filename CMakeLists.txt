@@ -134,6 +134,8 @@ add_executable(simple_lang
         type/ArrayType.h
         ast/IndexAccessNode.cpp
         ast/IndexAccessNode.h
+        ir/IRValue.cpp
+        ir/IRValue.h
 )
 
 

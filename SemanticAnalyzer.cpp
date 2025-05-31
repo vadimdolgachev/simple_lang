@@ -273,9 +273,11 @@ void SemanticAnalyzer::visit(FieldAccessNode *node) {
 void SemanticAnalyzer::visit(CommentNode *node) {}
 
 void SemanticAnalyzer::visit(ModuleNode *node) {
+    symbolTable.enterScope();
     for (const auto &statement: node->statements) {
         statement->visit(this);
     }
+    symbolTable.exitScope();
 }
 
 void SemanticAnalyzer::visit(TypeCastNode *node) {

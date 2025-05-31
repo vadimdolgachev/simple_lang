@@ -32,6 +32,7 @@
 #include "ast/TypeCastNode.h"
 #include "type/TypeFactory.h"
 #include "type/FunctionType.h"
+#include "ast/ModuleNode.h"
 
 namespace {
     llvm::Function *getModuleFunction(const std::string &name,
@@ -136,18 +137,17 @@ namespace {
         }
 
         for (const auto &stmt: statements) {
-            [[maybe_unused]] auto *const val = LLVMCodegen::generate(
-                    stmt.get(), mc);
+            LLVMCodegen::generate(stmt.get(), mc);
         }
 
         mc.symTable.exitScope();
     }
 
 
-    llvm::GlobalVariable *genGlobalDeclaration(const DeclarationNode *node,
-                                               llvm::Type *type,
-                                               llvm::Value *init,
-                                               ModuleContext &mc) {
+    IRValue genGlobalDeclaration(const DeclarationNode *node,
+                                 llvm::Type *type,
+                                 llvm::Value *init,
+                                 ModuleContext &mc) {
         llvm::Constant *constInit = nullptr;
         if (init) {
             constInit = llvm::dyn_cast<llvm::Constant>(init);
@@ -168,13 +168,15 @@ namespace {
         gVar->setDSOLocal(true);
 
         mc.symTable.insert(node->ident->name, std::make_shared<GlobalSymbolInfo>(node->type, gVar));
-        return gVar;
+        return IRValue::create(gVar,
+                               IRTypeFactory::from(node->type, mc.module->getContext()),
+                               node->ident->name);
     }
 
-    llvm::AllocaInst *genLocalDeclaration(const DeclarationNode *node,
-                                          llvm::Type *type,
-                                          llvm::Value *init,
-                                          ModuleContext &mc) {
+    IRValue genLocalDeclaration(const DeclarationNode *node,
+                                llvm::Type *type,
+                                llvm::Value *init,
+                                ModuleContext &mc) {
         auto *alloca = mc.builder->CreateAlloca(type, nullptr, node->ident->name);
 
         if (init) {
@@ -192,7 +194,7 @@ namespace {
         mc.symTable.insert(node->ident->name,
                            std::make_shared<AllocaInstSymbolInfo>(node->type,
                                                                   alloca));
-        return alloca;
+        return IRValue::create(alloca, IRTypeFactory::from(node->type, mc.module->getContext()), node->ident->name);
     }
 
     void processFunctionParameters(llvm::Function *func,
@@ -207,6 +209,7 @@ namespace {
                     IRTypeFactory::from(paramType, mc.module->getContext())->getLLVMType(mc.module->getContext()),
                     nullptr,
                     arg.getName());
+
             mc.builder->CreateStore(&arg, alloca);
             mc.symTable.insert(std::string(arg.getName()),
                                std::make_shared<AllocaInstSymbolInfo>(paramType, alloca));
@@ -214,34 +217,30 @@ namespace {
     }
 } // namespace
 
-LLVMCodegen::LLVMCodegen(ModuleContext &moduleContext):
+LLVMCodegen::LLVMCodegen(ModuleContext &moduleContext) :
     mc(moduleContext) {}
 
 void LLVMCodegen::visit(IdentNode *node) {
     if (const auto symbol = mc.symTable.lookup(node->name)) {
-        if (const auto &sig = std::dynamic_pointer_cast<const GlobalSymbolInfo>(symbol.value())) {
-            value_ = mc.builder->CreateLoad(sig->var->getValueType(),
-                                            sig->var,
-                                            node->name + ".global");
-        } else if (const auto &sia = std::dynamic_pointer_cast<const AllocaInstSymbolInfo>(symbol.value())) {
-            if (sia->inst == nullptr) {
+        if (const auto &global = std::dynamic_pointer_cast<const GlobalSymbolInfo>(symbol.value())) {
+            res = IRValue::create(global->var,
+                                     IRTypeFactory::from(global->type, mc.module->getContext()),
+                                     node->name + ".global");
+        } else if (const auto &alloca = std::dynamic_pointer_cast<const AllocaInstSymbolInfo>(symbol.value())) {
+            if (alloca->inst == nullptr) {
                 throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
             }
-            if (sia->type->isArray()) {
-                value_ = sia->inst;
-            } else {
-                value_ = mc.builder->CreateLoad(sia->inst->getAllocatedType(),
-                                                sia->inst,
-                                                node->name);
-            }
+
+            res = IRValue::create(alloca->inst,
+                                     IRTypeFactory::from(alloca->type, mc.module->getContext()),
+                                     node->name + ".local");
         }
     }
 }
 
 void LLVMCodegen::visit(FunctionNode *const node) {
-    auto *const func = llvm::dyn_cast<llvm::Function>(
-            generate(node->proto.get(), mc));
-
+    generate(node->proto.get(), mc);
+    auto *const func = getModuleFunction(node->proto->name, mc);
     if (!func) {
         throw std::logic_error("Function prototype generation failed for: " + node->proto->name);
     }
@@ -265,30 +264,28 @@ void LLVMCodegen::visit(FunctionNode *const node) {
     if (verifyFunction(*func, &os)) {
         throw std::logic_error("Function verification failed:\n" + os.str());
     }
-
-    value_ = func;
 }
 
 void LLVMCodegen::visit(NumberNode *node) {
-    value_ = IRTypeFactory::from(node->getType(), mc.module->getContext())->createConstant(
-            node, *mc.builder, *mc.module);
+    auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
+    res = IRValue::create(type->createConstant(node, *mc.builder, *mc.module), type);
 }
 
 void LLVMCodegen::visit(StringNode *node) {
-    value_ = IRTypeFactory::from(node->getType(), mc.module->getContext())->createConstant(
-            node, *mc.builder, *mc.module);
+    auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
+    res = IRValue::create(type->createConstant(node, *mc.builder, *mc.module),
+                             type,
+                             node->str + ".str");
 }
 
 void LLVMCodegen::visit(BooleanNode *node) {
-    value_ = IRTypeFactory::from(node->getType(), mc.module->getContext())->createConstant(
-            node, *mc.builder, *mc.module);
+    auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
+    res = IRValue::create(type->createConstant(node, *mc.builder, *mc.module), type);
 }
 
 void LLVMCodegen::visit(BinOpNode *node) {
-    auto *lhsValue = generate(node->lhs.get(),
-                              mc);
-    auto *rhsValue = generate(node->rhs.get(),
-                              mc);
+    auto *const lhsValue = generate(node->lhs.get(), mc).value().createLoad(*mc.builder);
+    auto *const rhsValue = generate(node->rhs.get(), mc).value().createLoad(*mc.builder);
     if (lhsValue == nullptr || rhsValue == nullptr) {
         throw std::logic_error("Unexpected expression");
     }
@@ -296,11 +293,12 @@ void LLVMCodegen::visit(BinOpNode *node) {
         throw std::logic_error("Unsupported operation");
     }
     if (const auto category = getOperationCategory(node->binOp); category == OperationCategory::Comparison) {
-        value_ = IRTypeFactory::from(node->lhs->getType(), mc.module->getContext())
-                ->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp");
+        auto type = IRTypeFactory::from(node->lhs->getType(), mc.module->getContext());
+        res = IRValue::create(type->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp"), type);
     } else if (category == OperationCategory::Arithmetic) {
         const auto resultTypeNode = IRTypeFactory::from(node->getType(), mc.module->getContext());
-        value_ = resultTypeNode->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp");
+        res = IRValue::create(resultTypeNode->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp"),
+                                 resultTypeNode);
     } else {
         throw std::logic_error("Unsupported operation");
     }
@@ -310,14 +308,14 @@ void LLVMCodegen::visit(ProtoFunctionStatement *node) {
     std::vector<llvm::Type *> functionParams;
     functionParams.reserve(node->params.size());
     for (const auto &param: node->params) {
-        functionParams.push_back(
-                IRTypeFactory::from(param->type, mc.module->getContext())->getLLVMType(mc.module->getContext()));
+        functionParams.push_back(IRTypeFactory::from(param->type, mc.module->getContext())
+                ->getLLVMType(mc.module->getContext()));
     }
 
-    auto *const functionType = llvm::FunctionType::get(
-            IRTypeFactory::from(node->returnType, mc.module->getContext())->getLLVMType(mc.module->getContext()),
-            functionParams,
-            node->isVarArgs);
+    auto *const functionType =
+            llvm::FunctionType::get(IRTypeFactory::from(node->returnType, mc.module->getContext())
+                                    ->getLLVMType(mc.module->getContext()),
+                                    functionParams, node->isVarArgs);
 
     auto *const function = llvm::Function::Create(functionType,
                                                   llvm::Function::ExternalLinkage,
@@ -336,26 +334,28 @@ void LLVMCodegen::visit(ProtoFunctionStatement *node) {
     for (auto [index, arg]: llvm::enumerate(function->args())) {
         arg.setName(node->params[index]->ident->name);
     }
-    value_ = function;
 }
 
 void LLVMCodegen::visit(AssignmentNode *const node) {
-    auto *const init = generate(node->rvalue.get(), mc);
+    const auto init = generate(node->rvalue.get(), mc);
+    if (!init) {
+        throw std::runtime_error("Error init value generation");
+    }
     if (mc.builder->GetInsertBlock() != nullptr) {
         if (const auto var = mc.symTable.lookup(node->lvalue->name)) {
             if (const auto si = std::dynamic_pointer_cast<const AllocaInstSymbolInfo>(var.value())) {
-                mc.builder->CreateStore(tryCastValue(mc.builder, init, si->inst->getAllocatedType()),
-                                        si->inst);
-                value_ = si->inst;
+                init.value().createStore(*mc.builder, si->inst);
+                auto irType = IRTypeFactory::from(si->type, mc.module->getContext());
+                res = IRValue::create(si->inst, std::move(irType));
             }
         } else if (const auto gVar = mc.symTable.lookupGlobal(node->lvalue->name)) {
             if (const auto &sig = std::dynamic_pointer_cast<const GlobalSymbolInfo>(gVar.value())) {
                 if (sig->var->isConstant()) {
                     throw std::logic_error("Variable: " + node->lvalue->name + " is constant");
                 }
-                mc.builder->CreateStore(tryCastValue(mc.builder, init, sig->var->getValueType()),
-                                        sig->var);
-                value_ = sig->var;
+                init.value().createStore(*mc.builder, sig->var);
+                auto irType = IRTypeFactory::from(sig->type, mc.module->getContext());
+                res = IRValue::create(sig->var, std::move(irType));
             }
         } else {
             throw std::logic_error("Undefined variable: " + node->lvalue->name);
@@ -373,26 +373,27 @@ void LLVMCodegen::visit(FunctionCallNode *const node) {
     argsFunc.reserve(node->args.size());
     const auto *const funcType = calleeFunc->getFunctionType();
     for (size_t i = 0; i < node->args.size(); ++i) {
-        auto *argValue = generate(node->args[i].get(), mc);
-        if (node->args[i]->getType()->isArray()) {
-            if (auto *const allocaInst = llvm::dyn_cast<llvm::AllocaInst>(argValue)) {
-                argValue = mc.builder->CreateLoad(allocaInst->getAllocatedType(),
-                    allocaInst,
-                    node->args[i]->toString());
-            }
+        const auto arg = generate(node->args[i].get(), mc);
+        if (!arg) {
+            throw std::runtime_error("Error argument function generation");
         }
+        const auto argType = IRTypeFactory::from(node->args[i]->getType(),
+                                                 mc.module->getContext());
+        auto *argValue = argType->createLoad(*mc.builder, arg.value());
         if (i < funcType->getNumParams()) {
             argValue = tryCastValue(mc.builder, argValue, funcType->getParamType(i));
         }
         argsFunc.push_back(argValue);
     }
 
-    value_ = mc.builder->CreateCall(calleeFunc, argsFunc);
+    auto irType = IRTypeFactory::from(node->getType(), mc.module->getContext());
+    res = IRValue::create(mc.builder->CreateCall(calleeFunc, argsFunc),
+                             std::move(irType));
 }
 
 void LLVMCodegen::visit(IfStatement *node) {
     auto *const firstCV = tryCastValue(mc.builder,
-                                       generate(node->ifBranch.cond.get(), mc),
+                                       generate(node->ifBranch.cond.get(), mc).value().getRawValue(),
                                        mc.builder->getInt1Ty());
     if (!firstCV) {
         throw std::logic_error("Condition must be boolean type");
@@ -404,7 +405,7 @@ void LLVMCodegen::visit(IfStatement *node) {
     auto *lastElseBB = llvm::BasicBlock::Create(mc.module->getContext(), "else");
     auto *const mergeBB = llvm::BasicBlock::Create(mc.module->getContext(), "merge_if");
 
-    value_ = mc.builder->CreateCondBr(firstCV, firstIfBB, lastElseBB);
+    mc.builder->CreateCondBr(firstCV, firstIfBB, lastElseBB);
 
     mc.builder->SetInsertPoint(firstIfBB);
     generate(node->ifBranch.then.get(), mc);
@@ -419,7 +420,7 @@ void LLVMCodegen::visit(IfStatement *node) {
 
         const auto &[cond, then] = node->elseIfBranches[i];
         auto *const value = tryCastValue(mc.builder,
-                                         generate(cond.get(), mc),
+                                         generate(cond.get(), mc).value().getRawValue(),
                                          mc.builder->getInt1Ty());
         if (!value) {
             throw std::logic_error("Condition must be boolean type");
@@ -451,6 +452,7 @@ void LLVMCodegen::visit(IfStatement *node) {
 }
 
 void LLVMCodegen::visit(UnaryOpNode *node) {
+    const auto irType = IRTypeFactory::from(node->getType(), mc.module->getContext());
     if (node->operatorType == TokenType::PlusPlus || node->operatorType == TokenType::MinusMinus) {
         const auto *ident = dynamic_cast<IdentNode *>(node->expr.get());
         if (ident == nullptr) {
@@ -484,11 +486,13 @@ void LLVMCodegen::visit(UnaryOpNode *node) {
                 "incdec.tmp");
 
         mc.builder->CreateStore(newVal, symbolInfoAlloca->inst);
-        value_ = node->unaryPosType == UnaryOpNode::UnaryOpType::Prefix ? newVal : loadedVal;
+        res = IRValue::create(node->unaryPosType == UnaryOpNode::UnaryOpType::Prefix ? newVal : loadedVal,
+                                 irType);
     } else if (node->operatorType == TokenType::Minus) {
-        value_ = mc.builder->CreateNeg(generate(node->expr.get(), mc));
+        res = IRValue::create(mc.builder->CreateNeg(generate(node->expr.get(), mc).value().getRawValue()),
+                                 irType);
     } else if (node->operatorType == TokenType::Plus) {
-        value_ = generate(node->expr.get(), mc);
+        res = generate(node->expr.get(), mc);
     } else {
         throw std::logic_error("Not supported unary operator");
     }
@@ -512,7 +516,7 @@ void LLVMCodegen::visit(LoopCondNode *node) {
         case LoopCondNode::Type::For: {
             mc.builder->SetInsertPoint(condBB);
             auto *const cond = tryCastValue(mc.builder,
-                                            generate(node->condBranch.cond.get(), mc),
+                                            generate(node->condBranch.cond.get(), mc).value().getRawValue(),
                                             mc.builder->getInt1Ty());
             mc.builder->CreateCondBr(cond, loopBB, mergeBB);
             break;
@@ -522,7 +526,7 @@ void LLVMCodegen::visit(LoopCondNode *node) {
             mc.builder->CreateBr(condBB);
             mc.builder->SetInsertPoint(condBB);
             auto *const cond = tryCastValue(mc.builder,
-                                            generate(node->condBranch.cond.get(), mc),
+                                            generate(node->condBranch.cond.get(), mc).value().getRawValue(),
                                             mc.builder->getInt1Ty());
             mc.builder->CreateCondBr(cond, loopBB, mergeBB);
             break;
@@ -549,8 +553,8 @@ void LLVMCodegen::visit(LoopCondNode *node) {
             break;
         }
         case LoopCondNode::Type::DoWhile: {
-            auto *const cond = generate(node->condBranch.cond.get(), mc);
-            mc.builder->CreateCondBr(cond, loopBB, mergeBB);
+            const auto cond = generate(node->condBranch.cond.get(), mc);
+            mc.builder->CreateCondBr(cond.value().getRawValue(), loopBB, mergeBB);
             break;
         }
     }
@@ -572,21 +576,19 @@ void LLVMCodegen::visit(BlockNode *node) {
 }
 
 void LLVMCodegen::visit(DeclarationNode *node) {
-    const auto type = IRTypeFactory::from(node->type, mc.module->getContext());
-    auto *const llvmType = type->getLLVMType(mc.module->getContext());
+    const auto irType = IRTypeFactory::from(node->type, mc.module->getContext());
+    auto *const llvmType = irType->getLLVMType(mc.module->getContext());
     if (llvmType == nullptr) {
         throw std::logic_error("Unknown type for variable: " + node->ident->name);
     }
 
     llvm::Value *initValue = nullptr;
     if (node->init.has_value()) {
-        initValue = generate(node->init.value().get(), mc);
+        const auto valueHandler = generate(node->init.value().get(), mc);
+        initValue = valueHandler.value().getRawValue();
         if (node->init.value()->getType()->isArray()
             && isNode<IdentNode>(node->init.value().get())) {
-            auto *const inst = llvm::dyn_cast<llvm::AllocaInst>(initValue);
-            initValue = mc.builder->CreateLoad(inst->getAllocatedType(),
-                inst,
-                node->init.value()->toString());
+            initValue = valueHandler.value().createLoad(*mc.builder);
         }
         if (!initValue) {
             throw std::logic_error("Failed to generate initializer for: " + node->ident->name);
@@ -600,17 +602,17 @@ void LLVMCodegen::visit(DeclarationNode *node) {
     }
 
     if (node->isGlobal) {
-        value_ = genGlobalDeclaration(node, llvmType, initValue, mc);
+        genGlobalDeclaration(node, llvmType, initValue, mc);
     } else {
-        value_ = genLocalDeclaration(node, llvmType, initValue, mc);
+        genLocalDeclaration(node, llvmType, initValue, mc);
     }
 }
 
 void LLVMCodegen::visit(ReturnNode *node) {
     if (node->expr != nullptr) {
-        value_ = mc.builder->CreateRet(generate(node->expr.get(), mc));
+        mc.builder->CreateRet(generate(node->expr.get(), mc).value().createLoad(*mc.builder));
     } else {
-        value_ = mc.builder->CreateRetVoid();
+        mc.builder->CreateRetVoid();
     }
 }
 
@@ -621,15 +623,17 @@ void LLVMCodegen::visit(TernaryOperatorNode *node) {
     auto *const elseBB = llvm::BasicBlock::Create(mc.module->getContext(), "tern_else");
     auto *const mergeBB = llvm::BasicBlock::Create(mc.module->getContext(), "tern_merge");
 
-    mc.builder->CreateCondBr(generate(node->cond.get(), mc), thenBB, elseBB);
+    mc.builder->CreateCondBr(generate(node->cond.get(), mc).value().getRawValue(), thenBB, elseBB);
 
     mc.builder->SetInsertPoint(thenBB);
-    auto *const trueVal = generate(node->trueExpr.get(), mc);
+    const auto trueValueHandler = generate(node->trueExpr.get(), mc);
+    auto *const trueVal = trueValueHandler.value().createLoad(*mc.builder);
     mc.builder->CreateBr(mergeBB);
 
     elseBB->insertInto(parentFunc);
     mc.builder->SetInsertPoint(elseBB);
-    auto *const falseVal = generate(node->falseExpr.get(), mc);
+    auto falseValueHandler = generate(node->falseExpr.get(), mc);
+    auto *const falseVal = trueValueHandler.value().createLoad(*mc.builder);
     mc.builder->CreateBr(mergeBB);
 
     mergeBB->insertInto(parentFunc);
@@ -642,7 +646,7 @@ void LLVMCodegen::visit(TernaryOperatorNode *node) {
     auto *const phi = mc.builder->CreatePHI(trueVal->getType(), 2, "tern_result");
     phi->addIncoming(trueVal, thenBB);
     phi->addIncoming(falseVal, elseBB);
-    value_ = phi;
+    res = IRValue::create(phi, IRTypeFactory::from(node->getType(), mc.module->getContext()));
 }
 
 void LLVMCodegen::visit(MethodCallNode *node) {
@@ -650,17 +654,17 @@ void LLVMCodegen::visit(MethodCallNode *node) {
     std::vector<llvm::Value *> args;
     args.reserve(node->method->args.size());
     for (const auto &arg: node->method->args) {
-        args.push_back(generate(arg.get(), mc));
+        args.push_back(generate(arg.get(), mc).value().createLoad(*mc.builder));
     }
 
     if (const auto fType = node->method->getType()->asFunction()) {
         const auto methodInfo = MethodInfo::create(node->method->ident->name,
                                                    fType.value());
-        auto *object = generate(node->object.get(), mc);
-        value_ = objectType->createMethodCall(*mc.builder,
-                                              methodInfo,
-                                              object,
-                                              args);
+        res = IRValue::create(objectType->createMethodCall(*mc.builder,
+                                                              methodInfo,
+                                                              generate(node->object.get(), mc).value().getRawValue(),
+                                                              args), IRTypeFactory::from(
+                                         fType.value()->returnType(), mc.module->getContext()));
     }
 }
 
@@ -672,38 +676,54 @@ void LLVMCodegen::visit(CommentNode *node) {
     // skip comments
 }
 
-void LLVMCodegen::visit(ModuleNode *node) {}
+void LLVMCodegen::visit(ModuleNode *node) {
+    mc.symTable.enterScope();
+    for (const auto &statement: node->statements) {
+        generate(statement.get(), mc);
+    }
+    mc.symTable.exitScope();
+}
 
 void LLVMCodegen::visit(TypeCastNode *node) {
-    value_ = tryCastValue(mc.builder, generate(node->expr.get(), mc),
-                          IRTypeFactory::from(node->targetType, mc.module->getContext())->getLLVMType(
-                                  mc.module->getContext()));
+    const auto value = generate(node->expr.get(), mc).value();
+    const auto irType = IRTypeFactory::from(node->targetType, mc.module->getContext());
+    res = IRValue::create(
+            tryCastValue(mc.builder, value.getRawValue(), irType->getLLVMType(mc.module->getContext())),
+            irType);
 }
 
 void LLVMCodegen::visit(ArrayNode *node) {
     const auto arrayType = IRTypeFactory::from(node->getType(), mc.module->getContext());
-    value_ = arrayType->createConstant(node, *mc.builder, *mc.module);
+    res = IRValue::create(arrayType->createConstant(node, *mc.builder, *mc.module), arrayType);
 }
 
 void LLVMCodegen::visit(IndexAccessNode *node) {
-    auto *const objectValue = generate(node->object.get(), mc);
-    auto *const indexValue = generate(node->index.get(), mc);
+    const auto object = generate(node->object.get(), mc);
+    const auto index = generate(node->index.get(), mc);
 
-    if (node->object->getType()->isArray()) {
-        auto *const llvmArrayType = llvm::dyn_cast<llvm::ArrayType>(
-                IRTypeFactory::from(node->object->getType(),
-                                    mc.module->getContext())->getLLVMType(mc.module->getContext()));
+    if (const auto arrayType = node->object->getType()->asArray()) {
+        const auto elementType = arrayType.value()->getElementType();
+        const auto arrayIrType = IRTypeFactory::from(arrayType.value(), mc.module->getContext());
+        auto *const arrayLlvmType = llvm::dyn_cast<llvm::ArrayType>(arrayIrType->getLLVMType(mc.module->getContext()));
+        auto elementIrType = IRTypeFactory::from(arrayType.value()->getElementType(),
+                                                 mc.module->getContext());
         const std::vector<llvm::Value *> indices = {
                 mc.builder->getInt64(0),
-                indexValue
+                index.value().createLoad(*mc.builder)
         };
-        value_ = mc.builder->CreateLoad(llvmArrayType->getElementType(),
-                                        mc.builder->CreateInBoundsGEP(llvmArrayType, objectValue, indices, "elem_ptr"));
+        auto *const elementLlvmValue = mc.builder->CreateLoad(arrayLlvmType->getElementType(),
+                                                              mc.builder->CreateInBoundsGEP(
+                                                                      arrayLlvmType,
+                                                                      object.value().getRawValue(),
+                                                                      indices,
+                                                                      "elem_ptr"
+                                                                      ));
+        res = IRValue::create(elementLlvmValue, std::move(elementIrType));
     } else {
         throw std::runtime_error("Unsupported index access type");
     }
 }
 
-llvm::Value *LLVMCodegen::value() const {
-    return value_;
+IRValueOpt LLVMCodegen::value() const {
+    return res;
 }

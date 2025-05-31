@@ -22,9 +22,7 @@ void CompilerFronted::generateIR(ModuleContext &moduleContext) {
     NodePrinter printer;
     module->visit(&printer);
 
-    for (const auto &stmt: module->statements) {
-        LLVMCodegen::generate(stmt.get(), moduleContext);
-    }
+    LLVMCodegen::generate(module.get(), moduleContext);
 }
 
 std::unique_ptr<ModuleNode> CompilerFronted::compile() {

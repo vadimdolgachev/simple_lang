@@ -158,8 +158,19 @@ int main() {
             }
             println("]");
         }
+
+        v: int = 0;
+
+        fn sum(a: [int; 3]): int {
+            sum: int = 0;
+            for (i: int = 0; i < a.len(); ++i) {
+                sum = sum + a[i];
+            }
+            return sum;
+        }
         fn main() {
-            printArray([10, 1, 2]);
+            println("%d", sum([1,1,1])+1+2);
+            printArray([1, 1, 2]);
         }
     )"), BuiltinSymbols::getInstance().getFunctions());
 

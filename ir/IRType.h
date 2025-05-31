@@ -13,6 +13,8 @@
 #include "Lexer.h"
 #include "ast/BaseNode.h"
 
+class IRValue;
+
 class IRType {
 public:
     using MethodLists = std::unordered_set<std::unique_ptr<IRType>>;
@@ -44,6 +46,10 @@ public:
                                           const MethodInfoPtr &methodInfo,
                                           llvm::Value *object,
                                           const std::vector<llvm::Value *> &args) const;
+
+    virtual llvm::Value *createLoad(llvm::IRBuilder<> &builder, const IRValue &value) const;
+
+    virtual llvm::StoreInst *createStore(llvm::IRBuilder<> &builder, const IRValue &value, llvm::Value *ptr) const;
 
 protected:
     bool isPointer;

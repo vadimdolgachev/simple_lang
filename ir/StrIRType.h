@@ -9,6 +9,8 @@
 
 #include "IRType.h"
 
+class IRValue;
+
 class StrIRType final : public IRType {
 public:
     explicit StrIRType(bool isPointer = true);
@@ -33,6 +35,8 @@ public:
                                   const MethodInfoPtr &methodInfo,
                                   llvm::Value *object,
                                   const std::vector<llvm::Value *> &args) const override;
+    llvm::Value *createLoad(llvm::IRBuilder<> & /*builder*/, const IRValue &value) const override;
+
 private:
     llvm::Function *getOrDeclareStrcmp(llvm::Module *module) const;
 
