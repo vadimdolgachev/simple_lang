@@ -37,6 +37,8 @@ public:
 
     virtual llvm::Type *getLLVMType(llvm::LLVMContext &context) const = 0;
 
+    virtual llvm::Type *getLLVMElementType(llvm::LLVMContext &context) const = 0;
+
     void registerCustomOperation(TokenType op,
                                  llvm::Function *function);
 

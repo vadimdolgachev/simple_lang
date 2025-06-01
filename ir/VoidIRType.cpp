@@ -8,6 +8,10 @@ llvm::Type *VoidIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::Type::getVoidTy(context);
 }
 
+llvm::Type * VoidIRType::getLLVMElementType(llvm::LLVMContext &context) const {
+    throw std::runtime_error("Unsupported for void type");
+}
+
 llvm::Value *VoidIRType::createBinaryOp(llvm::IRBuilder<> &builder,
                                         TokenType op,
                                         llvm::Value *lhs,

@@ -3,7 +3,6 @@
 //
 
 #include "IRValue.h"
-
 #include "IRType.h"
 
 IRValue::IRValue(llvm::Value *const value,

@@ -689,7 +689,7 @@ void LLVMCodegen::visit(IndexAccessNode *node) {
                 mc.builder->getInt64(0),
                 index.value().createLoad(*mc.builder)
         };
-        auto *const elementLlvmValue = mc.builder->CreateLoad(arrayLlvmType->getElementType(),
+        auto *const elementLlvmValue = mc.builder->CreateLoad(arrayIrType->getLLVMElementType(mc.module->getContext()),
                                                               mc.builder->CreateInBoundsGEP(
                                                                       arrayLlvmType,
                                                                       object.value().getRawValue(),

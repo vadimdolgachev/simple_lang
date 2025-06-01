@@ -16,6 +16,10 @@ llvm::Type *NumericIRType::getLLVMType(llvm::LLVMContext &context) const {
     return isPointer ? baseType->getPointerTo() : baseType;
 }
 
+llvm::Type * NumericIRType::getLLVMElementType(llvm::LLVMContext &context) const {
+    throw std::runtime_error("Unsupported for numeric type");
+}
+
 llvm::Value *NumericIRType::createBinaryOp(llvm::IRBuilder<> &builder,
                                            const TokenType op,
                                            llvm::Value *lhs,

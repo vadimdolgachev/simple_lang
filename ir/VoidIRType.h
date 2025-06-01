@@ -14,6 +14,8 @@ public:
 
     llvm::Type *getLLVMType(llvm::LLVMContext &context) const override;
 
+    llvm::Type *getLLVMElementType(llvm::LLVMContext &context) const override;
+
     llvm::Value *createBinaryOp(llvm::IRBuilder<> &builder,
                                 TokenType op,
                                 llvm::Value *lhs,

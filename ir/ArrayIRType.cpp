@@ -6,7 +6,7 @@
 #include "ir/IRTypeFactory.h"
 #include "ast/ArrayNode.h"
 
-ArrayIRType::ArrayIRType(llvm::Type *elementType, const size_t size, const bool isPointer):
+ArrayIRType::ArrayIRType(llvm::Type *const elementType, const size_t size, const bool isPointer) :
     IRType(isPointer),
     elementType(elementType),
     arraySize(size) {}
@@ -21,6 +21,10 @@ llvm::Value *ArrayIRType::createBinaryOp(llvm::IRBuilder<> &builder,
 
 llvm::Type *ArrayIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::ArrayType::get(elementType, arraySize);
+}
+
+llvm::Type *ArrayIRType::getLLVMElementType(llvm::LLVMContext &context) const {
+    return elementType;
 }
 
 llvm::Value *ArrayIRType::createUnaryOp(llvm::IRBuilder<> &builder,

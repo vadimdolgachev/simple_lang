@@ -53,6 +53,10 @@ llvm::Type *StrIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
 }
 
+llvm::Type * StrIRType::getLLVMElementType(llvm::LLVMContext &context) const {
+    throw std::runtime_error("Unsupported for str type");
+}
+
 llvm::Constant *StrIRType::createConstant(const BaseNode *node,
                                           llvm::IRBuilder<> & /*builder*/,
                                           llvm::Module &module) {

@@ -19,6 +19,8 @@ public:
 
     llvm::Type *getLLVMType(llvm::LLVMContext &context) const override;
 
+    llvm::Type *getLLVMElementType(llvm::LLVMContext &context) const override;
+
     llvm::Value *createUnaryOp(llvm::IRBuilder<> &builder,
                                TokenType op,
                                llvm::Value *operand,

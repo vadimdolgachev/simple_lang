@@ -33,3 +33,7 @@ llvm::Constant *BooleanIRType::createConstant(const BaseNode *node, llvm::IRBuil
 llvm::Type *BooleanIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::Type::getInt1Ty(context);
 }
+
+llvm::Type * BooleanIRType::getLLVMElementType(llvm::LLVMContext &context) const {
+    throw std::runtime_error("Unsupported for boolean type");
+}
