@@ -3,7 +3,7 @@
 //
 
 #include "IRType.h"
-#include "IRValue.h"
+#include "../IRValue.h"
 
 IRType::IRType(const bool isPointer) :
     isPointer(isPointer) {}

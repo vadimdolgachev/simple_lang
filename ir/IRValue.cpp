@@ -3,7 +3,7 @@
 //
 
 #include "IRValue.h"
-#include "IRType.h"
+#include "type/IRType.h"
 
 IRValue::IRValue(llvm::Value *const value,
                  std::shared_ptr<IRType> type,

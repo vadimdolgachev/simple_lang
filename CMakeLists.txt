@@ -69,28 +69,28 @@ add_executable(simple_lang
         ast/TernaryOperatorNode.cpp
         ast/TernaryOperatorNode.h
         ast/CondBranch.h
-        ir/IRType.cpp
-        ir/IRType.h
-        ir/ArrayIRType.h
-        ir/ArrayIRType.cpp
-        ir/IntIRType.cpp
-        ir/IntIRType.h
-        ir/DoubleIRType.cpp
-        ir/DoubleIRType.h
+        ir/type/IRType.cpp
+        ir/type/IRType.h
+        ir/type/ArrayIRType.h
+        ir/type/ArrayIRType.cpp
+        ir/type/IntIRType.cpp
+        ir/type/IntIRType.h
+        ir/type/DoubleIRType.cpp
+        ir/type/DoubleIRType.h
         ir/IRTypeFactory.h
         ir/ModuleContext.h
-        ir/NumericIRType.h
-        ir/VoidIRType.h
-        ir/BooleanIRType.cpp
-        ir/BooleanIRType.h
-        ir/StrIRType.cpp
-        ir/StrIRType.h
-        ir/ByteIRType.cpp
-        ir/ByteIRType.h
-        ir/CharIRType.cpp
-        ir/CharIRType.h
-        ir/VoidIRType.cpp
-        ir/NumericIRType.cpp
+        ir/type/NumericIRType.h
+        ir/type/VoidIRType.h
+        ir/type/BooleanIRType.cpp
+        ir/type/BooleanIRType.h
+        ir/type/StrIRType.cpp
+        ir/type/StrIRType.h
+        ir/type/ByteIRType.cpp
+        ir/type/ByteIRType.h
+        ir/type/CharIRType.cpp
+        ir/type/CharIRType.h
+        ir/type/VoidIRType.cpp
+        ir/type/NumericIRType.cpp
         ast/MemberAccessNode.cpp
         ast/MemberAccessNode.h
         ast/CommentNode.cpp
@@ -136,6 +136,9 @@ add_executable(simple_lang
         ast/IndexAccessNode.h
         ir/IRValue.cpp
         ir/IRValue.h
+        ir/IRGenerator.h
+        ir/IdentNodeGenerator.cpp
+        ir/IdentNodeGenerator.h
 )
 
 

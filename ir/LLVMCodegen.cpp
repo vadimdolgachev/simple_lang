@@ -33,6 +33,7 @@
 #include "type/TypeFactory.h"
 #include "type/FunctionType.h"
 #include "ast/ModuleNode.h"
+#include "./IdentNodeGenerator.h"
 
 namespace {
     llvm::Function *getModuleFunction(const std::string &name,
@@ -219,24 +220,12 @@ namespace {
 } // namespace
 
 LLVMCodegen::LLVMCodegen(ModuleContext &moduleContext) :
-    mc(moduleContext) {}
+    mc(moduleContext) {
+        generators[std::type_index(typeid(IdentNode))] = std::make_unique<IdentNodeGenerator>();
+    }
 
 void LLVMCodegen::visit(IdentNode *node) {
-    if (const auto symbol = mc.symTable.lookup(node->name)) {
-        if (const auto &global = std::dynamic_pointer_cast<const GlobalSymbolInfo>(symbol.value())) {
-            res = IRValue::createGlobal(global->var,
-                                        IRTypeFactory::from(global->type, mc.module->getContext()),
-                                        node->name + ".global");
-        } else if (const auto &alloca = std::dynamic_pointer_cast<const AllocaInstSymbolInfo>(symbol.value())) {
-            if (alloca->inst == nullptr) {
-                throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
-            }
-
-            res = IRValue::createAlloca(alloca->inst,
-                                        IRTypeFactory::from(alloca->type, mc.module->getContext()),
-                                        node->name + ".local");
-        }
-    }
+    res = generators[std::type_index(typeid(IdentNode))]->generate(node, mc);
 }
 
 void LLVMCodegen::visit(FunctionNode *const node) {

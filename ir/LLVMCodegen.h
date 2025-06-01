@@ -5,11 +5,13 @@
 #ifndef LLVMCODEGEN_H
 #define LLVMCODEGEN_H
 
+#include <typeindex>
+
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Value.h>
 
 #include "ModuleContext.h"
 #include "ast/BaseNode.h"
+#include "ir/IRGenerator.h"
 #include "ir/IRValue.h"
 
 using IRValueOpt = std::optional<IRValue>;
@@ -76,6 +78,7 @@ public:
 private:
     IRValueOpt res;
     ModuleContext &mc;
+    std::unordered_map<std::type_index, std::unique_ptr<IRGenerator>> generators;
 };
 
 #endif //LLVMCODEGEN_H

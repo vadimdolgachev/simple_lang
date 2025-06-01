@@ -4,12 +4,12 @@
 
 #include "IRTypeFactory.h"
 
-#include "BooleanIRType.h"
-#include "DoubleIRType.h"
-#include "IntIRType.h"
-#include "StrIRType.h"
-#include "VoidIRType.h"
-#include "ArrayIRType.h"
+#include "type/BooleanIRType.h"
+#include "type/DoubleIRType.h"
+#include "type/IntIRType.h"
+#include "type/StrIRType.h"
+#include "type/VoidIRType.h"
+#include "type/ArrayIRType.h"
 #include "../type/Type.h"
 #include "../type/ArrayType.h"
 

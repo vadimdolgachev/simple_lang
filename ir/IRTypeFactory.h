@@ -7,7 +7,7 @@
 
 
 #include "../type/Type.h"
-#include "ir/IRType.h"
+#include "type/IRType.h"
 
 class IRTypeFactory final {
 public:

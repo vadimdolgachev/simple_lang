@@ -3,9 +3,9 @@
 //
 
 #include "StrIRType.h"
-#include "IRValue.h"
+#include "../IRValue.h"
 #include "ast/StringNode.h"
-#include "../type/Type.h"
+#include "../../type/Type.h"
 
 StrIRType::StrIRType(const bool isPointer):
     IRType(isPointer) {
