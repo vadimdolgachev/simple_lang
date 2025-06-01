@@ -42,22 +42,24 @@ llvm::Value *NumericIRType::createBinaryOp(llvm::IRBuilder<> &builder,
     }
 }
 
-llvm::Value * NumericIRType::createUnaryOp(llvm::IRBuilder<> &builder,
-        const TokenType op,
-        llvm::Value *operand,
-        llvm::Value *storage,
-        const std::string &name) const {
-    auto *const delta =
-        llvm::ConstantInt::get(operand->getType(), op == TokenType::PlusPlus ? 1 : -1);
-
-    auto *const result = createAdd(builder, operand, delta, name);
-
-    if (storage) {
-        builder.CreateStore(result, storage);
+auto NumericIRType::createUnaryOp(llvm::IRBuilder<> &builder,
+                                  const TokenType op,
+                                  llvm::Value *const operand,
+                                  llvm::Value *const storage,
+                                  const std::string &name) const -> llvm::Value * {
+    if (op == TokenType::Increment || op == TokenType::Decrement) {
+        auto *const delta =
+                llvm::ConstantInt::get(operand->getType(), op == TokenType::Increment ? 1 : -1);
+        auto *const result = createAdd(builder, operand, delta, name);
+        if (storage) {
+            builder.CreateStore(result, storage);
+        }
+        return op == TokenType::Increment ? result : operand;
     }
-
-    return op == TokenType::PlusPlus ? result : operand;
-
+    if (op == TokenType::Minus) {
+        return builder.CreateNeg(operand);
+    }
+    return operand;
 }
 
 llvm::Value *NumericIRType::createAdd(llvm::IRBuilder<> &builder,

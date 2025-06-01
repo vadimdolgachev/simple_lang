@@ -12,26 +12,43 @@ class IRType;
 
 class IRValue final {
 public:
-    explicit IRValue(llvm::Value *value,
-                     std::shared_ptr<IRType> type,
-                     std::string name = "");
+    enum class ValueKind: std::uint8_t {
+        Local,
+        Global,
+        Value
+    };
+
+    IRValue(llvm::Value *value,
+            std::shared_ptr<IRType> type,
+            ValueKind valueKind,
+            std::string name = "");
 
     IRValue(const IRValue &other) = default;
     IRValue &operator=(const IRValue &other) = default;
 
     [[nodiscard]] llvm::Value *getRawValue() const;
+    [[nodiscard]] std::shared_ptr<IRType> getType() const;
 
     [[nodiscard]] llvm::Value *createLoad(llvm::IRBuilder<> &builder) const;
 
     void createStore(llvm::IRBuilder<> &builder, llvm::Value *ptr) const;
 
-    static IRValue create(llvm::Value *value,
-                          std::shared_ptr<IRType> type,
-                          const std::string &name = "");
+    static IRValue createValue(llvm::Value *value,
+                               std::shared_ptr<IRType> type,
+                               const std::string &name = "");
+
+    static IRValue createAlloca(llvm::Value *value,
+                                std::shared_ptr<IRType> type,
+                                const std::string &name = "");
+
+    static IRValue createGlobal(llvm::Value *value,
+                                std::shared_ptr<IRType> type,
+                                const std::string &name = "");
 
 private:
     llvm::Value *value;
     std::shared_ptr<IRType> type;
+    ValueKind valueKind;
     std::string name;
 };
 

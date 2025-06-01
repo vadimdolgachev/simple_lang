@@ -605,28 +605,28 @@ namespace {
 
     TEST_F(UnaryOpTest, PostfixIncrement) {
         testUnaryOperation("var++;",
-                           TokenType::PlusPlus,
+                           TokenType::Increment,
                            UnaryOpNode::UnaryOpType::Postfix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PrefixIncrement) {
         testUnaryOperation("++var;",
-                           TokenType::PlusPlus,
+                           TokenType::Increment,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PostfixDecrement) {
         testUnaryOperation("var--;",
-                           TokenType::MinusMinus,
+                           TokenType::Decrement,
                            UnaryOpNode::UnaryOpType::Postfix,
                            "var");
     }
 
     TEST_F(UnaryOpTest, PrefixDecrement) {
         testUnaryOperation("--var;",
-                           TokenType::MinusMinus,
+                           TokenType::Decrement,
                            UnaryOpNode::UnaryOpType::Prefix,
                            "var");
     }
@@ -786,7 +786,7 @@ namespace {
 
         const auto *stmt2 = dynamic_cast<UnaryOpNode *>(fnNode->body->statements[1].get());
         ASSERT_NE(stmt2, nullptr) << "Second statement is not a unary operation";
-        EXPECT_EQ(stmt2->operatorType, TokenType::PlusPlus)
+        EXPECT_EQ(stmt2->operatorType, TokenType::Increment)
             << "Wrong unary operator type";
         EXPECT_EQ(stmt2->unaryPosType, UnaryOpNode::UnaryOpType::Prefix)
             << "Wrong unary operator position";
@@ -922,7 +922,7 @@ namespace {
         ASSERT_NE(nextOp, nullptr) << "Iteration expression is not a unary operation node";
 
         ASSERT_EQ(nextOp->operatorType,
-                  TokenType::PlusPlus) << "Expected increment operator in iteration expression";
+                  TokenType::Increment) << "Expected increment operator in iteration expression";
         ASSERT_EQ(nextOp->unaryPosType,
                   UnaryOpNode::UnaryOpType::Prefix) << "Expected prefix increment operator in iteration expression";
 

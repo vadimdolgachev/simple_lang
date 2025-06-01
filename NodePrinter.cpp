@@ -43,10 +43,10 @@ namespace {
             case TokenType::Slash:
                 os << "/";
                 break;
-            case TokenType::PlusPlus:
+            case TokenType::Increment:
                 os << "++";
                 break;
-            case TokenType::MinusMinus:
+            case TokenType::Decrement:
                 os << "--";
                 break;
             case TokenType::Less:

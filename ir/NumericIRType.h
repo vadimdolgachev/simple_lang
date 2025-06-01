@@ -22,7 +22,11 @@ public:
                                 llvm::Value *rhs,
                                 const std::string &name) const override;
 
-    llvm::Value *createUnaryOp(llvm::IRBuilder<> &builder, TokenType op, llvm::Value *operand, llvm::Value *storage, const std::string &name) const override;
+    llvm::Value *createUnaryOp(llvm::IRBuilder<> &builder,
+                               TokenType op,
+                               llvm::Value *operand,
+                               llvm::Value *storage,
+                               const std::string &name) const override;
 
 protected:
     llvm::Value *createAdd(llvm::IRBuilder<> &builder,

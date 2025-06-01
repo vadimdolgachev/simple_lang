@@ -6,7 +6,7 @@
 
 #include "TypeFactory.h"
 
-NumericType::NumericType(const TypeKind kind):
+NumericType::NumericType(const TypeKind kind) :
     PrimitiveType(kind) {}
 
 BoolResult NumericType::canCastTo(const TypePtr &target, const CastMode mode) const {
@@ -23,8 +23,8 @@ ResultType NumericType::getResultTypeUnary(const TokenType op) const {
     switch (op) {
         case TokenType::Plus:
         case TokenType::Minus:
-        case TokenType::PlusPlus:
-        case TokenType::MinusMinus:
+        case TokenType::Increment:
+        case TokenType::Decrement:
             return shared_from_this();
         default:
             break;
