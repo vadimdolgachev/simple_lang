@@ -11,7 +11,7 @@ class IdentNodeGenerator final : public IRGenerator {
 public:
     ~IdentNodeGenerator() override = default;
 
-    IRValue generate(BaseNode *node, ModuleContext &mc) const override;
+    IRValueOpt generate(BaseNode *node, ModuleContext &mc) const override;
 };
 
 #endif //IDENTNODEGENERATOR_H

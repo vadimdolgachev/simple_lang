@@ -6,8 +6,8 @@
 #include "ast/IdentNode.h"
 #include "./IRTypeFactory.h"
 
-IRValue IdentNodeGenerator::generate(BaseNode *node, ModuleContext &mc) const {
-    auto *const identNode = dynamic_cast<IdentNode *>(node);
+IRValueOpt IdentNodeGenerator::generate(BaseNode *node, ModuleContext &mc) const {
+    const auto *const identNode = dynamic_cast<IdentNode *>(node);
     if (identNode == nullptr) {
         throw std::runtime_error("Expected IdentNode");
     }

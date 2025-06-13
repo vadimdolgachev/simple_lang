@@ -13,7 +13,7 @@ class IRGenerator {
 public:
     virtual ~IRGenerator() = default;
 
-    virtual IRValue generate(BaseNode *node, ModuleContext &mc) const = 0;
+    virtual IRValueOpt generate(BaseNode *node, ModuleContext &mc) const = 0;
 };
 
 #endif //IRGENERATOR_H

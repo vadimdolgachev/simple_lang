@@ -52,4 +52,6 @@ private:
     std::string name;
 };
 
+using IRValueOpt = std::optional<IRValue>;
+
 #endif //IRVALUE_H

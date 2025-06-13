@@ -139,6 +139,8 @@ add_executable(simple_lang
         ir/IRGenerator.h
         ir/IdentNodeGenerator.cpp
         ir/IdentNodeGenerator.h
+        ir/FunctionNodeGenerator.cpp
+        ir/FunctionNodeGenerator.h
 )
 
 

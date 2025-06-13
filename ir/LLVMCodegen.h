@@ -11,10 +11,19 @@
 
 #include "ModuleContext.h"
 #include "ast/BaseNode.h"
+#include "ast/BlockNode.h"
 #include "ir/IRGenerator.h"
 #include "ir/IRValue.h"
 
-using IRValueOpt = std::optional<IRValue>;
+llvm::Function *getModuleFunction(const std::string &name, const ModuleContext &moduleContext);
+void generateBasicBlock(llvm::BasicBlock *basicBlock,
+                        const BlockNode::Statements &statements,
+                        ModuleContext &moduleContext,
+                        const std::optional<std::function<void()>> &prologue = std::nullopt);
+void processFunctionParameters(llvm::Function *func,
+                               llvm::BasicBlock *basicBlock,
+                               const FunctionNode *node,
+                               ModuleContext &moduleContext);
 
 class LLVMCodegen final : public NodeVisitor {
 public:
@@ -76,6 +85,14 @@ public:
     }
 
 private:
+    template<typename T>
+    IRValueOpt generateValue(T *const node, ModuleContext &moduleContext) {
+        if (const auto &it = generators.find(std::type_index(typeid(T))); it != generators.end()) {
+            return it->second->generate(node, moduleContext);
+        }
+        throw std::runtime_error("No generator found for node type: " + std::string(typeid(T).name()));
+    }
+
     IRValueOpt res;
     ModuleContext &mc;
     std::unordered_map<std::type_index, std::unique_ptr<IRGenerator>> generators;

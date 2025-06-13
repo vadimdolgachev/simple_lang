@@ -30,46 +30,13 @@
 #include "IRTypeFactory.h"
 #include "ast/IndexAccessNode.h"
 #include "ast/TypeCastNode.h"
+#include "ir/FunctionNodeGenerator.h"
 #include "type/TypeFactory.h"
 #include "type/FunctionType.h"
 #include "ast/ModuleNode.h"
 #include "./IdentNodeGenerator.h"
 
 namespace {
-    llvm::Function *getModuleFunction(const std::string &name,
-                                      const ModuleContext &mc) {
-        // First, see if the function has already been added to the current module.
-        if (auto *const function = mc.module->getFunction(name)) {
-            return function;
-        }
-
-        // If not, check whether we can codegen the declaration from some existing
-        // prototype.
-
-        if (const auto &proto = mc.symTable.lookupFunction(name);
-            !proto.empty()) {
-            if (const auto functionType = proto[0]->type->asFunction()) {
-                std::vector<llvm::Type *> functionParams;
-                functionParams.reserve(functionType.value()->parametersType().size());
-                for (const auto &param: functionType.value()->parametersType()) {
-                    functionParams.push_back(
-                            IRTypeFactory::from(param, mc.module->getContext())->getLLVMType(mc.module->getContext()));
-                }
-                auto *retType = IRTypeFactory::from(functionType.value()->returnType(), mc.module->getContext())->
-                        getLLVMType(mc.module->getContext());
-                auto *const llvmFunctionType = llvm::FunctionType::get(
-                        retType, functionParams,
-                        functionType.value()->isVariadic());
-                return llvm::Function::Create(llvmFunctionType,
-                                              llvm::Function::ExternalLinkage,
-                                              name,
-                                              mc.module.get());
-            }
-        }
-        // If no existing prototype exists, return null.
-        return nullptr;
-    }
-
     std::string typeToString(const llvm::Type *type) {
         std::string typeStr;
         llvm::raw_string_ostream rso(typeStr);
@@ -126,25 +93,6 @@ namespace {
                                typeToString(destType));
     }
 
-    void generateBasicBlock(llvm::BasicBlock *const basicBlock,
-                            const BlockNode::Statements &statements,
-                            ModuleContext &mc,
-                            const std::optional<std::function<void()>> &prologue = std::nullopt) {
-        mc.symTable.enterScope();
-
-        mc.builder->SetInsertPoint(basicBlock);
-        if (prologue.has_value()) {
-            (*prologue)();
-        }
-
-        for (const auto &stmt: statements) {
-            LLVMCodegen::generate(stmt.get(), mc);
-        }
-
-        mc.symTable.exitScope();
-    }
-
-
     IRValue genGlobalDeclaration(const DeclarationNode *node,
                                  llvm::Type *type,
                                  llvm::Value *init,
@@ -198,62 +146,21 @@ namespace {
         return IRValue::createAlloca(alloca, IRTypeFactory::from(node->type, mc.module->getContext()),
                                      node->ident->name);
     }
-
-    void processFunctionParameters(llvm::Function *func,
-                                   llvm::BasicBlock *basicBlock,
-                                   const FunctionNode *node,
-                                   ModuleContext &mc) {
-        mc.builder->SetInsertPoint(basicBlock);
-
-        for (auto &arg: func->args()) {
-            const auto &paramType = node->proto->params[arg.getArgNo()]->type;
-            auto *const alloca = mc.builder->CreateAlloca(
-                    IRTypeFactory::from(paramType, mc.module->getContext())->getLLVMType(mc.module->getContext()),
-                    nullptr,
-                    arg.getName());
-
-            mc.builder->CreateStore(&arg, alloca);
-            mc.symTable.insert(std::string(arg.getName()),
-                               std::make_shared<AllocaInstSymbolInfo>(paramType, alloca));
-        }
-    }
 } // namespace
 
 LLVMCodegen::LLVMCodegen(ModuleContext &moduleContext) :
     mc(moduleContext) {
-        generators[std::type_index(typeid(IdentNode))] = std::make_unique<IdentNodeGenerator>();
-    }
+    generators[std::type_index(typeid(IdentNode))] = std::make_unique<IdentNodeGenerator>();
+    generators[std::type_index(typeid(FunctionNode))] = std::make_unique<FunctionNodeGenerator>();
+}
 
 void LLVMCodegen::visit(IdentNode *node) {
-    res = generators[std::type_index(typeid(IdentNode))]->generate(node, mc);
+    res = generateValue(node, mc);
 }
 
 void LLVMCodegen::visit(FunctionNode *const node) {
     generate(node->proto.get(), mc);
-    auto *const func = getModuleFunction(node->proto->name, mc);
-    if (!func) {
-        throw std::logic_error("Function prototype generation failed for: " + node->proto->name);
-    }
-    auto *const basicBlock = llvm::BasicBlock::Create(mc.module->getContext(),
-                                                      "entry",
-                                                      func);
-
-    generateBasicBlock(basicBlock,
-                       node->body->statements,
-                       mc,
-                       [&]() {
-                           processFunctionParameters(func, basicBlock, node, mc);
-                       });
-
-    if (node->proto->returnType->isVoid()) {
-        mc.builder->CreateRetVoid();
-    }
-
-    std::string verifyError;
-    llvm::raw_string_ostream os(verifyError);
-    if (verifyFunction(*func, &os)) {
-        throw std::logic_error("Function verification failed:\n" + os.str());
-    }
+    generateValue(node, mc);
 }
 
 void LLVMCodegen::visit(NumberNode *node) {
@@ -692,4 +599,67 @@ void LLVMCodegen::visit(IndexAccessNode *node) {
 
 IRValueOpt LLVMCodegen::value() const {
     return res;
+}
+
+void generateBasicBlock(llvm::BasicBlock *const basicBlock,
+                        const BlockNode::Statements &statements,
+                        ModuleContext &moduleContext,
+                        const std::optional<std::function<void()>> &prologue) {
+    moduleContext.symTable.enterScope();
+
+    moduleContext.builder->SetInsertPoint(basicBlock);
+    if (prologue.has_value()) {
+        (*prologue)();
+    }
+
+    for (const auto &stmt: statements) {
+        LLVMCodegen::generate(stmt.get(), moduleContext);
+    }
+
+    moduleContext.symTable.exitScope();
+}
+
+llvm::Function *getModuleFunction(const std::string &name, const ModuleContext &mc) {
+    // First, see if the function has already been added to the current module.
+    if (auto *const function = mc.module->getFunction(name)) {
+        return function;
+    }
+
+    // If not, check whether we can codegen the declaration from some existing
+    // prototype.
+
+    if (const auto &proto = mc.symTable.lookupFunction(name); !proto.empty()) {
+        if (const auto functionType = proto[0]->type->asFunction()) {
+            std::vector<llvm::Type *> functionParams;
+            functionParams.reserve(functionType.value()->parametersType().size());
+            for (const auto &param: functionType.value()->parametersType()) {
+                functionParams.push_back(
+                        IRTypeFactory::from(param, mc.module->getContext())->getLLVMType(mc.module->getContext()));
+            }
+            auto *retType = IRTypeFactory::from(functionType.value()->returnType(), mc.module->getContext())
+                    ->getLLVMType(mc.module->getContext());
+            auto *const llvmFunctionType =
+                    llvm::FunctionType::get(retType, functionParams, functionType.value()->isVariadic());
+            return llvm::Function::Create(llvmFunctionType, llvm::Function::ExternalLinkage, name, mc.module.get());
+        }
+    }
+    // If no existing prototype exists, return null.
+    return nullptr;
+}
+
+void processFunctionParameters(llvm::Function *func,
+                               llvm::BasicBlock *basicBlock,
+                               const FunctionNode *node,
+                               ModuleContext &mc) {
+    mc.builder->SetInsertPoint(basicBlock);
+
+    for (auto &arg: func->args()) {
+        const auto &paramType = node->proto->params[arg.getArgNo()]->type;
+        auto *const alloca = mc.builder->CreateAlloca(
+                IRTypeFactory::from(paramType, mc.module->getContext())->getLLVMType(mc.module->getContext()), nullptr,
+                arg.getName());
+
+        mc.builder->CreateStore(&arg, alloca);
+        mc.symTable.insert(std::string(arg.getName()), std::make_shared<AllocaInstSymbolInfo>(paramType, alloca));
+    }
 }
