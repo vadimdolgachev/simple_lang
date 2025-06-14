@@ -7,11 +7,11 @@
 
 #include "IRGenerator.h"
 
-class IdentNodeGenerator final : public IRGenerator {
+class IdentNodeGenerator final : public IRGeneratorT<IdentNode> {
 public:
     ~IdentNodeGenerator() override = default;
 
-    IRValueOpt generate(BaseNode *node, ModuleContext &mc) const override;
+    IRValueOpt generateT(IdentNode *node, ModuleContext &mc) const override;
 };
 
 #endif //IDENTNODEGENERATOR_H

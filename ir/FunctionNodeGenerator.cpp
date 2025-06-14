@@ -6,25 +6,44 @@
 #include <llvm/IR/Verifier.h>
 
 #include "./LLVMCodegen.h"
+#include "IRTypeFactory.h"
 
-IRValueOpt FunctionNodeGenerator::generate(BaseNode *node, ModuleContext &mc) const {
-    const auto *const functionNode = dynamic_cast<FunctionNode *>(node);
-    auto *const func = getModuleFunction(functionNode->proto->name, mc);
+namespace {
+    void processFunctionParameters(llvm::Function *func,
+                                llvm::BasicBlock *basicBlock,
+                                const FunctionNode *node,
+                                ModuleContext &mc) {
+        mc.builder->SetInsertPoint(basicBlock);
+
+        for (auto &arg: func->args()) {
+            const auto &paramType = node->proto->params[arg.getArgNo()]->type;
+            auto *const alloca = mc.builder->CreateAlloca(
+                    IRTypeFactory::from(paramType, mc.module->getContext())->getLLVMType(mc.module->getContext()), nullptr,
+                    arg.getName());
+
+            mc.builder->CreateStore(&arg, alloca);
+            mc.symTable.insert(std::string(arg.getName()), std::make_shared<AllocaInstSymbolInfo>(paramType, alloca));
+        }
+    }
+}
+
+IRValueOpt FunctionNodeGenerator::generateT(FunctionNode *node, ModuleContext &mc) const {
+    auto *const func = getModuleFunction(node->proto->name, mc);
     if (!func) {
-        throw std::logic_error("Function prototype generation failed for: " + functionNode->proto->name);
+        throw std::logic_error("Function prototype generation failed for: " + node->proto->name);
     }
     auto *const basicBlock = llvm::BasicBlock::Create(mc.module->getContext(),
                                                       "entry",
                                                       func);
 
     generateBasicBlock(basicBlock,
-                       functionNode->body->statements,
+                       node->body->statements,
                        mc,
                        [&]() {
-                           processFunctionParameters(func, basicBlock, functionNode, mc);
+                           processFunctionParameters(func, basicBlock, node, mc);
                        });
 
-    if (functionNode->proto->returnType->isVoid()) {
+    if (node->proto->returnType->isVoid()) {
         mc.builder->CreateRetVoid();
     }
 

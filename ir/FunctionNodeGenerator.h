@@ -3,11 +3,11 @@
 
 #include "ir/IRGenerator.h"
 
-class FunctionNodeGenerator final : public IRGenerator {
+class FunctionNodeGenerator final : public IRGeneratorT<FunctionNode> {
 public:
     ~FunctionNodeGenerator() override = default;
 
-    IRValueOpt generate(BaseNode *node, ModuleContext &mc) const override;
+    IRValueOpt generateT(FunctionNode *node, ModuleContext &mc) const override;
 };
 
 #endif

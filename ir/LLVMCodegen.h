@@ -20,10 +20,9 @@ void generateBasicBlock(llvm::BasicBlock *basicBlock,
                         const BlockNode::Statements &statements,
                         ModuleContext &moduleContext,
                         const std::optional<std::function<void()>> &prologue = std::nullopt);
-void processFunctionParameters(llvm::Function *func,
-                               llvm::BasicBlock *basicBlock,
-                               const FunctionNode *node,
-                               ModuleContext &moduleContext);
+llvm::Value *tryCastValue(const std::unique_ptr<llvm::IRBuilder<>> &builder,
+                          llvm::Value *value,
+                          llvm::Type *destType);
 
 class LLVMCodegen final : public NodeVisitor {
 public:

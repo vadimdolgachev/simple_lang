@@ -141,6 +141,38 @@ add_executable(simple_lang
         ir/IdentNodeGenerator.h
         ir/FunctionNodeGenerator.cpp
         ir/FunctionNodeGenerator.h
+        ir/BinOpNodeGenerator.cpp
+        ir/BinOpNodeGenerator.h
+        ir/ProtoFunctionGenerator.cpp
+        ir/ProtoFunctionGenerator.h
+        ir/AssignmentNodeGenerator.cpp
+        ir/AssignmentNodeGenerator.h
+        ir/FunctionCallNodeGenerator.cpp
+        ir/FunctionCallNodeGenerator.h
+        ir/IfStatementGenerator.cpp
+        ir/IfStatementGenerator.h
+        ir/UnaryOpNodeGenerator.cpp
+        ir/UnaryOpNodeGenerator.h
+        ir/LoopCondNodeGenerator.cpp
+        ir/LoopCondNodeGenerator.h
+        ir/DeclarationNodeGenerator.cpp
+        ir/DeclarationNodeGenerator.h
+        ir/ReturnNodeGenerator.cpp
+        ir/ReturnNodeGenerator.h
+        ir/BlockNodeGenerator.cpp
+        ir/BlockNodeGenerator.h
+        ir/TernaryOperatorNodeGenerator.cpp
+        ir/TernaryOperatorNodeGenerator.h
+        ir/ModuleNodeGenerator.cpp
+        ir/ModuleNodeGenerator.h
+        ir/TypeCastNodeGenerator.cpp
+        ir/TypeCastNodeGenerator.h
+        ir/ArrayNodeGenerator.cpp
+        ir/ArrayNodeGenerator.h
+        ir/IndexAccessNodeGenerator.cpp
+        ir/IndexAccessNodeGenerator.h
+        ir/MethodCallNodeGenerator.cpp
+        ir/MethodCallNodeGenerator.h
 )
 
 

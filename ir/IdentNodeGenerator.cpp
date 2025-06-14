@@ -6,29 +6,24 @@
 #include "ast/IdentNode.h"
 #include "./IRTypeFactory.h"
 
-IRValueOpt IdentNodeGenerator::generate(BaseNode *node, ModuleContext &mc) const {
-    const auto *const identNode = dynamic_cast<IdentNode *>(node);
-    if (identNode == nullptr) {
-        throw std::runtime_error("Expected IdentNode");
-    }
-
-    if (const auto symbol = mc.symTable.lookup(identNode->name)) {
+IRValueOpt IdentNodeGenerator::generateT(IdentNode *node, ModuleContext &mc) const {
+    if (const auto symbol = mc.symTable.lookup(node->name)) {
         if (const auto &global = std::dynamic_pointer_cast<const GlobalSymbolInfo>(symbol.value())) {
             return IRValue::createGlobal(global->var,
                                         IRTypeFactory::from(global->type, mc.module->getContext()),
-                                        identNode->name + ".global");
+                                        node->name + ".global");
         }
         if (const auto &alloca = std::dynamic_pointer_cast<const AllocaInstSymbolInfo>(symbol.value())) {
             if (alloca->inst == nullptr) {
-                throw std::runtime_error(std::format("Unknown variable name: {}", identNode->name));
+                throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
             }
 
             return IRValue::createAlloca(alloca->inst,
                                         IRTypeFactory::from(alloca->type, mc.module->getContext()),
-                                        identNode->name + ".local");
+                                        node->name + ".local");
         }
     }
 
-    throw std::runtime_error(std::format("Undefined variable: {}", identNode->name));
+    throw std::runtime_error(std::format("Undefined variable: {}", node->name));
 }
 
