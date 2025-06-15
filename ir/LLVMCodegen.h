@@ -85,11 +85,18 @@ public:
 
 private:
     template<typename T>
-    IRValueOpt generateValue(T *const node, ModuleContext &moduleContext) {
+    [[nodiscard]]
+    std::conditional_t<std::is_base_of_v<StatementNode, T>, void, IRValueOpt>
+    generateForType(T *const node, ModuleContext &moduleContext) {
         static_assert(std::is_base_of_v<StatementNode, T> || std::is_base_of_v<ExpressionNode, T>,
-            "T must be a StatementNode or ExpressionNode");
+                      "T must be a StatementNode or ExpressionNode");
         if (const auto &it = generators.find(std::type_index(typeid(T))); it != generators.end()) {
-            return it->second->generate(node, moduleContext);
+            if constexpr (std::is_base_of_v<StatementNode, T>) {
+                it->second->generate(node, moduleContext);
+                return;
+            } else if (std::is_base_of_v<ExpressionNode, T>) {
+                return it->second->generate(node, moduleContext);
+            }
         }
         throw std::runtime_error("No generator found for node type: " + std::string(typeid(T).name()));
     }

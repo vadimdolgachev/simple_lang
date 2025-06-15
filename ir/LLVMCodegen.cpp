@@ -89,71 +89,71 @@ LLVMCodegen::LLVMCodegen(ModuleContext &moduleContext) :
 }
 
 void LLVMCodegen::visit(IdentNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(FunctionNode *const node) {
-    generateValue(node, mc);
+    generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(NumberNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(StringNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(BooleanNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(BinOpNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(ProtoFunctionStatement *node) {
-    generateValue(node, mc);
+    generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(AssignmentNode *const node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(FunctionCallNode *const node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(IfStatement *node) {
-    generateValue(node, mc);
+    generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(UnaryOpNode *node) {
-    generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(LoopCondNode *node) {
-    generateValue(node, mc);
+    generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(BlockNode *node) {
-    generateValue(node, mc);
+    generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(DeclarationNode *node) {
-    generateValue(node, mc);
+    generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(ReturnNode *node) {
-    generateValue(node, mc);
+    generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(TernaryOperatorNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(MethodCallNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(FieldAccessNode *node) {
@@ -165,19 +165,19 @@ void LLVMCodegen::visit(CommentNode *node) {
 }
 
 void LLVMCodegen::visit(ModuleNode *node) {
-    generateValue(node, mc);
+    generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(TypeCastNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(ArrayNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(IndexAccessNode *node) {
-    res = generateValue(node, mc);
+    res = generateForType(node, mc);
 }
 
 IRValueOpt LLVMCodegen::value() const {
