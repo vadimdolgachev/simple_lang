@@ -25,9 +25,10 @@ namespace {
             mc.symTable.insert(std::string(arg.getName()), std::make_shared<AllocaInstSymbolInfo>(paramType, alloca));
         }
     }
-}
+} // namespace
 
 void FunctionNodeGenerator::generateT(FunctionNode *node, ModuleContext &mc) const {
+    LLVMCodegen::generate(node->proto.get(), mc);
     auto *const func = getModuleFunction(node->proto->name, mc);
     if (!func) {
         throw std::logic_error("Function prototype generation failed for: " + node->proto->name);

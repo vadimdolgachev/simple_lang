@@ -173,6 +173,12 @@ add_executable(simple_lang
         ir/IndexAccessNodeGenerator.h
         ir/MethodCallNodeGenerator.cpp
         ir/MethodCallNodeGenerator.h
+        ir/NumberNodeGenerator.cpp
+        ir/NumberNodeGenerator.h
+        ir/StringNodeGenerator.cpp
+        ir/StringNodeGenerator.h
+        ir/BooleanNodeGenerator.cpp
+        ir/BooleanNodeGenerator.h
 )
 
 

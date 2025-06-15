@@ -38,6 +38,7 @@
 #include "IdentNodeGenerator.h"
 #include "BinOpNodeGenerator.h"
 #include "BlockNodeGenerator.h"
+#include "BooleanNodeGenerator.h"
 #include "DeclarationNodeGenerator.h"
 #include "FunctionCallNodeGenerator.h"
 #include "IfStatementGenerator.h"
@@ -45,8 +46,10 @@
 #include "LoopCondNodeGenerator.h"
 #include "MethodCallNodeGenerator.h"
 #include "ModuleNodeGenerator.h"
+#include "NumberNodeGenerator.h"
 #include "ProtoFunctionGenerator.h"
 #include "ReturnNodeGenerator.h"
+#include "StringNodeGenerator.h"
 #include "TernaryOperatorNodeGenerator.h"
 #include "TypeCastNodeGenerator.h"
 #include "UnaryOpNodeGenerator.h"
@@ -80,6 +83,9 @@ LLVMCodegen::LLVMCodegen(ModuleContext &moduleContext) :
     generators[std::type_index(typeid(TypeCastNode))] = std::make_unique<TypeCastNodeGenerator>();
     generators[std::type_index(typeid(ArrayNode))] = std::make_unique<ArrayNodeGenerator>();
     generators[std::type_index(typeid(IndexAccessNode))] = std::make_unique<IndexAccessNodeGenerator>();
+    generators[std::type_index(typeid(NumberNode))] = std::make_unique<NumberNodeGenerator>();
+    generators[std::type_index(typeid(StringNode))] = std::make_unique<StringNodeGenerator>();
+    generators[std::type_index(typeid(BooleanNode))] = std::make_unique<BooleanNodeGenerator>();
 }
 
 void LLVMCodegen::visit(IdentNode *node) {
@@ -87,25 +93,19 @@ void LLVMCodegen::visit(IdentNode *node) {
 }
 
 void LLVMCodegen::visit(FunctionNode *const node) {
-    generate(node->proto.get(), mc);
     generateValue(node, mc);
 }
 
 void LLVMCodegen::visit(NumberNode *node) {
-    const auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
-    res = IRValue::createValue(type->createConstant(node, *mc.builder, *mc.module), type);
+    res = generateValue(node, mc);
 }
 
 void LLVMCodegen::visit(StringNode *node) {
-    const auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
-    res = IRValue::createValue(type->createConstant(node, *mc.builder, *mc.module),
-                               type,
-                               node->str + ".str");
+    res = generateValue(node, mc);
 }
 
 void LLVMCodegen::visit(BooleanNode *node) {
-    const auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
-    res = IRValue::createValue(type->createConstant(node, *mc.builder, *mc.module), type);
+    res = generateValue(node, mc);
 }
 
 void LLVMCodegen::visit(BinOpNode *node) {
