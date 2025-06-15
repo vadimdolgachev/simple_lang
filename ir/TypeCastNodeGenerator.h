@@ -6,7 +6,7 @@
 #define TYPECASTNODEGENERATOR_H
 
 #include "IRGenerator.h"
-
+#include "ast/TypeCastNode.h"
 class TypeCastNodeGenerator final : public IRGeneratorT<TypeCastNode> {
 public:
     IRValueOpt generateT(TypeCastNode *node, ModuleContext &mc) const override;

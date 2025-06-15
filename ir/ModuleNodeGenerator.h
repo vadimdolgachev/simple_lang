@@ -6,10 +6,11 @@
 #define MODULENODEGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/ModuleNode.h"
 
 class ModuleNodeGenerator final : public IRGeneratorT<ModuleNode> {
 public:
-    IRValueOpt generateT(ModuleNode *node, ModuleContext &mc) const override;
+    void generateT(ModuleNode *node, ModuleContext &mc) const override;
 };
 
 #endif //MODULENODEGENERATOR_H

@@ -6,6 +6,7 @@
 #define IDENTNODEGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/IdentNode.h"
 
 class IdentNodeGenerator final : public IRGeneratorT<IdentNode> {
 public:

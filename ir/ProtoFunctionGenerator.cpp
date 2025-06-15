@@ -9,7 +9,7 @@
 #include "type/TypeFactory.h"
 #include "type/FunctionType.h"
 
-IRValueOpt ProtoFunctionGenerator::generateT(ProtoFunctionStatement *node, ModuleContext &mc) const {
+void ProtoFunctionGenerator::generateT(ProtoFunctionStatement *node, ModuleContext &mc) const {
     std::vector<llvm::Type *> functionParams;
     functionParams.reserve(node->params.size());
     for (const auto &param: node->params) {
@@ -39,6 +39,4 @@ IRValueOpt ProtoFunctionGenerator::generateT(ProtoFunctionStatement *node, Modul
     for (auto [index, arg]: llvm::enumerate(function->args())) {
         arg.setName(node->params[index]->ident->name);
     }
-
-    return std::nullopt;
 }

@@ -64,7 +64,7 @@ namespace {
     }
 }
 
-IRValueOpt DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleContext &mc) const {
+void DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleContext &mc) const {
     const auto irType = IRTypeFactory::from(node->type, mc.module->getContext());
     auto *const llvmType = irType->getLLVMType(mc.module->getContext());
     if (llvmType == nullptr) {
@@ -95,6 +95,4 @@ IRValueOpt DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleCont
     } else {
         genLocalDeclaration(node, llvmType, initValue, mc);
     }
-
-    return std::nullopt;
 }

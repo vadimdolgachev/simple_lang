@@ -6,6 +6,7 @@
 #define UNARYOPNODEGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/UnaryOpNode.h"
 
 class UnaryOpNodeGenerator final : public IRGeneratorT<UnaryOpNode> {
 public:

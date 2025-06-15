@@ -16,17 +16,29 @@ public:
     virtual IRValueOpt generate(BaseNode *node, ModuleContext &mc) const = 0;
 };
 
+template<typename NodeT, typename Enable = void>
+class IRGeneratorT;
+
 template<typename NodeT>
-class IRGeneratorT : public IRGenerator {
+class IRGeneratorT<NodeT, std::enable_if_t<std::is_base_of_v<StatementNode, NodeT>>> : public IRGenerator {
+public:
+    virtual void generateT(NodeT *node, ModuleContext &mc) const = 0;
+
+private:
+    IRValueOpt generate(BaseNode *node, ModuleContext &mc) const override {
+        generateT(static_cast<NodeT *>(node), mc);
+        return std::nullopt;
+    }
+};
+
+template<typename NodeT>
+class IRGeneratorT<NodeT, std::enable_if_t<std::is_base_of_v<ExpressionNode, NodeT>>> : public IRGenerator {
 public:
     virtual IRValueOpt generateT(NodeT *node, ModuleContext &mc) const = 0;
 
 private:
-    IRValueOpt generate(BaseNode *const node, ModuleContext &mc) const override {
-        if (auto *const casted = dynamic_cast<NodeT *>(node)) {
-            return generateT(casted, mc);
-        }
-        throw std::runtime_error("Unexpected node type: " + std::string(typeid(NodeT).name()));
+    IRValueOpt generate(BaseNode *node, ModuleContext &mc) const override {
+        return generateT(static_cast<NodeT *>(node), mc);
     }
 };
 

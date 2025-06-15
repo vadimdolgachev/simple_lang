@@ -6,6 +6,7 @@
 #define METHODCALLNODEGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/MethodCallNode.h"
 
 class MethodCallNodeGenerator final : public IRGeneratorT<MethodCallNode> {
 public:

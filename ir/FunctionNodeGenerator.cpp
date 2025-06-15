@@ -27,7 +27,7 @@ namespace {
     }
 }
 
-IRValueOpt FunctionNodeGenerator::generateT(FunctionNode *node, ModuleContext &mc) const {
+void FunctionNodeGenerator::generateT(FunctionNode *node, ModuleContext &mc) const {
     auto *const func = getModuleFunction(node->proto->name, mc);
     if (!func) {
         throw std::logic_error("Function prototype generation failed for: " + node->proto->name);
@@ -52,5 +52,4 @@ IRValueOpt FunctionNodeGenerator::generateT(FunctionNode *node, ModuleContext &m
     if (verifyFunction(*func, &os)) {
         throw std::logic_error("Function verification failed:\n" + os.str());
     }
-    return std::nullopt;
 }

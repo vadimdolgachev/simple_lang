@@ -9,7 +9,7 @@
 
 #include "BaseNode.h"
 
-class ModuleNode final : public BaseNode {
+class ModuleNode final : public StatementNode {
 public:
     void visit(NodeVisitor *visitor) override;
 

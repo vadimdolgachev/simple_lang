@@ -6,6 +6,7 @@
 #define BINOPNODEGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/BinOpNode.h"
 
 class BinOpNodeGenerator final : public IRGeneratorT<BinOpNode> {
 public:

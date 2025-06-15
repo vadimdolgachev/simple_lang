@@ -7,7 +7,7 @@
 #include "LLVMCodegen.h"
 #include "ast/IfStatement.h"
 
-IRValueOpt IfStatementGenerator::generateT(IfStatement *node, ModuleContext &mc) const {
+void IfStatementGenerator::generateT(IfStatement *node, ModuleContext &mc) const {
     auto *const firstCV = tryCastValue(mc.builder,
                                        LLVMCodegen::generate(node->ifBranch.cond.get(), mc).value().getRawValue(),
                                        mc.builder->getInt1Ty());
@@ -65,6 +65,4 @@ IRValueOpt IfStatementGenerator::generateT(IfStatement *node, ModuleContext &mc)
 
     mergeBB->insertInto(parentFunc);
     mc.builder->SetInsertPoint(mergeBB);
-
-    return std::nullopt;
 }

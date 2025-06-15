@@ -7,9 +7,11 @@
 
 #include "IRGenerator.h"
 
+#include "ast/DeclarationNode.h"
+
 class DeclarationNodeGenerator final : public IRGeneratorT<DeclarationNode> {
 public:
-    IRValueOpt generateT(DeclarationNode *node, ModuleContext &mc) const override;
+    void generateT(DeclarationNode *node, ModuleContext &mc) const override;
 };
 
 #endif //DECLARATIONNODEGENERATOR_H

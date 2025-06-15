@@ -6,10 +6,11 @@
 #define IFSTATEMENTGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/IfStatement.h"
 
 class IfStatementGenerator final : public IRGeneratorT<IfStatement> {
 public:
-    IRValueOpt generateT(IfStatement *node, ModuleContext &mc) const override;
+    void generateT(IfStatement *node, ModuleContext &mc) const override;
 };
 
 #endif //IFSTATEMENTGENERATOR_H

@@ -6,6 +6,7 @@
 #define FUNCTIONCALLNODEGENERATOR_H
 
 #include "ir/IRGenerator.h"
+#include "ast/FunctionCallNode.h"
 
 class FunctionCallNodeGenerator final : public IRGeneratorT<FunctionCallNode> {
 public:

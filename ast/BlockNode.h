@@ -10,7 +10,7 @@
 
 #include "BaseNode.h"
 
-class BlockNode final : public BaseNode {
+class BlockNode final : public StatementNode {
 public:
     using Statements = std::vector<BaseNodePtr>;
 

@@ -6,7 +6,7 @@
 #define ARRAYNODEGENERATOR_H
 
 #include "IRGenerator.h"
-
+#include "ast/ArrayNode.h"
 
 class ArrayNodeGenerator final : public IRGeneratorT<ArrayNode> {
 public:

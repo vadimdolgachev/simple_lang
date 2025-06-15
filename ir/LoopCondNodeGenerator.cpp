@@ -7,7 +7,7 @@
 #include "LLVMCodegen.h"
 #include "ast/LoopCondNode.h"
 
-IRValueOpt LoopCondNodeGenerator::generateT(LoopCondNode *node, ModuleContext &mc) const {
+void LoopCondNodeGenerator::generateT(LoopCondNode *node, ModuleContext &mc) const {
     auto *const parentFunc = mc.builder->GetInsertBlock()->getParent();
     llvm::BasicBlock *condBB = nullptr;
     auto *const loopBB = llvm::BasicBlock::Create(mc.module->getContext(), "loop", parentFunc);
@@ -74,6 +74,4 @@ IRValueOpt LoopCondNodeGenerator::generateT(LoopCondNode *node, ModuleContext &m
 
     mergeBB->insertInto(parentFunc);
     mc.builder->SetInsertPoint(mergeBB);
-
-    return std::nullopt;
 }

@@ -6,10 +6,11 @@
 #define BLOCKNODEGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/BlockNode.h"
 
 class BlockNodeGenerator final : public IRGeneratorT<BlockNode> {
 public:
-    IRValueOpt generateT(BlockNode *node, ModuleContext &mc) const override;
+    void generateT(BlockNode *node, ModuleContext &mc) const override;
 };
 
 #endif //BLOCKNODEGENERATOR_H

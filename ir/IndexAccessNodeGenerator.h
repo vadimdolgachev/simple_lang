@@ -6,6 +6,7 @@
 #define INDEXACCESSNODEGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/IndexAccessNode.h"
 
 class IndexAccessNodeGenerator final : public IRGeneratorT<IndexAccessNode> {
 public:

@@ -6,10 +6,10 @@
 #define RETURNNODEGENERATOR_H
 
 #include "IRGenerator.h"
-
+#include "ast/ReturnNode.h"
 class ReturnNodeGenerator final : public IRGeneratorT<ReturnNode> {
 public:
-    IRValueOpt generateT(ReturnNode *node, ModuleContext &mc) const override;
+    void generateT(ReturnNode *node, ModuleContext &mc) const override;
 };
 
 #endif //RETURNNODEGENERATOR_H

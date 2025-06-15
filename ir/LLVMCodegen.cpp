@@ -33,7 +33,6 @@
 #include "ast/IndexAccessNode.h"
 #include "ast/TypeCastNode.h"
 #include "ir/FunctionNodeGenerator.h"
-#include "type/TypeFactory.h"
 #include "type/FunctionType.h"
 #include "ast/ModuleNode.h"
 #include "IdentNodeGenerator.h"

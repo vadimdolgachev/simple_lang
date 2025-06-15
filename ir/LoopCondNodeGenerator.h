@@ -6,10 +6,10 @@
 #define LOOPCONDNODEGENERATOR_H
 
 #include "IRGenerator.h"
-
+#include "ast/LoopCondNode.h"
 class LoopCondNodeGenerator final : public IRGeneratorT<LoopCondNode> {
 public:
-    IRValueOpt generateT(LoopCondNode *node, ModuleContext &mc) const override;
+    void generateT(LoopCondNode *node, ModuleContext &mc) const override;
 };
 
 #endif //LOOPCONDNODEGENERATOR_H

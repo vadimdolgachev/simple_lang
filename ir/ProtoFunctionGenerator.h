@@ -6,10 +6,11 @@
 #define PROTOFUNCTIONGENERATOR_H
 
 #include "IRGenerator.h"
+#include "ast/ProtoFunctionStatement.h"
 
 class ProtoFunctionGenerator final : public IRGeneratorT<ProtoFunctionStatement> {
 public:
-    IRValueOpt generateT(ProtoFunctionStatement *node, ModuleContext &mc) const override;
+    void generateT(ProtoFunctionStatement *node, ModuleContext &mc) const override;
 };
 
 #endif //PROTOFUNCTIONGENERATOR_H
