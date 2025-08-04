@@ -27,6 +27,8 @@
 #include "ast/ArrayNode.h"
 #include "ast/IndexAccessNode.h"
 #include "ast/MethodCallNode.h"
+#include "ast/StructInitNode.h"
+#include "ast/StructNode.h"
 
 namespace {
     std::ostream &operator<<(std::ostream &os, const TokenType token) {
@@ -257,6 +259,14 @@ void NodePrinter::visit(ArrayNode *node) {
 
 void NodePrinter::visit(IndexAccessNode *node) {
     ostream << node->object->toString() << "[" << node->index->toString() << "]";
+}
+
+void NodePrinter::visit(StructNode *node) {
+    ostream << "struct " << node->name;
+}
+
+void NodePrinter::visit(StructInitNode *node) {
+    ostream << "StructInitNode " << node->ident->name;
 }
 
 void NodePrinter::printIndent() const {

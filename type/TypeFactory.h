@@ -16,6 +16,7 @@ public:
     TypeFactory(const TypeFactory &) = delete;
     TypeFactory &operator=(const TypeFactory &) = delete;
 
+    static TypePtr makeReference(const std::string &value);
     static TypePtr makePrimitiveType(TypeKind kind);
     static TypePtr makePointer(const TypePtr &base);
     static FunctionTypePtr makeFunction(const TypePtr &returnType,

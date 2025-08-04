@@ -1,5 +1,6 @@
 #include "Parser.h"
 
+#include <list>
 #include <unordered_map>
 
 #include "Util.h"
@@ -22,6 +23,8 @@
 #include "ast/MethodCallNode.h"
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
+#include "ast/StructInitNode.h"
+#include "ast/StructNode.h"
 #include "ast/TernaryOperatorNode.h"
 #include "type/Type.h"
 #include "type/TypeFactory.h"
@@ -95,6 +98,10 @@ BaseNodePtr Parser::nextNode() {
     if (token == TokenType::Comment) {
         lexer->nextToken();
         return std::make_unique<CommentNode>(value.value_or(""));
+    }
+    if (token == TokenType::Struct) {
+        lexer->nextToken();
+        return parseStruct();
     }
     // Expressions
     auto result = parseExpr();
@@ -240,7 +247,7 @@ NodePtr<BlockNode> Parser::parseCurlyBracketBlock() {
 }
 
 ExprNodePtr Parser::parseExpr() {
-    if (const auto &token = lexer->currToken();
+    if (const auto token = lexer->currToken();
         isSign(token.type)
         || token.type == TokenType::Number
         || token.type == TokenType::String
@@ -250,6 +257,12 @@ ExprNodePtr Parser::parseExpr() {
         || token.type == TokenType::PlusPlus
         || token.type == TokenType::MinusMinus
         || token.type == TokenType::LogicalNegation) {
+
+        if (lexer->currToken().type == TokenType::Identifier
+            && lexer->peekToken().type == TokenType::LeftCurlyBracket) {
+            return parseStructInitialization();
+        }
+
         auto expr = parseBoolLogic();
         if (lexer->currToken().type == TokenType::Question) {
             expr = parseTernaryOperator(std::move(expr));
@@ -573,8 +586,11 @@ TypePtr Parser::parseType() {
             lexer->nextToken();
             return result;
         }
+        const auto result = TypeFactory::makeReference(lexer->currToken().value.value());
+        lexer->nextToken();
+        return result;
     }
-    throw std::runtime_error(makeErrorMsg("Unknown type name"));
+    throw std::runtime_error(makeErrorMsg("Wrong token: " + lexer->currToken().toString()));
 }
 
 NodePtr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemicolon, const bool isLocalScope) {
@@ -689,4 +705,69 @@ ExprNodePtr Parser::parseIndexAccess(ExprNodePtr object) {
         return std::make_unique<IndexAccessNode>(std::move(object), std::move(index));
     }
     throw std::runtime_error(makeErrorMsg("Expected '[' symbol"));
+}
+
+StmtNodePtr Parser::parseStruct() {
+    if (lexer->currToken().type != TokenType::Identifier
+        || !lexer->currToken().value.has_value()) {
+        throw std::runtime_error(makeErrorMsg("Structure name required"));
+    }
+
+    std::string name = lexer->currToken().value.value();
+
+    lexer->nextToken();
+    if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
+        throw std::runtime_error(makeErrorMsg("Expected '{' symbol"));
+    }
+    lexer->nextToken();
+    std::vector<std::variant<NodePtr<DeclarationNode>, TypePtr>> members;
+
+    while (lexer->currToken().type != TokenType::RightCurlyBracket) {
+        if (lexer->currToken().type == TokenType::Identifier) {
+            members.emplace_back(parseDeclarationNode(false, true));
+        }
+        if (lexer->currToken().type == TokenType::RightCurlyBracket) {
+            break;
+        }
+        lexer->nextToken();
+    }
+
+    if (lexer->currToken().type != TokenType::RightCurlyBracket) {
+        throw std::runtime_error(makeErrorMsg("Expected '}' symbol"));
+    }
+    lexer->nextToken();
+    return std::make_unique<StructNode>(std::move(name), std::move(members));
+}
+
+ExprNodePtr Parser::parseStructInitialization() {
+    auto ident = parseIdent();
+    auto designator = parseDesignator();
+    return std::make_unique<StructInitNode>(std::move(ident), std::move(designator));
+}
+
+std::vector<std::pair<NodePtr<IdentNode>, ExprNodePtr>> Parser::parseDesignator() {
+    if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
+        throw std::runtime_error(makeErrorMsg("Expected '{' symbol"));
+    }
+    lexer->nextToken();
+
+    std::vector<std::pair<NodePtr<IdentNode>, ExprNodePtr>> members;
+
+    while (lexer->currToken().type != TokenType::RightCurlyBracket) {
+        auto key = parseIdent();
+        if (lexer->currToken().type != TokenType::Colon) {
+            throw std::runtime_error(makeErrorMsg("Expected ':' symbol"));
+        }
+        lexer->nextToken();
+        members.emplace_back(std::move(key), parseExpr());
+        if (lexer->currToken().type == TokenType::Comma) {
+            lexer->nextToken();
+        }
+    }
+
+    if (lexer->currToken().type != TokenType::RightCurlyBracket) {
+        throw std::runtime_error(makeErrorMsg("Expected '}' symbol"));
+    }
+    lexer->nextToken();
+    return members;
 }

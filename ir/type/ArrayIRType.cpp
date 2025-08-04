@@ -5,6 +5,7 @@
 #include "ArrayIRType.h"
 #include "ir/IRTypeFactory.h"
 #include "ast/ArrayNode.h"
+#include "type/ArrayType.h"
 
 ArrayIRType::ArrayIRType(llvm::Type *const elementType, const size_t size, const bool isPointer) :
     IRType(isPointer),
@@ -52,7 +53,7 @@ llvm::Constant *ArrayIRType::createConstant(const BaseNode *node, llvm::IRBuilde
     elements.reserve(arrayNode.value()->elements.size());
 
     const auto elemIRType =
-            IRTypeFactory::from(arrayNode.value()->getType()->getElementType(), module.getContext());
+            IRTypeFactory::from(arrayNode.value()->getType()->asArray().value()->getElementType(), module.getContext());
     for (const auto &element: arrayNode.value()->elements) {
         auto *const elementConstant =
                 elemIRType->createConstant(element.get(), builder, module);

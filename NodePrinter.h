@@ -58,6 +58,10 @@ public:
 
     void visit(IndexAccessNode *node) override;
 
+    void visit(StructNode *node) override;
+
+    void visit(StructInitNode *node) override;
+
 private:
     void printIndent() const;
     [[nodiscard]] static bool needSemicolon(const std::unique_ptr<BaseNode> &node);

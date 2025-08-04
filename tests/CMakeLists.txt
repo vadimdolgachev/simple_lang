@@ -88,6 +88,8 @@ add_executable(tests main.cpp
         ../Lexer.h
         ../Parser.h
         ../Parser.cpp
+        ../ast/StructNode.h
+        ../ast/StructNode.cpp
 )
 
 target_include_directories(tests PRIVATE ../)

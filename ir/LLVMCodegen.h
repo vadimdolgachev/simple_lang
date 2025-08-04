@@ -74,6 +74,10 @@ public:
 
     void visit(IndexAccessNode *node) override;
 
+    void visit(StructNode *node) override;
+
+    void visit(StructInitNode *node) override;
+
     [[nodiscard]] IRValueOpt value() const;
 
     static IRValueOpt generate(BaseNode *const node,
@@ -84,17 +88,17 @@ public:
     }
 
 private:
-    template<typename T>
+    template<typename T, bool is_statement = std::is_base_of_v<StatementNode, T>>
     [[nodiscard]]
-    std::conditional_t<std::is_base_of_v<StatementNode, T>, void, IRValueOpt>
+    std::conditional_t<is_statement, void, IRValueOpt>
     generateForType(T *const node, ModuleContext &moduleContext) {
-        static_assert(std::is_base_of_v<StatementNode, T> || std::is_base_of_v<ExpressionNode, T>,
+        static_assert(is_statement || std::is_base_of_v<ExpressionNode, T>,
                       "T must be a StatementNode or ExpressionNode");
         if (const auto &it = generators.find(std::type_index(typeid(T))); it != generators.end()) {
-            if constexpr (std::is_base_of_v<StatementNode, T>) {
+            if constexpr (is_statement) {
                 it->second->generate(node, moduleContext);
                 return;
-            } else if (std::is_base_of_v<ExpressionNode, T>) {
+            } else {
                 return it->second->generate(node, moduleContext);
             }
         }

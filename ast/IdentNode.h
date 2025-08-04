@@ -2,8 +2,8 @@
 // Created by vadim on 06.10.24.
 //
 
-#ifndef VARIABLEACCESSAST_H
-#define VARIABLEACCESSAST_H
+#ifndef IDENTNODE_H
+#define IDENTNODE_H
 
 #include <string>
 
@@ -29,4 +29,4 @@ private:
     TypePtr type;
 };
 
-#endif //VARIABLEACCESSAST_H
+#endif //IDENTNODE_H

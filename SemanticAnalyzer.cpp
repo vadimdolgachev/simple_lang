@@ -21,13 +21,15 @@
 #include "ast/UnaryOpNode.h"
 #include "ast/ArrayNode.h"
 #include "ast/IndexAccessNode.h"
+#include "ast/StructNode.h"
+#include "ast/StructInitNode.h"
 #include "type/FunctionType.h"
 #include "type/TypeFactory.h"
 
 namespace {
     class SemanticError final : public std::runtime_error {
     public:
-        explicit SemanticError(const std::string &msg):
+        explicit SemanticError(const std::string &msg) :
             std::runtime_error(msg) {}
     };
 
@@ -42,6 +44,10 @@ namespace {
         throw SemanticError("Cannot convert " + exprType->getName() + " to " + targetType->getName());
     }
 } // namespace
+
+SemanticAnalyzer::SemanticAnalyzer(SymbolTable symbolTable, std::vector<TypePtr> declarations) :
+    symbolTable(std::move(symbolTable)),
+    declarations(std::move(declarations)) {}
 
 void SemanticAnalyzer::visit(IdentNode *node) {
     if (const auto &si = symbolTable.lookup(node->name)) {
@@ -200,6 +206,11 @@ void SemanticAnalyzer::visit(BlockNode *node) {
 }
 
 void SemanticAnalyzer::visit(DeclarationNode *node) {
+    if (const auto &typeRef = std::dynamic_pointer_cast<const ReferenceType>(node->type)) {
+        if (auto resolvedType = resolveTypeRef(typeRef->getName())) {
+            node->type = std::move(*resolvedType);
+        }
+    }
     if (node->isGlobal) {
         symbolTable.insertGlobal(node->ident->name, std::make_shared<SymbolInfo>(node->type));
     } else {
@@ -261,7 +272,8 @@ void SemanticAnalyzer::visit(MethodCallNode *node) {
     if (const auto method = node->object->getType()->findMethod(node->method->ident->name, signature)) {
         node->setType((*method)->type);
     } else {
-        throw SemanticError("Method '" + node->object->getType()->getName() + ":" + node->method->ident->name + "' does not exist");
+        throw SemanticError(
+                "Method '" + node->object->getType()->getName() + ":" + node->method->ident->name + "' does not exist");
     }
 }
 
@@ -311,4 +323,37 @@ void SemanticAnalyzer::visit(IndexAccessNode *node) {
     } else {
         throw SemanticError("Index not supported for type: " + node->object->getType()->getName());
     }
+}
+
+void SemanticAnalyzer::visit(StructNode *node) {
+    for (auto &member: node->members) {
+        const auto visitor = FuncOverloads{
+                [visitor = this](const NodePtr<DeclarationNode> &decl) {
+                    if (decl->init) {
+                        decl->init.value()->visit(visitor);
+                        decl->init = castIfNeeded(decl->type, std::move(decl->init.value()));
+                    }
+                },
+                []([[maybe_unused]] TypePtr &type) {
+                    throw std::runtime_error("Not implemented");
+                }
+        };
+        std::visit(visitor, member);
+    }
+}
+
+void SemanticAnalyzer::visit(StructInitNode *node) {
+    if (auto type = resolveTypeRef(node->ident->name)) {
+        node->setType(std::move(*type));
+    }
+}
+
+std::optional<TypePtr> SemanticAnalyzer::resolveTypeRef(const std::string &typeName) const {
+    const auto it = std::ranges::find_if(declarations, [typeName](const auto &type) {
+        return type->getName() == typeName;
+    });
+    if (it != declarations.end()) {
+        return *it;
+    }
+    return std::nullopt;
 }

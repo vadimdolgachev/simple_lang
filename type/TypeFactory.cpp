@@ -17,6 +17,10 @@
 std::unordered_map<TypeKind, TypePtr> TypeFactory::typeCache;
 std::unordered_map<TypePtr, TypePtr> TypeFactory::pointerCache;
 
+TypePtr TypeFactory::makeReference(const std::string &value) {
+    return std::make_shared<ReferenceType>(value);
+}
+
 TypePtr TypeFactory::makePrimitiveType(TypeKind kind) {
     if (!typeCache.contains(kind)) {
         switch (kind) {

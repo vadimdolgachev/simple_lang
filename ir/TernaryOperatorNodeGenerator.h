@@ -7,6 +7,7 @@
 
 #include "IRGenerator.h"
 #include "ast/TernaryOperatorNode.h"
+
 class TernaryOperatorNodeGenerator final : public IRGeneratorT<TernaryOperatorNode> {
 public:
     IRValueOpt generateT(TernaryOperatorNode *node, ModuleContext &mc) const override;

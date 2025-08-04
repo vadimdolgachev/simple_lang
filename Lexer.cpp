@@ -29,7 +29,8 @@ namespace {
             {"do", TokenType::DoLoop},
             {"true", TokenType::Boolean},
             {"false", TokenType::Boolean},
-            {"return", TokenType::Return}
+            {"return", TokenType::Return},
+            {"struct", TokenType::Struct}
     };
     const std::unordered_map<char, TokenType> SINGLE_TOKENS = {
             {'(', TokenType::LeftParenthesis},

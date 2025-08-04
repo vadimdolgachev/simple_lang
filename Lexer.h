@@ -14,73 +14,74 @@
 
 enum class TokenType : std::uint8_t {
     // Keywords
-    If = 0,
-    Else = 1,
-    ForLoop = 2,
-    WhileLoop = 3,
-    DoLoop = 4,
-    FunctionDefinition = 5,
-    Return = 6,
+    If,
+    Else,
+    ForLoop,
+    WhileLoop,
+    DoLoop,
+    FunctionDefinition,
+    Return,
+    Struct,
 
     // Identifiers and literals
-    Identifier = 7,
-    Number = 8,
-    String = 9,
-    Boolean = 10,
+    Identifier,
+    Number,
+    String,
+    Boolean,
 
     // Operators
-    PlusPlus = 11,            // ++
+    PlusPlus,            // ++
     Increment = PlusPlus,
-    MinusMinus = 12,          // --
+    MinusMinus,          // --
     Decrement = MinusMinus,
-    Plus = 13,                // +
-    Minus = 14,               // -
-    Star = 15,                // *
+    Plus,                // +
+    Minus,               // -
+    Star,                // *
     Multiply = Star,
-    Slash = 16,               // /
+    Slash,               // /
     Divide = Slash,
-    Assignment = 17,          // =
+    Assignment,          // =
 
     // Comparison and relational operators
-    LeftAngleBracket = 18,         // <
+    LeftAngleBracket,         // <
     Less = LeftAngleBracket,
-    LeftAngleBracketEqual = 19,    // <=
+    LeftAngleBracketEqual,    // <=
     LessEqual = LeftAngleBracketEqual,
-    RightAngleBracket = 20,        // >
+    RightAngleBracket,        // >
     Greater = RightAngleBracket,
-    RightAngleBracketEqual = 21,   // >=
+    RightAngleBracketEqual,   // >=
     GreaterEqual = RightAngleBracketEqual,
-    Equal = 22,                    // ==
-    NotEqual = 23,                 // !=
+    Equal,                    // ==
+    NotEqual,                 // !=
 
     // Logical operators
-    LogicalAnd = 24,       // &&
-    LogicalOr = 25,        // ||
-    LogicalNegation = 26,  // !
+    LogicalAnd,       // &&
+    LogicalOr,        // ||
+    LogicalNegation,  // !
 
     // Bitwise operators
-    BitwiseAnd = 27,   // &
-    BitwiseOr = 28,    // |
-    BitwiseXor = 29,   // ^
-    BitwiseNot = 30,   // ~
+    BitwiseAnd,   // &
+    BitwiseOr,    // |
+    BitwiseXor,   // ^
+    BitwiseNot,   // ~
 
     // Punctuation
-    Comma = 31,              // ,
-    Dot = 32,                // .
-    Colon = 33,              // :
-    Semicolon = 34,          // ;
-    LeftParenthesis = 35,    // (
-    RightParenthesis = 36,   // )
-    LeftCurlyBracket = 37,   // {
-    RightCurlyBracket = 38,  // }
-    LeftSquareBracket = 39,  // [
-    RightSquareBracket = 40, // ]
-    Question = 41,           // ?
+    Comma,              // ,
+    Dot,                // .
+    Colon,              // :
+    Semicolon,          // ;
+    LeftParenthesis,    // (
+    RightParenthesis,   // )
+    LeftCurlyBracket,   // {
+    RightCurlyBracket,  // }
+    LeftSquareBracket,  // [
+    RightSquareBracket, // ]
+    Question,           // ?
 
     // Special
-    Comment = 42,   // Comment
-    Eos = 43,       // End of Stream
-    Unknown = 44    // Unknown token
+    Comment,   // Comment
+    Eos,       // End of Stream
+    Unknown     // Unknown token
 };
 
 inline std::string toString(const TokenType token) {

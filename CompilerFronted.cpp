@@ -3,11 +3,11 @@
 //
 
 #include "CompilerFronted.h"
+#include "DeclarationCollector.h"
 #include "Parser.h"
 #include "Lexer.h"
 #include "NodePrinter.h"
 #include "SemanticAnalyzer.h"
-
 #include "ast/ModuleNode.h"
 #include "ir/LLVMCodegen.h"
 
@@ -35,13 +35,17 @@ std::unique_ptr<ModuleNode> CompilerFronted::semanticAnalysis(std::unique_ptr<Mo
                                                               const std::unordered_map<
                                                                   std::string, std::vector<SymbolInfoPtr>> &
                                                               builtinSymbols) {
+    DeclarationCollector declCollector;
+    module->visit(&declCollector);
+
     SymbolTable symbolTable;
     for (const auto &[name, signatures]: builtinSymbols) {
         for (const auto &signature: signatures) {
             symbolTable.insertFunction(name, signature);
         }
     }
-    SemanticAnalyzer analyzer(symbolTable);
+
+    SemanticAnalyzer analyzer(symbolTable, declCollector.getTypeDeclarations());
     module->visit(&analyzer);
     return module;
 }

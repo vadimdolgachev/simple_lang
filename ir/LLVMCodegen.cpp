@@ -53,6 +53,7 @@
 #include "TernaryOperatorNodeGenerator.h"
 #include "TypeCastNodeGenerator.h"
 #include "UnaryOpNodeGenerator.h"
+#include "ast/StructNode.h"
 
 namespace {
     std::string typeToString(const llvm::Type *type) {
@@ -178,6 +179,14 @@ void LLVMCodegen::visit(ArrayNode *node) {
 
 void LLVMCodegen::visit(IndexAccessNode *node) {
     res = generateForType(node, mc);
+}
+
+void LLVMCodegen::visit(StructNode *node) {
+
+}
+
+void LLVMCodegen::visit(StructInitNode *node) {
+
 }
 
 IRValueOpt LLVMCodegen::value() const {

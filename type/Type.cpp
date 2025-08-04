@@ -25,10 +25,6 @@ ResultType Type::getCommonType(const TypePtr &other) const {
     return std::unexpected("Type mismatch");
 }
 
-std::vector<TypePtr> Type::getFieldTypes() const {
-    throw std::logic_error("Not a composite type");
-}
-
 MethodInfoOpt Type::findMethod(const std::string &name, const std::optional<std::vector<TypePtr>> &signature) const {
     if (const auto it = std::ranges::find_if(getMethods(), [&name, &signature](const auto &method) {
         return method->name == name && method->type->parametersType() == signature;
@@ -40,10 +36,6 @@ MethodInfoOpt Type::findMethod(const std::string &name, const std::optional<std:
 
 const std::vector<MethodInfoPtr> &Type::getMethods() const {
     throw std::logic_error("Type does not contain methods");
-}
-
-TypePtr Type::getElementType() const {
-    throw std::logic_error("Not a container type");
 }
 
 ResultType Type::getComparableType(const TypePtr &type) const {
@@ -78,12 +70,24 @@ std::string PrimitiveType::getName() const {
             return "void";
         case TypeKind::Str:
             return "str";
-        case TypeKind::Custom:
-            return "custom";
+        case TypeKind::Struct:
+            return "struct";
         default:
             break;
     }
     return "unknown";
+}
+
+bool ReferenceType::operator==(const Type &other) const {
+    return getKind() == other.getKind() && getName() == other.getName();
+}
+
+std::string ReferenceType::getName() const {
+    return name;
+}
+
+TypeKind ReferenceType::getKind() const noexcept {
+    return TypeKind::Reference;
 }
 
 bool Type::isBoolean() const noexcept {

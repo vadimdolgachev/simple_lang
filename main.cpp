@@ -1,8 +1,6 @@
-#include <iostream>
 #include <memory>
 #include <sstream>
 #include <utility>
-#include <vector>
 #include <cstdarg>
 
 #include <llvm/Analysis/MemorySSA.h>
@@ -148,29 +146,14 @@ int main() {
     defineEmbeddedFunctions(moduleContext);
 
     CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
-        fn printArray(arr: [int; 3]) {
-            print("[");
-            for (i: int = 0; i < arr.len(); ++i) {
-                print("%d", arr[i]);
-                if (i < arr.len() - 1) {
-                    print(",");
-                }
-            }
-            println("]");
-        }
-
-        v: int = 0;
-
-        fn sum(a: [int; 3]): int {
-            sum: int = 0;
-            for (i: int = 0; i < a.len(); ++i) {
-                sum = sum + a[i];
-            }
-            return sum;
-        }
         fn main() {
-            println("%d", sum([1,1,1])+1+2);
-            printArray([1, 1, 2]);
+            point: Point = Point{x: 1, y: 2};
+            println("point {%f, %f}", point.x, point.y);
+        }
+
+        struct Point {
+            x: double;
+            y: double;
         }
     )"), BuiltinSymbols::getInstance().getFunctions());
 

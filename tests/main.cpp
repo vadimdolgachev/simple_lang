@@ -32,6 +32,7 @@
 #include "ast/ArrayNode.h"
 #include "ast/IndexAccessNode.h"
 #include "type/ArrayType.h"
+#include "ast/StructNode.h"
 
 namespace {
     class VarDefinitionTest : public testing::Test {};
@@ -1248,6 +1249,39 @@ namespace {
         ASSERT_NE(numberNode, nullptr) << "Not a NumberNode: " << input;
         ASSERT_EQ(numberNode->value, 1) << "Incorrect index value: " << input;
     }
+
+    TEST_F(NodesTest, StructNode) {
+        const std::string input = R"(struct MyStruct {fieldInt: int; fieldStr: str;};)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+        auto [structNode, orig] = tryCast<StructNode>(std::move(node));
+        ASSERT_NE(structNode, nullptr) << "Not a StructNode: " << input;
+        ASSERT_EQ(structNode->name, "MyStruct") << "Incorrect struct name: " << input;
+        ASSERT_EQ(structNode->members.size(), 2) << "Incorrect fields count: " << input;
+        const auto &fieldInt = structNode->members[0];
+        ASSERT_TRUE(std::holds_alternative<NodePtr<DeclarationNode>>(fieldInt));
+        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldInt)->ident->name, "fieldInt") << "Incorrect field name: " << input;
+        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldInt)->type->getKind(), TypeKind::Integer) << "Incorrect field type: " << input;
+        const auto &fieldStr = structNode->members[1];
+        ASSERT_TRUE(std::holds_alternative<NodePtr<DeclarationNode>>(fieldStr));
+        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldStr)->ident->name, "fieldStr") << "Incorrect field name: " << input;
+        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldStr)->type->getKind(), TypeKind::Str) << "Incorrect field type: " << input;
+    }
+
+    TEST_F(NodesTest, EmptyStructNode) {
+        const std::string input = R"(struct Empty {};)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+        auto [structNode, orig] = tryCast<StructNode>(std::move(node));
+        ASSERT_NE(structNode, nullptr) << "Not a StructNode: " << input;
+        ASSERT_EQ(structNode->name, "Empty") << "Incorrect struct name: " << input;
+        ASSERT_EQ(structNode->members.size(), 0) << "Incorrect fields count: " << input;
+    }
+
 } // namespace
 
 int main(int argc, char *argv[]) {

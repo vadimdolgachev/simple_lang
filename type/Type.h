@@ -23,7 +23,8 @@ enum class TypeKind : std::uint8_t {
     Pointer,
     Function,
     Array,
-    Custom,
+    Struct,
+    Reference,
     Unknown
 };
 
@@ -84,6 +85,7 @@ struct MethodInfo final : CallableInfo {
         return info;
     }
 };
+
 using MethodInfoPtr = std::shared_ptr<MethodInfo>;
 using MethodInfoOpt = std::optional<MethodInfoPtr>;
 
@@ -111,14 +113,10 @@ public:
 
     [[nodiscard]] virtual TypeKind getKind() const noexcept = 0;
 
-    [[nodiscard]] virtual std::vector<TypePtr> getFieldTypes() const;
-
     [[nodiscard]] virtual MethodInfoOpt findMethod(const std::string &name,
-        const std::optional<std::vector<TypePtr>> &signature) const;
+                                                   const std::optional<std::vector<TypePtr>> &signature) const;
 
     [[nodiscard]] virtual const std::vector<MethodInfoPtr> &getMethods() const;
-
-    [[nodiscard]] virtual TypePtr getElementType() const;
 
     virtual ResultType getComparableType(const TypePtr &type) const;
 
@@ -154,6 +152,21 @@ public:
 protected:
     const TypeKind kind;
     const bool isConst;
+};
+
+class ReferenceType final : public Type {
+public:
+    explicit ReferenceType(std::string name) :
+        name(std::move(name)) {}
+
+    bool operator==(const Type &other) const override;
+
+    [[nodiscard]] std::string getName() const override;
+
+    [[nodiscard]] TypeKind getKind() const noexcept override;
+
+private:
+    const std::string name;
 };
 
 #endif //TYPE_H

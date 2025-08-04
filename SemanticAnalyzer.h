@@ -2,10 +2,8 @@
 // Created by vadim on 16.04.25.
 //
 
-#ifndef SEMAANALYZER_H
-#define SEMAANALYZER_H
-
-#include <utility>
+#ifndef SEMANTICANALYZER_H
+#define SEMANTICANALYZER_H
 
 #include "ast/BaseNode.h"
 
@@ -13,8 +11,7 @@
 
 class SemanticAnalyzer final : public NodeVisitor {
 public:
-    explicit SemanticAnalyzer(SymbolTable symbolTable):
-        symbolTable(std::move(symbolTable)) {}
+    SemanticAnalyzer(SymbolTable symbolTable, std::vector<TypePtr> declarations);
 
     void visit(IdentNode *node) override;
     void visit(NumberNode *node) override;
@@ -39,10 +36,15 @@ public:
     void visit(TypeCastNode *node) override;
     void visit(ArrayNode *node) override;
     void visit(IndexAccessNode *node) override;
+    void visit(StructNode *node) override;
+    void visit(StructInitNode *node) override;
 
 private:
+    std::optional<TypePtr> resolveTypeRef(const std::string &typeName) const;
+
     SymbolTable symbolTable;
+    std::vector<TypePtr> declarations;
     std::shared_ptr<const ProtoFunctionStatement> currentFunction;
 };
 
-#endif //SEMAANALYZER_H
+#endif //SEMANTICANALYZER_H

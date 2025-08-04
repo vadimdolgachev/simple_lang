@@ -20,6 +20,11 @@ struct deduce_arg_type<Return(X::*)(ArgType) const> {
 template<typename Function>
 using HandlerType = typename deduce_arg_type<decltype(&Function::operator())>::type;
 
+template<class... Ts>
+struct FuncOverloads : Ts... {
+    using Ts::operator()...;
+};
+
 template<typename Base, typename Del, typename... Fs>
 void visit(std::unique_ptr<Base, Del> ptr, Fs &&... fs) {
     const auto attempt = [&]<typename FType>(FType &&f) {

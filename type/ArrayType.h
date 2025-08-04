@@ -17,7 +17,7 @@ public:
 
     [[nodiscard]] TypeKind getKind() const noexcept override;
 
-    [[nodiscard]] TypePtr getElementType() const override;
+    [[nodiscard]] TypePtr getElementType() const;
 
     size_t size() const noexcept;
 

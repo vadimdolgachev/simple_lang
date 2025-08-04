@@ -29,7 +29,7 @@ public:
     [[nodiscard]] BaseNodePtr clone() const override;
 
     const std::unique_ptr<IdentNode> ident;
-    const TypePtr type;
+    TypePtr type;
     std::optional<ExprNodePtr> init;
     const bool isConst;
     const bool isGlobal;
