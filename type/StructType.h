@@ -12,27 +12,29 @@ enum class StructKind: std::uint8_t {
     Tuple
 };
 
-struct Field final {
+struct StructField final {
     std::optional<std::string> name;
     TypePtr type;
 };
 
 class StructType final : public Type {
 public:
-    explicit StructType(std::string name,
-                        StructKind kind,
-                        std::vector<Field> fields);
+    StructType(std::string name,
+              StructKind kind,
+              std::vector<StructField> fields);
 
     bool operator==(const Type &other) const override;
     [[nodiscard]] std::string getName() const override;
     [[nodiscard]] TypeKind getKind() const noexcept override;
     [[nodiscard]] StructKind getStructKind() const noexcept;
-    [[nodiscard]] const std::vector<Field> &getFields() const noexcept;
+    [[nodiscard]] const std::vector<StructField> &getFields() const noexcept;
+    [[nodiscard]] std::optional<TypePtr> findFieldType(const std::string &fieldName) const;
+    [[nodiscard]] std::optional<std::size_t> findFieldIndex(const std::string &fieldName) const;
 
 private:
     const std::string name;
     StructKind structKind;
-    std::vector<Field> fields;
+    std::vector<StructField> fields;
 };
 
 using StructTypePtr = std::shared_ptr<const StructType>;

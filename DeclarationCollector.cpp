@@ -4,15 +4,11 @@
 
 #include "DeclarationCollector.h"
 #include "ast/ModuleNode.h"
-
-#include <iostream>
-
-#include "ast/StructNode.h"
+#include "ast/StructDeclarationNode.h"
 #include "type/StructType.h"
 
-void DeclarationCollector::visit(StructNode *node) {
-    std::cout << "DeclarationCollector::visit " << node->name << "\n";
-    std::vector<Field> fields;
+void DeclarationCollector::visit(StructDeclarationNode *node) {
+    std::vector<StructField> fields;
     for (auto &member: node->members) {
         const auto visitor = FuncOverloads{
             [&fields](const NodePtr<DeclarationNode> &decl) {

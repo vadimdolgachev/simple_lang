@@ -4,11 +4,16 @@
 
 #include "IRType.h"
 #include "../IRValue.h"
+#include "../IRTypeFactory.h"
 
 IRType::IRType(const bool isPointer) :
     isPointer(isPointer) {}
 
 void IRType::registerCustomOperation(const TokenType op, llvm::Function *function) {}
+
+llvm::Value * IRType::createUndef(const BaseNode *node, ModuleContext &mc) const {
+    throw std::runtime_error("Not implemented");
+}
 
 llvm::Value *IRType::createMethodCall(llvm::IRBuilder<> &builder,
                                       const MethodInfoPtr &methodInfo,
@@ -21,12 +26,13 @@ llvm::Value *IRType::createLoad(llvm::IRBuilder<> &builder, const IRValue &value
     llvm::Type *type = nullptr;
     if (const auto *const alloca = llvm::dyn_cast<llvm::AllocaInst>(value.getRawValue())) {
         type = alloca->getAllocatedType();
-    }
-    if (const auto *const gv = llvm::dyn_cast<llvm::GlobalVariable>(value.getRawValue())) {
+    } else if (const auto *const gv = llvm::dyn_cast<llvm::GlobalVariable>(value.getRawValue())) {
         type = gv->getValueType();
+    } else {
+        type = value.getType()->getLLVMType(builder.getContext());
     }
 
-    if (type) {
+    if (type && value.getRawValue()->getType()->isPointerTy()) {
         return builder.CreateLoad(type, value.getRawValue());
     }
     return value.getRawValue();

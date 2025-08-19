@@ -43,6 +43,9 @@ using CallableInfoPtr = std::shared_ptr<CallableInfo>;
 class FunctionType;
 using FunctionTypePtr = std::shared_ptr<const FunctionType>;
 
+class StructType;
+using StructTypePtr = std::shared_ptr<const StructType>;
+
 class ArrayType;
 using ArrayTypePtr = std::shared_ptr<const ArrayType>;
 
@@ -134,7 +137,11 @@ public:
 
     bool isArray() const noexcept;
 
+    bool isStruct() const noexcept;
+
     std::optional<FunctionTypePtr> asFunction() const;
+
+    std::optional<StructTypePtr> asStruct() const;
 
     std::optional<ArrayTypePtr> asArray() const;
 };

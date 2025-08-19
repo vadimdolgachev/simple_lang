@@ -28,7 +28,6 @@ public:
 
     [[nodiscard]] llvm::Value *getRawValue() const;
     [[nodiscard]] std::shared_ptr<IRType> getType() const;
-
     [[nodiscard]] llvm::Value *createLoad(llvm::IRBuilder<> &builder) const;
 
     void createStore(llvm::IRBuilder<> &builder, llvm::Value *ptr) const;

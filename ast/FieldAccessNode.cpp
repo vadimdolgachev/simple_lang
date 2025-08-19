@@ -3,7 +3,6 @@
 //
 
 #include "FieldAccessNode.h"
-
 #include "IdentNode.h"
 
 FieldAccessNode::FieldAccessNode(ExprNodePtr object, std::unique_ptr<IdentNode> field):
@@ -19,7 +18,7 @@ std::string FieldAccessNode::toString() const {
 }
 
 TypePtr FieldAccessNode::getType() const {
-    throw std::runtime_error("Not implemented");
+    return type;
 }
 
 void FieldAccessNode::setType(TypePtr type) {

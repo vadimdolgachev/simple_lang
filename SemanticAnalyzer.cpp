@@ -21,7 +21,7 @@
 #include "ast/UnaryOpNode.h"
 #include "ast/ArrayNode.h"
 #include "ast/IndexAccessNode.h"
-#include "ast/StructNode.h"
+#include "ast/StructDeclarationNode.h"
 #include "ast/StructInitNode.h"
 #include "type/FunctionType.h"
 #include "type/TypeFactory.h"
@@ -279,7 +279,12 @@ void SemanticAnalyzer::visit(MethodCallNode *node) {
 
 void SemanticAnalyzer::visit(FieldAccessNode *node) {
     node->object->visit(this);
-    // TODO: check method in type
+    if (const auto fieldType = node->getObjectType()->findFieldType(node->field->name)) {
+        node->field->setType(*fieldType);
+        node->setType(*fieldType);
+    } else {
+        throw SemanticError(std::format("Unknown type of field: {}", node->field->name));
+    }
 }
 
 void SemanticAnalyzer::visit(CommentNode *node) {}
@@ -325,7 +330,7 @@ void SemanticAnalyzer::visit(IndexAccessNode *node) {
     }
 }
 
-void SemanticAnalyzer::visit(StructNode *node) {
+void SemanticAnalyzer::visit(StructDeclarationNode *node) {
     for (auto &member: node->members) {
         const auto visitor = FuncOverloads{
                 [visitor = this](const NodePtr<DeclarationNode> &decl) {
@@ -343,8 +348,19 @@ void SemanticAnalyzer::visit(StructNode *node) {
 }
 
 void SemanticAnalyzer::visit(StructInitNode *node) {
-    if (auto type = resolveTypeRef(node->ident->name)) {
+    if (auto type = resolveTypeRef(node->ident)) {
         node->setType(std::move(*type));
+    }
+    auto designatorIt = std::begin(node->designator);
+    for (const auto &[name, type] : node->type->getFields()) {
+        if (designatorIt == std::end(node->designator)) {
+            break;
+        }
+        if (designatorIt->first == name) {
+            designatorIt->second->visit(this);
+            designatorIt->second = castIfNeeded(type, std::move(designatorIt->second));
+            ++designatorIt;
+        }
     }
 }
 

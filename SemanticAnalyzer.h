@@ -36,7 +36,7 @@ public:
     void visit(TypeCastNode *node) override;
     void visit(ArrayNode *node) override;
     void visit(IndexAccessNode *node) override;
-    void visit(StructNode *node) override;
+    void visit(StructDeclarationNode *node) override;
     void visit(StructInitNode *node) override;
 
 private:

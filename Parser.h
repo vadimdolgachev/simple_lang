@@ -53,7 +53,7 @@ private:
     [[nodiscard]] ExprNodePtr parseIndexAccess(ExprNodePtr object);
     [[nodiscard]] StmtNodePtr parseStruct();
     [[nodiscard]] ExprNodePtr parseStructInitialization();
-    [[nodiscard]] std::vector<std::pair<NodePtr<IdentNode>, ExprNodePtr>> parseDesignator();
+    [[nodiscard]] Designator parseDesignator();
 
     std::unique_ptr<Lexer> lexer;
     bool isLocalScope = false;

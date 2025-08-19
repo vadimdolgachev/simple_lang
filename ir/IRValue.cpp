@@ -23,13 +23,7 @@ std::shared_ptr<IRType> IRValue::getType() const {
 }
 
 llvm::Value *IRValue::createLoad(llvm::IRBuilder<> &builder) const {
-    if (valueKind == ValueKind::Value) {
-        return value;
-    }
-    if (valueKind == ValueKind::Local || valueKind == ValueKind::Global) {
-        return type->createLoad(builder, *this);
-    }
-    throw std::runtime_error("Unsupported IRValue kind for load operation");
+    return type->createLoad(builder, *this);
 }
 
 void IRValue::createStore(llvm::IRBuilder<> &builder, llvm::Value *ptr) const {

@@ -27,7 +27,7 @@ public:
                                llvm::Value *storage,
                                const std::string &name) const override;
 
-    llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
+    llvm::Constant *createConstant(const BaseNode *node, ModuleContext &mc) const override;
 
     llvm::Value *createMethodCall(llvm::IRBuilder<> &builder, const MethodInfoPtr &methodInfo, llvm::Value *object, const std::vector<llvm::Value *> &args) const override;
 

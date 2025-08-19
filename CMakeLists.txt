@@ -179,14 +179,20 @@ add_executable(simple_lang
         ir/StringNodeGenerator.h
         ir/BooleanNodeGenerator.cpp
         ir/BooleanNodeGenerator.h
-        ast/StructNode.h
-        ast/StructNode.cpp
+        ast/StructDeclarationNode.h
+        ast/StructDeclarationNode.cpp
         type/StructType.cpp
         type/StructType.h
         DeclarationCollector.cpp
         DeclarationCollector.h
         ast/StructInitNode.cpp
         ast/StructInitNode.h
+        ir/type/StructIRType.cpp
+        ir/type/StructIRType.h
+        ir/StructInitNodeGenerator.cpp
+        ir/StructInitNodeGenerator.h
+        ir/FieldAccessNodeGenerator.cpp
+        ir/FieldAccessNodeGenerator.h
 )
 
 

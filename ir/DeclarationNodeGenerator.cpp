@@ -62,7 +62,7 @@ namespace {
         return IRValue::createAlloca(alloca, IRTypeFactory::from(node->type, mc.module->getContext()),
                                      node->ident->name);
     }
-}
+}  // namespace
 
 void DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleContext &mc) const {
     const auto irType = IRTypeFactory::from(node->type, mc.module->getContext());
@@ -74,11 +74,7 @@ void DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleContext &m
     llvm::Value *initValue = nullptr;
     if (node->init.has_value()) {
         const auto valueHandler = LLVMCodegen::generate(node->init.value().get(), mc);
-        initValue = valueHandler.value().getRawValue();
-        if (node->init.value()->getType()->isArray()
-            && isNode<IdentNode>(node->init.value().get())) {
-            initValue = valueHandler.value().createLoad(*mc.builder);
-        }
+        initValue = valueHandler.value().createLoad(*mc.builder);
         if (!initValue) {
             throw std::logic_error("Failed to generate initializer for: " + node->ident->name);
         }

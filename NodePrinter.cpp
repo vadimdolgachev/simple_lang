@@ -28,7 +28,7 @@
 #include "ast/IndexAccessNode.h"
 #include "ast/MethodCallNode.h"
 #include "ast/StructInitNode.h"
-#include "ast/StructNode.h"
+#include "ast/StructDeclarationNode.h"
 
 namespace {
     std::ostream &operator<<(std::ostream &os, const TokenType token) {
@@ -94,7 +94,7 @@ void NodePrinter::visit(NumberNode *node) {
 }
 
 void NodePrinter::visit(StringNode *node) {
-    ostream << "\"" << node->str << "\"";
+    ostream << "\"" << node->text << "\"";
 }
 
 void NodePrinter::visit(BinOpNode *node) {
@@ -261,12 +261,12 @@ void NodePrinter::visit(IndexAccessNode *node) {
     ostream << node->object->toString() << "[" << node->index->toString() << "]";
 }
 
-void NodePrinter::visit(StructNode *node) {
+void NodePrinter::visit(StructDeclarationNode *node) {
     ostream << "struct " << node->name;
 }
 
 void NodePrinter::visit(StructInitNode *node) {
-    ostream << "StructInitNode " << node->ident->name;
+    ostream << "StructInitNode " << node->ident;
 }
 
 void NodePrinter::printIndent() const {

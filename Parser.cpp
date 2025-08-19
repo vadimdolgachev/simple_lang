@@ -24,7 +24,7 @@
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/StructInitNode.h"
-#include "ast/StructNode.h"
+#include "ast/StructDeclarationNode.h"
 #include "ast/TernaryOperatorNode.h"
 #include "type/Type.h"
 #include "type/TypeFactory.h"
@@ -736,22 +736,22 @@ StmtNodePtr Parser::parseStruct() {
         throw std::runtime_error(makeErrorMsg("Expected '}' symbol"));
     }
     lexer->nextToken();
-    return std::make_unique<StructNode>(std::move(name), std::move(members));
+    return std::make_unique<StructDeclarationNode>(std::move(name), std::move(members));
 }
 
 ExprNodePtr Parser::parseStructInitialization() {
     auto ident = parseIdent();
     auto designator = parseDesignator();
-    return std::make_unique<StructInitNode>(std::move(ident), std::move(designator));
+    return std::make_unique<StructInitNode>(ident->name, std::move(designator));
 }
 
-std::vector<std::pair<NodePtr<IdentNode>, ExprNodePtr>> Parser::parseDesignator() {
+Designator Parser::parseDesignator() {
     if (lexer->currToken().type != TokenType::LeftCurlyBracket) {
         throw std::runtime_error(makeErrorMsg("Expected '{' symbol"));
     }
     lexer->nextToken();
 
-    std::vector<std::pair<NodePtr<IdentNode>, ExprNodePtr>> members;
+    Designator members;
 
     while (lexer->currToken().type != TokenType::RightCurlyBracket) {
         auto key = parseIdent();
@@ -759,7 +759,7 @@ std::vector<std::pair<NodePtr<IdentNode>, ExprNodePtr>> Parser::parseDesignator(
             throw std::runtime_error(makeErrorMsg("Expected ':' symbol"));
         }
         lexer->nextToken();
-        members.emplace_back(std::move(key), parseExpr());
+        members.emplace_back(key->name, parseExpr());
         if (lexer->currToken().type == TokenType::Comma) {
             lexer->nextToken();
         }

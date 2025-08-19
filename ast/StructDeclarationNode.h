@@ -1,20 +1,20 @@
-#ifndef STRUCTNODE_H
-#define STRUCTNODE_H
+#ifndef STRUCTDECLARATIONNODE_H
+#define STRUCTDECLARATIONNODE_H
 
 #include "ast/BaseNode.h"
 #include "ast/DeclarationNode.h"
 
-class StructNode final : public StatementNode {
+class StructDeclarationNode final : public StatementNode {
 public:
     using MemberNode = std::variant<NodePtr<DeclarationNode>, TypePtr>;
 
-    StructNode(std::string name, std::vector<MemberNode> members);
+    StructDeclarationNode(std::string name, std::vector<MemberNode> members);
 
     void visit(NodeVisitor *visitor) override;
     [[nodiscard]] std::string toString() const override;
 
-    std::string name;
+    const std::string name;
     std::vector<MemberNode> members;
 };
 
-#endif
+#endif // STRUCTDECLARATIONNODE_H

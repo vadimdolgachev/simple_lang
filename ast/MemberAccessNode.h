@@ -6,10 +6,13 @@
 #define MEMBERACCESSNODE_H
 
 #include "BaseNode.h"
+#include "type/StructType.h"
 
 class MemberAccessNode : public ExpressionNode {
 public:
     explicit MemberAccessNode(ExprNodePtr object);
+
+    [[nodiscard]] StructTypePtr getObjectType() const;
 
     ExprNodePtr object;
 };

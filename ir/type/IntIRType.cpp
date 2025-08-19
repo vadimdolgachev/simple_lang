@@ -10,11 +10,9 @@
 IntIRType::IntIRType(const bool isPointer):
     NumericIRType(isPointer, false, false) {}
 
-llvm::Constant *IntIRType::createConstant(const BaseNode *node,
-                                          llvm::IRBuilder<> & /*builder*/,
-                                          llvm::Module &module) {
+llvm::Constant *IntIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
     const auto *const numberNode = dynamic_cast<const NumberNode *>(node);
-    return llvm::ConstantInt::get(getLLVMType(module.getContext()),
+    return llvm::ConstantInt::get(getLLVMType(mc.module->getContext()),
                                   llvm::APInt(32, static_cast<int64_t>(numberNode->value),
                                               true));
 }

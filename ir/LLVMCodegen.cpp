@@ -40,6 +40,7 @@
 #include "BlockNodeGenerator.h"
 #include "BooleanNodeGenerator.h"
 #include "DeclarationNodeGenerator.h"
+#include "FieldAccessNodeGenerator.h"
 #include "FunctionCallNodeGenerator.h"
 #include "IfStatementGenerator.h"
 #include "IndexAccessNodeGenerator.h"
@@ -50,10 +51,12 @@
 #include "ProtoFunctionGenerator.h"
 #include "ReturnNodeGenerator.h"
 #include "StringNodeGenerator.h"
+#include "StructInitNodeGenerator.h"
 #include "TernaryOperatorNodeGenerator.h"
 #include "TypeCastNodeGenerator.h"
 #include "UnaryOpNodeGenerator.h"
-#include "ast/StructNode.h"
+#include "ast/FieldAccessNode.h"
+#include "ast/StructInitNode.h"
 
 namespace {
     std::string typeToString(const llvm::Type *type) {
@@ -61,6 +64,38 @@ namespace {
         llvm::raw_string_ostream rso(typeStr);
         type->print(rso);
         return rso.str();
+    }
+
+    bool areTypesEquivalent(llvm::Type *const type1, llvm::Type *const type2) {
+        if (type1 == type2) {
+            return true;
+        }
+
+        if (type1->isStructTy() && type2->isStructTy()) {
+            const auto *const struct1 = llvm::cast<llvm::StructType>(type1);
+            auto *const struct2 = llvm::cast<llvm::StructType>(type2);
+
+            if (struct1->isLayoutIdentical(struct2)) {
+                return true;
+            }
+
+            if (struct1->hasName() && struct2->hasName()) {
+                return struct1->getName() == struct2->getName();
+            }
+        }
+
+        if (type1->isPointerTy() && type2->isPointerTy()) {
+            return areTypesEquivalent(type1->getPointerTo(), type2->getPointerTo());
+        }
+
+        if (type1->isArrayTy() && type2->isArrayTy()) {
+            const auto *array1 = llvm::cast<llvm::ArrayType>(type1);
+            const auto * array2 = llvm::cast<llvm::ArrayType>(type2);
+
+            return array1->getNumElements() == array2->getNumElements() &&
+                   areTypesEquivalent(array1->getElementType(), array2->getElementType());
+        }
+        return false;
     }
 } // namespace
 
@@ -87,6 +122,8 @@ LLVMCodegen::LLVMCodegen(ModuleContext &moduleContext) :
     generators[std::type_index(typeid(NumberNode))] = std::make_unique<NumberNodeGenerator>();
     generators[std::type_index(typeid(StringNode))] = std::make_unique<StringNodeGenerator>();
     generators[std::type_index(typeid(BooleanNode))] = std::make_unique<BooleanNodeGenerator>();
+    generators[std::type_index(typeid(StructInitNode))] = std::make_unique<StructInitNodeGenerator>();
+    generators[std::type_index(typeid(FieldAccessNode))] = std::make_unique<FieldAccessNodeGenerator>();
 }
 
 void LLVMCodegen::visit(IdentNode *node) {
@@ -158,7 +195,7 @@ void LLVMCodegen::visit(MethodCallNode *node) {
 }
 
 void LLVMCodegen::visit(FieldAccessNode *node) {
-    throw std::logic_error("FieldAccessNode not implemented");
+    res = generateForType(node, mc);
 }
 
 void LLVMCodegen::visit(CommentNode *node) {
@@ -181,12 +218,12 @@ void LLVMCodegen::visit(IndexAccessNode *node) {
     res = generateForType(node, mc);
 }
 
-void LLVMCodegen::visit(StructNode *node) {
-
+void LLVMCodegen::visit(StructDeclarationNode *node) {
+    // skip type declaration
 }
 
 void LLVMCodegen::visit(StructInitNode *node) {
-
+    res = generateForType(node, mc);
 }
 
 IRValueOpt LLVMCodegen::value() const {
@@ -242,11 +279,10 @@ llvm::Function *getModuleFunction(const std::string &name, const ModuleContext &
 llvm::Value *tryCastValue(const std::unique_ptr<llvm::IRBuilder<>> &builder,
                           llvm::Value *const value,
                           llvm::Type *const destType) {
-    if (value->getType() == destType) {
+    auto *const srcType = value->getType();
+    if (areTypesEquivalent(srcType, destType)) {
         return value;
     }
-
-    const llvm::Type *const srcType = value->getType();
 
     auto getCastOp = [&]() -> std::optional<llvm::Instruction::CastOps> {
         if (destType->isIntegerTy(1) && !value->getType()->isIntegerTy(1)) {

@@ -9,8 +9,7 @@
 
 class FieldAccessNode final : public MemberAccessNode {
 public:
-    explicit FieldAccessNode(ExprNodePtr object,
-                             std::unique_ptr<IdentNode> field);
+    FieldAccessNode(ExprNodePtr object, std::unique_ptr<IdentNode> field);
 
     void visit(NodeVisitor *visitor) override;
     [[nodiscard]] std::string toString() const override;

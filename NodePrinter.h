@@ -58,7 +58,7 @@ public:
 
     void visit(IndexAccessNode *node) override;
 
-    void visit(StructNode *node) override;
+    void visit(StructDeclarationNode *node) override;
 
     void visit(StructInitNode *node) override;
 

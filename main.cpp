@@ -146,9 +146,12 @@ int main() {
     defineEmbeddedFunctions(moduleContext);
 
     CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
+        x: int = 1;
+
         fn main() {
-            point: Point = Point{x: 1, y: 2};
-            println("point {%f, %f}", point.x, point.y);
+            y: int = 2;
+            point: Point = Point{x: x + y, y: y};
+            println("point: {%f, %f}", point.x, point.y);
         }
 
         struct Point {

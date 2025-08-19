@@ -12,6 +12,7 @@
 
 #include "Lexer.h"
 #include "ast/BaseNode.h"
+#include "../ModuleContext.h"
 
 class IRValue;
 
@@ -42,7 +43,9 @@ public:
     void registerCustomOperation(TokenType op,
                                  llvm::Function *function);
 
-    virtual llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) = 0;
+    virtual llvm::Constant *createConstant(const BaseNode *node, ModuleContext &mc) const = 0;
+
+    virtual llvm::Value *createUndef(const BaseNode *node, ModuleContext &mc) const;
 
     virtual llvm::Value *createMethodCall(llvm::IRBuilder<> &builder,
                                           const MethodInfoPtr &methodInfo,

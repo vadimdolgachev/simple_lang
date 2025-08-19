@@ -10,6 +10,7 @@
 #include "type/StrIRType.h"
 #include "type/VoidIRType.h"
 #include "type/ArrayIRType.h"
+#include "type/StructIRType.h"
 #include "../type/Type.h"
 #include "../type/ArrayType.h"
 
@@ -28,6 +29,9 @@ std::shared_ptr<IRType> IRTypeFactory::from(const TypePtr &type, llvm::LLVMConte
     }
     if (type->isBoolean()) {
         return std::make_shared<BooleanIRType>();
+    }
+    if (type->isStruct()) {
+        return std::make_shared<StructIRType>(std::dynamic_pointer_cast<const StructType>(type));
     }
     if (const auto arrayType = std::dynamic_pointer_cast<const ArrayType>(type)) {
         return std::make_shared<ArrayIRType>(from(arrayType->getElementType(), context)->getLLVMType(context),

@@ -3,17 +3,14 @@
 //
 
 #include "DoubleIRType.h"
-
 #include "ast/NumberNode.h"
 
 DoubleIRType::DoubleIRType(const bool isPointer):
     NumericIRType(isPointer, false, true) {}
 
-llvm::Constant *DoubleIRType::createConstant(const BaseNode *node,
-                                             llvm::IRBuilder<> & /*builder*/,
-                                             llvm::Module &module) {
+llvm::Constant *DoubleIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
     const auto *const numberNode = dynamic_cast<const NumberNode *>(node);
-    return llvm::ConstantFP::get(getLLVMType(module.getContext()),
+    return llvm::ConstantFP::get(getLLVMType(mc.module->getContext()),
                                  llvm::APFloat(numberNode->value));
 }
 

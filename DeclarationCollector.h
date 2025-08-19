@@ -12,7 +12,7 @@ public:
     [[nodiscard]] std::vector<TypePtr> getTypeDeclarations() const;
 
 private:
-    void visit(StructNode *node) override;
+    void visit(StructDeclarationNode *node) override;
     void visit(ModuleNode *node) override;
 
     std::vector<TypePtr> declarations;

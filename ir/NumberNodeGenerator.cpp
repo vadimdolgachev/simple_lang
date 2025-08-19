@@ -8,5 +8,5 @@
 
 IRValueOpt NumberNodeGenerator::generateT(NumberNode *node, ModuleContext &mc) const {
     const auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
-    return IRValue::createValue(type->createConstant(node, *mc.builder, *mc.module), type);
+    return IRValue::createValue(type->createConstant(node, mc), type);
 }

@@ -8,7 +8,7 @@
 
 IRValueOpt StringNodeGenerator::generateT(StringNode *node, ModuleContext &mc) const {
     const auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
-    return IRValue::createValue(type->createConstant(node, *mc.builder, *mc.module),
+    return IRValue::createValue(type->createConstant(node, mc),
                                 type,
-                                node->str + ".str");
+                                node->text + ".str");
 }

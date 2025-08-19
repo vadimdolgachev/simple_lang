@@ -32,7 +32,7 @@
 #include "ast/ArrayNode.h"
 #include "ast/IndexAccessNode.h"
 #include "type/ArrayType.h"
-#include "ast/StructNode.h"
+#include "ast/StructDeclarationNode.h"
 
 namespace {
     class VarDefinitionTest : public testing::Test {};
@@ -1256,7 +1256,7 @@ namespace {
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
         auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
-        auto [structNode, orig] = tryCast<StructNode>(std::move(node));
+        auto [structNode, orig] = tryCast<StructDeclarationNode>(std::move(node));
         ASSERT_NE(structNode, nullptr) << "Not a StructNode: " << input;
         ASSERT_EQ(structNode->name, "MyStruct") << "Incorrect struct name: " << input;
         ASSERT_EQ(structNode->members.size(), 2) << "Incorrect fields count: " << input;
@@ -1276,7 +1276,7 @@ namespace {
                 std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
         auto node = parser->nextNode();
         ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
-        auto [structNode, orig] = tryCast<StructNode>(std::move(node));
+        auto [structNode, orig] = tryCast<StructDeclarationNode>(std::move(node));
         ASSERT_NE(structNode, nullptr) << "Not a StructNode: " << input;
         ASSERT_EQ(structNode->name, "Empty") << "Incorrect struct name: " << input;
         ASSERT_EQ(structNode->members.size(), 0) << "Incorrect fields count: " << input;

@@ -4,7 +4,7 @@
 
 #include "StructInitNode.h"
 
-StructInitNode::StructInitNode(NodePtr<IdentNode> ident, Designator designator) :
+StructInitNode::StructInitNode(std::string ident, Designator designator) :
     ident(std::move(ident)),
     designator(std::move(designator)) {}
 
@@ -13,7 +13,7 @@ void StructInitNode::visit(NodeVisitor *visitor) {
 }
 
 std::string StructInitNode::toString() const {
-    return "StructInitNode";
+    return std::format("LiteralStructNode {}", ident);
 }
 
 TypePtr StructInitNode::getType() const {

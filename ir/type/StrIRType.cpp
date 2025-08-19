@@ -58,16 +58,15 @@ llvm::Type * StrIRType::getLLVMElementType(llvm::LLVMContext &context) const {
 }
 
 llvm::Constant *StrIRType::createConstant(const BaseNode *node,
-                                          llvm::IRBuilder<> & /*builder*/,
-                                          llvm::Module &module) {
+                                          ModuleContext &mc) const {
     const auto *strNode = dynamic_cast<const StringNode *>(node);
-    auto *gv = new llvm::GlobalVariable(module,
-                                        getLLVMType(module.getContext()),
+    auto *gv = new llvm::GlobalVariable(*mc.module,
+                                        getLLVMType(mc.module->getContext()),
                                         true,
                                         llvm::GlobalValue::PrivateLinkage,
-                                        llvm::ConstantDataArray::getString(module.getContext(), strNode->str),
+                                        llvm::ConstantDataArray::getString(mc.module->getContext(), strNode->text),
                                         ".str");
-    return llvm::ConstantExpr::getBitCast(gv, getLLVMType(module.getContext()));
+    return llvm::ConstantExpr::getBitCast(gv, getLLVMType(mc.module->getContext()));
 }
 
 llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,

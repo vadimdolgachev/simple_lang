@@ -7,7 +7,7 @@
 
 StructType::StructType(std::string name,
                        const StructKind kind,
-                       std::vector<Field> fields) :
+                       std::vector<StructField> fields) :
     name(std::move(name)),
     structKind(kind),
     fields(std::move(fields)) {}
@@ -28,6 +28,25 @@ StructKind StructType::getStructKind() const noexcept {
     return structKind;
 }
 
-const std::vector<Field> &StructType::getFields() const noexcept {
+const std::vector<StructField> &StructType::getFields() const noexcept {
     return fields;
+}
+
+std::optional<TypePtr> StructType::findFieldType(const std::string &fieldName) const {
+    if (const auto index = findFieldIndex(fieldName)) {
+        return fields[index.value()].type;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::size_t> StructType::findFieldIndex(const std::string &fieldName) const {
+    const auto it = std::ranges::find_if(fields, [fieldName](const auto &structField) {
+        const auto &structFieldName = structField.name;
+        return structFieldName && structFieldName == fieldName;
+    });
+
+    if (it != std::end(fields)) {
+        return std::distance(fields.begin(), it);
+    }
+    return std::nullopt;
 }

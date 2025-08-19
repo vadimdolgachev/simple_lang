@@ -4,11 +4,11 @@
 
 #include "type/TypeFactory.h"
 
-StringNode::StringNode(std::string v):
-    str(std::move(v)) {}
+StringNode::StringNode(std::string text):
+    text(std::move(text)) {}
 
 std::string StringNode::toString() const {
-    return std::format("StringNode({})", str);
+    return std::format("StringNode({})", text);
 }
 
 void StringNode::visit(NodeVisitor *visitor) {

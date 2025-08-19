@@ -36,7 +36,7 @@ llvm::Value *ArrayIRType::createUnaryOp(llvm::IRBuilder<> &builder,
     throw std::logic_error("Unsupported operation");
 }
 
-llvm::Constant *ArrayIRType::createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) {
+llvm::Constant *ArrayIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
     const auto arrayNode = asNode<ArrayNode>(node);
     if (!arrayNode) {
         throw std::logic_error("Expected ArrayNode");
@@ -53,14 +53,14 @@ llvm::Constant *ArrayIRType::createConstant(const BaseNode *node, llvm::IRBuilde
     elements.reserve(arrayNode.value()->elements.size());
 
     const auto elemIRType =
-            IRTypeFactory::from(arrayNode.value()->getType()->asArray().value()->getElementType(), module.getContext());
+            IRTypeFactory::from(arrayNode.value()->getType()->asArray().value()->getElementType(), mc.module->getContext());
     for (const auto &element: arrayNode.value()->elements) {
         auto *const elementConstant =
-                elemIRType->createConstant(element.get(), builder, module);
+                elemIRType->createConstant(element.get(), mc);
         if (!elementConstant) {
             throw std::logic_error("Array element type mismatch");
         }
-        elements.push_back(elementConstant);
+        elements.push_back(llvm::dyn_cast<llvm::Constant>(elementConstant));
     }
     return llvm::ConstantArray::get(llvm::ArrayType::get(elementType, arraySize), elements);
 }

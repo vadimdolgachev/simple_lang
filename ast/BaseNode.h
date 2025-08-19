@@ -35,7 +35,7 @@ class ModuleNode;
 class TypeCastNode;
 class ArrayNode;
 class IndexAccessNode;
-class StructNode;
+class StructDeclarationNode;
 class StructInitNode;
 
 class NodeVisitor {
@@ -65,7 +65,7 @@ public:
     virtual void visit(TypeCastNode *node) = 0;
     virtual void visit(ArrayNode *node) = 0;
     virtual void visit(IndexAccessNode *node) = 0;
-    virtual void visit(StructNode *node) = 0;
+    virtual void visit(StructDeclarationNode *node) = 0;
     virtual void visit(StructInitNode *node) = 0;
 };
 
@@ -94,7 +94,7 @@ public:
     void visit(TypeCastNode *node) override {}
     void visit(ArrayNode *node) override {}
     void visit(IndexAccessNode *node) override {}
-    void visit(StructNode *node) override {}
+    void visit(StructDeclarationNode *node) override {}
     void visit(StructInitNode *node) override {}
 
 protected:
@@ -149,5 +149,7 @@ template<typename T>
 bool isNode(const BaseNode *node) {
     return asNode<T>(node) != std::nullopt;
 }
+
+using Designator = std::vector<std::pair<std::string, ExprNodePtr>>;
 
 #endif //BASEASTNODE_H

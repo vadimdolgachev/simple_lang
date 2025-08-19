@@ -6,6 +6,7 @@
 
 #include "ArrayType.h"
 #include "FunctionType.h"
+#include "StructType.h"
 
 BoolResult Type::canCastTo(const TypePtr &target, CastMode /*mode*/) const {
     if (*this == *target) {
@@ -118,8 +119,16 @@ bool Type::isArray() const noexcept {
     return getKind() == TypeKind::Array;
 }
 
+bool Type::isStruct() const noexcept {
+    return getKind() == TypeKind::Struct;
+}
+
 std::optional<FunctionTypePtr> Type::asFunction() const {
     return std::dynamic_pointer_cast<const FunctionType>(shared_from_this());
+}
+
+std::optional<StructTypePtr> Type::asStruct() const {
+    return std::dynamic_pointer_cast<const StructType>(shared_from_this());
 }
 
 std::optional<ArrayTypePtr> Type::asArray() const {

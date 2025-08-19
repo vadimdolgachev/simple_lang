@@ -11,7 +11,7 @@ class CharIRType final : public NumericIRType {
 public:
     explicit CharIRType(bool isPointer = false);
 
-    llvm::Constant *createConstant(const BaseNode *node, llvm::IRBuilder<> &builder, llvm::Module &module) override;
+    llvm::Constant *createConstant(const BaseNode *node, ModuleContext &mc) const override;
 
 protected:
     llvm::Type *getBaseLLVMType(llvm::LLVMContext &context) const override;

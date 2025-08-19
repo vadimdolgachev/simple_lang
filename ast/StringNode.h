@@ -9,7 +9,7 @@
 
 class StringNode final : public ExpressionNode {
 public:
-    explicit StringNode(std::string v);
+    explicit StringNode(std::string text);
 
     [[nodiscard]] std::string toString() const override;
 
@@ -19,7 +19,7 @@ public:
 
     void setType(TypePtr type) override;
 
-    const std::string str;
+    const std::string text;
 };
 
 #endif //STRING_NODE_H
