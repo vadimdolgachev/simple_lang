@@ -14,7 +14,7 @@
 class ProtoFunctionStatement final : public StatementNode {
 public:
     ProtoFunctionStatement(std::string name,
-                           TypePtr returnType,
+                           std::optional<TypePtr> returnType,
                            std::vector<std::unique_ptr<DeclarationNode>> params,
                            bool isVarArgs = false);
 

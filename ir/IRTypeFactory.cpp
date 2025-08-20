@@ -31,7 +31,7 @@ std::shared_ptr<IRType> IRTypeFactory::from(const TypePtr &type, llvm::LLVMConte
         return std::make_shared<BooleanIRType>();
     }
     if (type->isStruct()) {
-        return std::make_shared<StructIRType>(std::dynamic_pointer_cast<const StructType>(type));
+        return std::make_shared<StructIRType>(std::dynamic_pointer_cast<StructType>(type));
     }
     if (const auto arrayType = std::dynamic_pointer_cast<const ArrayType>(type)) {
         return std::make_shared<ArrayIRType>(from(arrayType->getElementType(), context)->getLLVMType(context),

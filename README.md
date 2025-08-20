@@ -3,8 +3,15 @@
 ## Simple program
 ```
     fn main() {
-        message: str = "Hello, World%s";
-        println(message, "!");
+        fn main() {
+            greeting: Greeting = Greeting {hello: "Hello", world: "World"};
+            println("%s, %s!", greeting.hello, greeting.world);
+        }
+
+        struct Greeting {
+            hello: str;
+            world: str;
+        }
     }
 ```
 

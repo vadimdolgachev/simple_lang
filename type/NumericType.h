@@ -13,11 +13,11 @@ public:
 
     BoolResult canCastTo(const TypePtr &target, CastMode mode) const override;
 
-    ResultType getCommonType(const TypePtr &other) const override;
+    ResultType getCommonType(const TypePtr &other) override;
 
-    ResultType getResultTypeUnary(TokenType op) const override;
+    ResultType getResultTypeUnary(TokenType op) override;
 
-    ResultType getComparableType(const TypePtr &type) const override;
+    ResultType getComparableType(const TypePtr &type) override;
 };
 
 #endif //NUMERICTYPE_H

@@ -7,7 +7,7 @@
 #include "ast/StringNode.h"
 #include "../../type/Type.h"
 
-StrIRType::StrIRType(const bool isPointer):
+StrIRType::StrIRType(const bool isPointer) :
     IRType(isPointer) {
     if (!isPointer) {
         throw std::invalid_argument("String type must be a pointer");
@@ -53,7 +53,7 @@ llvm::Type *StrIRType::getLLVMType(llvm::LLVMContext &context) const {
     return llvm::PointerType::get(llvm::Type::getInt8Ty(context), 0);
 }
 
-llvm::Type * StrIRType::getLLVMElementType(llvm::LLVMContext &context) const {
+llvm::Type *StrIRType::getLLVMElementType(llvm::LLVMContext &context) const {
     throw std::runtime_error("Unsupported for str type");
 }
 
@@ -66,7 +66,7 @@ llvm::Constant *StrIRType::createConstant(const BaseNode *node,
                                         llvm::GlobalValue::PrivateLinkage,
                                         llvm::ConstantDataArray::getString(mc.module->getContext(), strNode->text),
                                         ".str");
-    return llvm::ConstantExpr::getBitCast(gv, getLLVMType(mc.module->getContext()));
+    return gv;
 }
 
 llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,
@@ -79,8 +79,11 @@ llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,
     return IRType::createMethodCall(builder, methodInfo, object, args);
 }
 
-llvm::Value *StrIRType::createLoad(llvm::IRBuilder<> & /*irBuilder*/, const IRValue &value) const {
-    return value.getRawValue();
+llvm::Value *StrIRType::createLoad(llvm::IRBuilder<> &irBuilder, const IRValue &value) const {
+    if (auto *const gv = llvm::dyn_cast<llvm::GlobalVariable>(value.getRawValue())) {
+        return gv;
+    }
+    return IRType::createLoad(irBuilder, value);
 }
 
 llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) const {

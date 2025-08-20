@@ -15,7 +15,7 @@ StrType::StrType():
     methods.push_back(std::move(len));
 }
 
-ResultType StrType::getResultTypeUnary(TokenType op) const {
+ResultType StrType::getResultTypeUnary(TokenType op) {
     return std::unexpected("Unsupported operator for string type");
 }
 

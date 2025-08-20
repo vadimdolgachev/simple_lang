@@ -11,8 +11,21 @@
 #include "FunctionType.h"
 #include "NumericType.h"
 #include "PointerType.h"
+#include "ReferenceType.h"
 #include "StrType.h"
 #include "VoidType.h"
+
+namespace {
+    const std::unordered_map<std::string, TypeKind> PRIMITIVE_TYPES = {
+            {"bool", TypeKind::Boolean},
+            {"byte", TypeKind::Byte},
+            {"char", TypeKind::Char},
+            {"double", TypeKind::Double},
+            {"int", TypeKind::Integer},
+            {"void", TypeKind::Void},
+            {"str", TypeKind::Str},
+    };
+} // namespace
 
 std::unordered_map<TypeKind, TypePtr> TypeFactory::typeCache;
 std::unordered_map<TypePtr, TypePtr> TypeFactory::pointerCache;
@@ -66,4 +79,11 @@ FunctionTypePtr TypeFactory::makeFunction(const TypePtr &returnType,
 
 ArrayTypePtr TypeFactory::makeArrayType(const TypePtr &elementType, size_t size) {
     return std::make_shared<ArrayType>(elementType, size);
+}
+
+std::optional<TypePtr> TypeFactory::findPrimitiveType(const std::string &name) {
+    if (const auto it = PRIMITIVE_TYPES.find(name); it != std::end(PRIMITIVE_TYPES)) {
+        return makePrimitiveType(it->second);
+    }
+    return std::nullopt;
 }

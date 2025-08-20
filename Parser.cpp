@@ -33,16 +33,6 @@ namespace {
     bool isSign(const TokenType token) {
         return token == TokenType::Plus || token == TokenType::Minus;
     }
-
-    const std::unordered_map<std::string, TypeKind> TYPES = {
-            {"bool", TypeKind::Boolean},
-            {"byte", TypeKind::Byte},
-            {"char", TypeKind::Char},
-            {"double", TypeKind::Double},
-            {"int", TypeKind::Integer},
-            {"void", TypeKind::Void},
-            {"str", TypeKind::Str},
-    };
 } // namespace
 
 Parser::Parser(std::unique_ptr<Lexer> lexer_) :
@@ -515,20 +505,13 @@ StmtNodePtr Parser::parseFunctionDef() {
         }
     }
     lexer->nextToken(); // ")"
-    auto retTypeKind = TypeKind::Void;
+    std::optional<TypePtr> retType = std::nullopt;
     if (lexer->currToken().type == TokenType::Colon) {
         lexer->nextToken();
-        const auto typeName = lexer->currToken().value.value();
-        const auto typeKind = TYPES.find(typeName);
-        if (typeKind == TYPES.end()) {
-            throw std::runtime_error(
-                    makeErrorMsg("Unexpected type: " + lexer->currToken().toString()));
-        }
-        lexer->nextToken();
-        retTypeKind = typeKind->second;
+        retType = parseTypeId();
     }
     auto proto = std::make_unique<ProtoFunctionStatement>(fnName->name,
-                                                          TypeFactory::makePrimitiveType(retTypeKind),
+                                                          retType,
                                                           std::move(params));
     if (lexer->currToken().type == TokenType::LeftCurlyBracket) {
         return std::make_unique<FunctionNode>(std::move(proto), parseCurlyBracketBlock());
@@ -552,7 +535,7 @@ TypePtr Parser::parseArrayType() {
     TypePtr type;
     if (lexer->currToken().type == TokenType::LeftSquareBracket) {
         lexer->nextToken();
-        const auto elementType = parseType();
+        const auto elementType = parseTypeId();
         if (lexer->currToken().type != TokenType::Semicolon) {
             throw std::runtime_error(
                     makeErrorMsg("Unexpected token: " + lexer->currToken().toString()));
@@ -576,19 +559,14 @@ TypePtr Parser::parseArrayType() {
     return type;
 }
 
-TypePtr Parser::parseType() {
+TypePtr Parser::parseTypeId() {
     if (lexer->currToken().type == TokenType::LeftSquareBracket) {
         return parseArrayType();
     }
     if (lexer->currToken().type == TokenType::Identifier && lexer->currToken().value) {
-        if (const auto it = TYPES.find(lexer->currToken().value.value()); it != TYPES.end()) {
-            const auto result = TypeFactory::makePrimitiveType(it->second);
-            lexer->nextToken();
-            return result;
-        }
-        const auto result = TypeFactory::makeReference(lexer->currToken().value.value());
+        const auto typeId = TypeFactory::makeReference(lexer->currToken().value.value());
         lexer->nextToken();
-        return result;
+        return typeId;
     }
     throw std::runtime_error(makeErrorMsg("Wrong token: " + lexer->currToken().toString()));
 }
@@ -602,7 +580,7 @@ NodePtr<DeclarationNode> Parser::parseDeclarationNode(const bool needConsumeSemi
     }
     lexer->nextToken();
 
-    const auto nodeType = parseType();
+    const auto nodeType = parseTypeId();
     std::optional<ExprNodePtr> init = std::nullopt;
     if (lexer->currToken().type == TokenType::Assignment) {
         lexer->nextToken();

@@ -145,18 +145,26 @@ int main() {
     ModuleContext moduleContext(llvmModule, llvmIRBuilder);
     defineEmbeddedFunctions(moduleContext);
 
-    CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
-        x: int = 1;
+    CompilerFronted compiler(std::make_unique<std::istringstream>(
+    R"(
+        globalX: int = 1;
+
+        fn makePoint(): Point {
+            localY: int = 2;
+            text: str = "Hello";
+            point: Point = Point{x: globalX + localY, y: localY, text: text};
+            return point;
+        }
 
         fn main() {
-            y: int = 2;
-            point: Point = Point{x: x + y, y: y};
-            println("point: {%f, %f}", point.x, point.y);
+            point: Point = makePoint();
+            println("point: {%f, %f, %s}", point.x, point.y, point.text);
         }
 
         struct Point {
             x: double;
             y: double;
+            text: str
         }
     )"), BuiltinSymbols::getInstance().getFunctions());
 

@@ -21,7 +21,6 @@
 #include "ast/UnaryOpNode.h"
 #include "ast/ArrayNode.h"
 #include "ast/IndexAccessNode.h"
-#include "ast/StructDeclarationNode.h"
 #include "ast/StructInitNode.h"
 #include "type/FunctionType.h"
 #include "type/TypeFactory.h"
@@ -117,9 +116,12 @@ void SemanticAnalyzer::visit(ProtoFunctionStatement *node) {
     std::vector<TypePtr> params;
     params.reserve(node->params.size());
     for (const auto &param: node->params) {
+        param->type = resolveTypeIfNeeded(param->type);
         params.push_back(param->type);
         symbolTable.insert(param->ident->name, std::make_shared<SymbolInfo>(param->type));
     }
+
+    node->returnType = resolveTypeIfNeeded(node->returnType);
     symbolTable.insertFunction(node->name,
                                std::make_shared<SymbolInfo>(
                                        TypeFactory::makeFunction(node->returnType, params, node->isVarArgs)));
@@ -206,11 +208,7 @@ void SemanticAnalyzer::visit(BlockNode *node) {
 }
 
 void SemanticAnalyzer::visit(DeclarationNode *node) {
-    if (const auto &typeRef = std::dynamic_pointer_cast<const ReferenceType>(node->type)) {
-        if (auto resolvedType = resolveTypeRef(typeRef->getName())) {
-            node->type = std::move(*resolvedType);
-        }
-    }
+    node->type = resolveTypeIfNeeded(node->type);
     if (node->isGlobal) {
         symbolTable.insertGlobal(node->ident->name, std::make_shared<SymbolInfo>(node->type));
     } else {
@@ -283,7 +281,7 @@ void SemanticAnalyzer::visit(FieldAccessNode *node) {
         node->field->setType(*fieldType);
         node->setType(*fieldType);
     } else {
-        throw SemanticError(std::format("Unknown type of field: {}", node->field->name));
+        throw SemanticError(std::format("Unknown field: {}:{}", node->object->getType()->asStruct().value()->getName(), node->field->name));
     }
 }
 
@@ -331,26 +329,21 @@ void SemanticAnalyzer::visit(IndexAccessNode *node) {
 }
 
 void SemanticAnalyzer::visit(StructDeclarationNode *node) {
-    for (auto &member: node->members) {
-        const auto visitor = FuncOverloads{
-                [visitor = this](const NodePtr<DeclarationNode> &decl) {
-                    if (decl->init) {
-                        decl->init.value()->visit(visitor);
-                        decl->init = castIfNeeded(decl->type, std::move(decl->init.value()));
-                    }
-                },
-                []([[maybe_unused]] TypePtr &type) {
-                    throw std::runtime_error("Not implemented");
-                }
-        };
-        std::visit(visitor, member);
-    }
+    // skip struct declaration
 }
 
 void SemanticAnalyzer::visit(StructInitNode *node) {
-    if (auto type = resolveTypeRef(node->ident)) {
-        node->setType(std::move(*type));
+    if (const auto type = resolveTypeRef(node->ident)) {
+        const auto structType = type.value()->asStruct().value();
+        for (size_t i = 0; i < structType->getFieldSize(); ++i) {
+            auto &[fieldName, fieldType] = structType->getFieldByIndex(i);
+            fieldType = resolveTypeIfNeeded(std::move(fieldType));
+        }
+        node->setType(structType);
+    } else {
+        throw SemanticError(std::format("Type definition for '{}' not found", node->ident));
     }
+
     auto designatorIt = std::begin(node->designator);
     for (const auto &[name, type] : node->type->getFields()) {
         if (designatorIt == std::end(node->designator)) {
@@ -365,6 +358,9 @@ void SemanticAnalyzer::visit(StructInitNode *node) {
 }
 
 std::optional<TypePtr> SemanticAnalyzer::resolveTypeRef(const std::string &typeName) const {
+    if (const auto type = TypeFactory::findPrimitiveType(typeName)) {
+        return type;
+    }
     const auto it = std::ranges::find_if(declarations, [typeName](const auto &type) {
         return type->getName() == typeName;
     });
@@ -372,4 +368,13 @@ std::optional<TypePtr> SemanticAnalyzer::resolveTypeRef(const std::string &typeN
         return *it;
     }
     return std::nullopt;
+}
+
+TypePtr SemanticAnalyzer::resolveTypeIfNeeded(TypePtr type) const {
+    if (type->getKind() == TypeKind::Reference) {
+        if (auto resolvedType = resolveTypeRef(type->getName())) {
+            return *resolvedType;
+        }
+    }
+    return type;
 }

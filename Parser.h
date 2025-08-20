@@ -41,7 +41,7 @@ private:
     [[nodiscard]] StmtNodePtr parseWhileStatement();
     [[nodiscard]] StmtNodePtr parseDoWhileStatement();
     [[nodiscard]] NodePtr<BlockNode> parseBlock();
-    [[nodiscard]] TypePtr parseType();
+    [[nodiscard]] TypePtr parseTypeId();
     [[nodiscard]] TypePtr parseArrayType();
     [[nodiscard]] NodePtr<DeclarationNode> parseDeclarationNode(bool needConsumeSemicolon, bool isLocalScope);
     [[nodiscard]] StmtNodePtr parseReturnStatement();

@@ -19,7 +19,7 @@ BoolResult NumericType::canCastTo(const TypePtr &target, const CastMode mode) co
     return std::unexpected(std::format("Cannot cast {} to {}", getName(), target->getName()));
 }
 
-ResultType NumericType::getResultTypeUnary(const TokenType op) const {
+ResultType NumericType::getResultTypeUnary(const TokenType op) {
     switch (op) {
         case TokenType::Plus:
         case TokenType::Minus:
@@ -32,7 +32,7 @@ ResultType NumericType::getResultTypeUnary(const TokenType op) const {
     return std::unexpected("Unsupported unary operator for numeric type");
 }
 
-ResultType NumericType::getCommonType(const TypePtr &other) const {
+ResultType NumericType::getCommonType(const TypePtr &other) {
     if (other->isNumeric()) {
         if (getKind() == TypeKind::Double || other->getKind() == TypeKind::Double) {
             return TypeFactory::makePrimitiveType(TypeKind::Double);
@@ -42,7 +42,7 @@ ResultType NumericType::getCommonType(const TypePtr &other) const {
     return std::unexpected(std::format("Cannot cast numeric type to {}", other->getName()));
 }
 
-ResultType NumericType::getComparableType(const TypePtr &type) const {
+ResultType NumericType::getComparableType(const TypePtr &type) {
     if (type->isNumeric()) {
         return getCommonType(type);
     }

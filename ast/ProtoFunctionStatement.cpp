@@ -1,15 +1,14 @@
-#include "ProtoFunctionStatement.h"
-
 #include <utility>
 
-#include "Util.h"
+#include "ProtoFunctionStatement.h"
+#include "type/TypeFactory.h"
 
 ProtoFunctionStatement::ProtoFunctionStatement(std::string name,
-                                               TypePtr returnType,
+                                               std::optional<TypePtr> returnType,
                                                std::vector<std::unique_ptr<DeclarationNode>> params,
                                                const bool isVarArgs) :
     name(std::move(name)),
-    returnType(std::move(returnType)),
+    returnType(returnType ? std::move(returnType.value()) : TypeFactory::makePrimitiveType(TypeKind::Void)),
     params(std::move(params)),
     isVarArgs(isVarArgs) {}
 

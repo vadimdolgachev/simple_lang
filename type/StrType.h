@@ -11,7 +11,7 @@ class StrType final : public PrimitiveType {
 public:
     StrType();
 
-    ResultType getResultTypeUnary(TokenType op) const override;
+    ResultType getResultTypeUnary(TokenType op) override;
 
     bool operator==(const Type &other) const override;
 

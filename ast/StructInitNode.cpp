@@ -21,7 +21,7 @@ TypePtr StructInitNode::getType() const {
 }
 
 void StructInitNode::setType(const TypePtr type) {
-    if (auto casted = std::dynamic_pointer_cast<const StructType>(type)) {
+    if (auto casted = std::dynamic_pointer_cast<StructType>(type)) {
         this->type = std::move(casted);
     }
 }

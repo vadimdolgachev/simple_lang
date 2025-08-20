@@ -27,6 +27,8 @@ public:
     [[nodiscard]] std::string getName() const override;
     [[nodiscard]] TypeKind getKind() const noexcept override;
     [[nodiscard]] StructKind getStructKind() const noexcept;
+    [[nodiscard]] size_t getFieldSize() const noexcept;
+    [[nodiscard]] StructField &getFieldByIndex(size_t index) noexcept;
     [[nodiscard]] const std::vector<StructField> &getFields() const noexcept;
     [[nodiscard]] std::optional<TypePtr> findFieldType(const std::string &fieldName) const;
     [[nodiscard]] std::optional<std::size_t> findFieldIndex(const std::string &fieldName) const;
@@ -36,7 +38,5 @@ private:
     StructKind structKind;
     std::vector<StructField> fields;
 };
-
-using StructTypePtr = std::shared_ptr<const StructType>;
 
 #endif //STRUCTTYPE_H

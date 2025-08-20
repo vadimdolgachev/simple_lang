@@ -23,6 +23,7 @@ public:
                                         const std::vector<TypePtr> &paramTypes,
                                         bool isVarArg = false);
     static ArrayTypePtr makeArrayType(const TypePtr &elementType, size_t size);
+    static std::optional<TypePtr> findPrimitiveType(const std::string &name);
 
 private:
     static std::unordered_map<TypeKind, TypePtr> typeCache;

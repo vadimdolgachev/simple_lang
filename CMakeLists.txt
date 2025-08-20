@@ -193,6 +193,9 @@ add_executable(simple_lang
         ir/StructInitNodeGenerator.h
         ir/FieldAccessNodeGenerator.cpp
         ir/FieldAccessNodeGenerator.h
+        type/TypePtrFwd.h
+        type/ReferenceType.cpp
+        type/ReferenceType.h
 )
 
 

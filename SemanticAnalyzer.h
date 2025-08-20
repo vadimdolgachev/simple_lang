@@ -41,6 +41,7 @@ public:
 
 private:
     std::optional<TypePtr> resolveTypeRef(const std::string &typeName) const;
+    [[nodiscard]] TypePtr resolveTypeIfNeeded(TypePtr type) const;
 
     SymbolTable symbolTable;
     std::vector<TypePtr> declarations;

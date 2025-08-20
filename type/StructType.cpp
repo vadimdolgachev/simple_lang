@@ -28,6 +28,14 @@ StructKind StructType::getStructKind() const noexcept {
     return structKind;
 }
 
+size_t StructType::getFieldSize() const noexcept {
+    return fields.size();
+}
+
+StructField &StructType::getFieldByIndex(const size_t index) noexcept {
+    return fields[index];
+}
+
 const std::vector<StructField> &StructType::getFields() const noexcept {
     return fields;
 }

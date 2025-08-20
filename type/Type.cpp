@@ -15,11 +15,11 @@ BoolResult Type::canCastTo(const TypePtr &target, CastMode /*mode*/) const {
     return std::unexpected("Cannot cast");
 }
 
-ResultType Type::getResultTypeUnary(TokenType op) const {
+ResultType Type::getResultTypeUnary(TokenType op) {
     return std::unexpected("Cannot cast");
 }
 
-ResultType Type::getCommonType(const TypePtr &other) const {
+ResultType Type::getCommonType(const TypePtr &other) {
     if (*this == *other) {
         return shared_from_this();
     }
@@ -39,7 +39,7 @@ const std::vector<MethodInfoPtr> &Type::getMethods() const {
     throw std::logic_error("Type does not contain methods");
 }
 
-ResultType Type::getComparableType(const TypePtr &type) const {
+ResultType Type::getComparableType(const TypePtr &type) {
     return std::unexpected("Types are not comparable");
 }
 
@@ -79,18 +79,6 @@ std::string PrimitiveType::getName() const {
     return "unknown";
 }
 
-bool ReferenceType::operator==(const Type &other) const {
-    return getKind() == other.getKind() && getName() == other.getName();
-}
-
-std::string ReferenceType::getName() const {
-    return name;
-}
-
-TypeKind ReferenceType::getKind() const noexcept {
-    return TypeKind::Reference;
-}
-
 bool Type::isBoolean() const noexcept {
     return getKind() == TypeKind::Boolean;
 }
@@ -123,16 +111,16 @@ bool Type::isStruct() const noexcept {
     return getKind() == TypeKind::Struct;
 }
 
-std::optional<FunctionTypePtr> Type::asFunction() const {
-    return std::dynamic_pointer_cast<const FunctionType>(shared_from_this());
+std::optional<FunctionTypePtr> Type::asFunction() {
+    return std::dynamic_pointer_cast<FunctionType>(shared_from_this());
 }
 
-std::optional<StructTypePtr> Type::asStruct() const {
-    return std::dynamic_pointer_cast<const StructType>(shared_from_this());
+std::optional<StructTypePtr> Type::asStruct() {
+    return std::dynamic_pointer_cast<StructType>(shared_from_this());
 }
 
-std::optional<ArrayTypePtr> Type::asArray() const {
-    return std::dynamic_pointer_cast<const ArrayType>(shared_from_this());
+std::optional<ArrayTypePtr> Type::asArray() {
+    return std::dynamic_pointer_cast<ArrayType>(shared_from_this());
 }
 
 OperationCategory getOperationCategory(const TokenType op) {

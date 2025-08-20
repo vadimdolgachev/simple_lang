@@ -29,6 +29,4 @@ private:
     std::vector<MethodInfoPtr> methods;
 };
 
-using ArrayTypePtr = std::shared_ptr<const ArrayType>;
-
 #endif //ARRAYTYPE_H

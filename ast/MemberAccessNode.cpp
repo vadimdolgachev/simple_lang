@@ -8,5 +8,5 @@ MemberAccessNode::MemberAccessNode(ExprNodePtr object):
     object(std::move(object)) {}
 
 StructTypePtr MemberAccessNode::getObjectType() const {
-    return std::dynamic_pointer_cast<const StructType>(object->getType());
+    return std::dynamic_pointer_cast<StructType>(object->getType());
 }

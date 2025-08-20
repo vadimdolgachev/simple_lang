@@ -11,6 +11,7 @@
 
 #include "Lexer.h"
 #include "Util.h"
+#include "TypePtrFwd.h"
 
 enum class TypeKind : std::uint8_t {
     Boolean,
@@ -28,26 +29,9 @@ enum class TypeKind : std::uint8_t {
     Unknown
 };
 
-class Type;
-using TypePtr = std::shared_ptr<const Type>;
-
 using OptType = std::optional<TypePtr>;
-
 using ResultType = Result<TypePtr>;
-
 using BoolResult = std::expected<bool, std::string>;
-
-struct CallableInfo;
-using CallableInfoPtr = std::shared_ptr<CallableInfo>;
-
-class FunctionType;
-using FunctionTypePtr = std::shared_ptr<const FunctionType>;
-
-class StructType;
-using StructTypePtr = std::shared_ptr<const StructType>;
-
-class ArrayType;
-using ArrayTypePtr = std::shared_ptr<const ArrayType>;
 
 enum class OperationCategory: std::uint8_t {
     Arithmetic,
@@ -108,9 +92,9 @@ public:
 
     [[nodiscard]] virtual BoolResult canCastTo(const TypePtr &target, CastMode mode) const;
 
-    virtual ResultType getResultTypeUnary([[maybe_unused]] TokenType op) const;
+    virtual ResultType getResultTypeUnary([[maybe_unused]] TokenType op);
 
-    virtual ResultType getCommonType(const TypePtr &other) const;
+    virtual ResultType getCommonType(const TypePtr &other);
 
     [[nodiscard]] virtual std::string getName() const = 0;
 
@@ -121,7 +105,7 @@ public:
 
     [[nodiscard]] virtual const std::vector<MethodInfoPtr> &getMethods() const;
 
-    virtual ResultType getComparableType(const TypePtr &type) const;
+    virtual ResultType getComparableType(const TypePtr &type);
 
     bool isBoolean() const noexcept;
 
@@ -139,11 +123,11 @@ public:
 
     bool isStruct() const noexcept;
 
-    std::optional<FunctionTypePtr> asFunction() const;
+    std::optional<FunctionTypePtr> asFunction();
 
-    std::optional<StructTypePtr> asStruct() const;
+    std::optional<StructTypePtr> asStruct();
 
-    std::optional<ArrayTypePtr> asArray() const;
+    std::optional<ArrayTypePtr> asArray();
 };
 
 class PrimitiveType : public Type {
@@ -159,21 +143,6 @@ public:
 protected:
     const TypeKind kind;
     const bool isConst;
-};
-
-class ReferenceType final : public Type {
-public:
-    explicit ReferenceType(std::string name) :
-        name(std::move(name)) {}
-
-    bool operator==(const Type &other) const override;
-
-    [[nodiscard]] std::string getName() const override;
-
-    [[nodiscard]] TypeKind getKind() const noexcept override;
-
-private:
-    const std::string name;
 };
 
 #endif //TYPE_H
