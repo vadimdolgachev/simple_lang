@@ -371,7 +371,7 @@ std::optional<TypePtr> SemanticAnalyzer::resolveTypeRef(const std::string &typeN
 }
 
 TypePtr SemanticAnalyzer::resolveTypeIfNeeded(TypePtr type) const {
-    if (type->getKind() == TypeKind::Reference) {
+    if (type->getKind() == TypeKind::Unresolved) {
         if (auto resolvedType = resolveTypeRef(type->getName())) {
             return *resolvedType;
         }

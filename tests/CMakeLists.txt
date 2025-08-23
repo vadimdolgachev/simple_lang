@@ -94,6 +94,8 @@ add_executable(tests main.cpp
         ../ast/StructInitNode.cpp
         ../type/StructType.h
         ../type/StructType.cpp
+        ../type/UnresolvedType.h
+        ../type/UnresolvedType.cpp
 )
 
 target_include_directories(tests PRIVATE ../)

@@ -7,10 +7,11 @@
 
 #include "Type.h"
 
-class ReferenceType final : public Type {
+class UnresolvedType final : public Type {
 public:
-    explicit ReferenceType(std::string name) :
-        name(std::move(name)) {}
+    explicit UnresolvedType(std::string name)
+        : name(std::move(name)) {
+    }
 
     bool operator==(const Type &other) const override;
 

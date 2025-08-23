@@ -4,5 +4,6 @@
 
 #include "VoidType.h"
 
-VoidType::VoidType():
-    PrimitiveType(TypeKind::Void) {}
+VoidType::VoidType() :
+    PrimitiveType(TypeKind::Void) {
+}

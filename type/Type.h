@@ -25,7 +25,7 @@ enum class TypeKind : std::uint8_t {
     Function,
     Array,
     Struct,
-    Reference,
+    Unresolved,
     Unknown
 };
 

@@ -25,6 +25,7 @@
 #include "ast/TernaryOperatorNode.h"
 #include "ast/TypeCastNode.h"
 #include "ast/ArrayNode.h"
+#include "ast/FieldAccessNode.h"
 #include "ast/IndexAccessNode.h"
 #include "ast/MethodCallNode.h"
 #include "ast/StructInitNode.h"
@@ -229,7 +230,9 @@ void NodePrinter::visit(MethodCallNode *node) {
 }
 
 void NodePrinter::visit(FieldAccessNode *node) {
-    ostream << "FieldAccessNode";
+    node->object->visit(this);
+    ostream << ".";
+    node->field->visit(this);
 }
 
 void NodePrinter::visit(CommentNode *node) {
@@ -245,8 +248,9 @@ void NodePrinter::visit(ModuleNode *node) {
 }
 
 void NodePrinter::visit(TypeCastNode *node) {
-    ostream << "(" << node->targetType->getName() << ")";
+    ostream << "(" << node->targetType->getName() << ")(";
     node->expr->visit(this);
+    ostream << ")";
 }
 
 void NodePrinter::visit(ArrayNode *node) {
@@ -262,11 +266,33 @@ void NodePrinter::visit(IndexAccessNode *node) {
 }
 
 void NodePrinter::visit(StructDeclarationNode *node) {
-    ostream << "struct " << node->name;
+    ostream << "struct ";
+    ostream << node->name;
+    ostream << "{";
+    for (const auto &member : node->members) {
+        const auto visitor = FuncOverloads{
+            [this](const NodePtr<DeclarationNode> &decl) {
+                decl->visit(this);
+                ostream << ";";
+            },
+            [this]([[maybe_unused]] const TypePtr &type) {
+                ostream << type->getName();
+            }
+        };
+        std::visit(visitor, member);
+    }
+    ostream << "}";
 }
 
 void NodePrinter::visit(StructInitNode *node) {
-    ostream << "StructInitNode " << node->ident;
+    ostream << node->ident;
+    ostream << "{";
+    for (const auto &[name, expr] : node->designator) {
+        ostream << name << ":";
+        expr->visit(this);
+        ostream << ";";
+    }
+    ostream << "}";
 }
 
 void NodePrinter::printIndent() const {

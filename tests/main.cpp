@@ -534,7 +534,7 @@ namespace {
 
         auto [strNode, orig] = tryCast<StringNode>(std::move(node));
         ASSERT_NE(strNode, nullptr) << "Not a string node: " << input;
-        EXPECT_EQ(std::format("\"{}\";", strNode->str), input) << "Wrong string value: " << input;
+        EXPECT_EQ(std::format("\"{}\";", strNode->text), input) << "Wrong string value: " << input;
     }
 
     class BooleanNodeTest : public NodesTest,
@@ -675,7 +675,8 @@ namespace {
         EXPECT_EQ(protoFn->params[2]->ident->name, "arg3") << "Wrong identifier name in: " << input;
         EXPECT_EQ(protoFn->params[3]->ident->name, "arg4") << "Wrong identifier name in: " << input;
 
-        EXPECT_EQ(protoFn->returnType->getKind(), TypeKind::Str) << "Wrong return type: " << input;
+        EXPECT_EQ(protoFn->returnType->getKind(), TypeKind::Unresolved) << "Wrong return type: " << input;
+        EXPECT_EQ(protoFn->returnType->getName(), "str") << "Wrong return type: " << input;
     }
 
     TEST_F(FunctionTest, ComplexFunctionCall) {
@@ -1177,7 +1178,8 @@ namespace {
         const auto arrayType = declNode->type->asArray();
         ASSERT_TRUE(arrayType.has_value()) << "Not an array type";
 
-        ASSERT_EQ(arrayType.value()->getElementType()->getKind(), TypeKind::Integer);
+        ASSERT_EQ(arrayType.value()->getElementType()->getKind(), TypeKind::Unresolved);
+        ASSERT_EQ(arrayType.value()->getElementType()->getName(), "int");
         ASSERT_EQ(arrayType.value()->size(), 1);
     }
 
@@ -1195,7 +1197,8 @@ namespace {
         const auto arrayType = declNode->type->asArray();
         ASSERT_TRUE(arrayType.has_value()) << "Not an array type";
 
-        ASSERT_EQ(arrayType.value()->getElementType()->getKind(), TypeKind::Integer);
+        ASSERT_EQ(arrayType.value()->getElementType()->getKind(), TypeKind::Unresolved);
+        ASSERT_EQ(arrayType.value()->getElementType()->getName(), "int");
         ASSERT_EQ(arrayType.value()->size(), 0);
     }
 
@@ -1218,7 +1221,8 @@ namespace {
 
         const auto elementType = arrayType.value()->getElementType()->asArray();
         ASSERT_NE(elementType, std::nullopt);
-        ASSERT_EQ(elementType.value()->getElementType()->getKind(), TypeKind::Integer);
+        ASSERT_EQ(elementType.value()->getElementType()->getKind(), TypeKind::Unresolved);
+        ASSERT_EQ(elementType.value()->getElementType()->getName(), "int");
         ASSERT_EQ(elementType.value()->size(), 1);
 
         ASSERT_NE(declNode->init, std::nullopt);
@@ -1263,11 +1267,13 @@ namespace {
         const auto &fieldInt = structNode->members[0];
         ASSERT_TRUE(std::holds_alternative<NodePtr<DeclarationNode>>(fieldInt));
         ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldInt)->ident->name, "fieldInt") << "Incorrect field name: " << input;
-        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldInt)->type->getKind(), TypeKind::Integer) << "Incorrect field type: " << input;
+        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldInt)->type->getKind(), TypeKind::Unresolved) << "Incorrect field type: " << input;
+        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldInt)->type->getName(), "int") << "Incorrect field type: " << input;
         const auto &fieldStr = structNode->members[1];
         ASSERT_TRUE(std::holds_alternative<NodePtr<DeclarationNode>>(fieldStr));
         ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldStr)->ident->name, "fieldStr") << "Incorrect field name: " << input;
-        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldStr)->type->getKind(), TypeKind::Str) << "Incorrect field type: " << input;
+        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldStr)->type->getKind(), TypeKind::Unresolved) << "Incorrect field type: " << input;
+        ASSERT_EQ(std::get<NodePtr<DeclarationNode>>(fieldStr)->type->getName(), "str") << "Incorrect field type: " << input;
     }
 
     TEST_F(NodesTest, EmptyStructNode) {

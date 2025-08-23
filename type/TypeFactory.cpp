@@ -11,7 +11,7 @@
 #include "FunctionType.h"
 #include "NumericType.h"
 #include "PointerType.h"
-#include "ReferenceType.h"
+#include "UnresolvedType.h"
 #include "StrType.h"
 #include "VoidType.h"
 
@@ -30,8 +30,8 @@ namespace {
 std::unordered_map<TypeKind, TypePtr> TypeFactory::typeCache;
 std::unordered_map<TypePtr, TypePtr> TypeFactory::pointerCache;
 
-TypePtr TypeFactory::makeReference(const std::string &value) {
-    return std::make_shared<ReferenceType>(value);
+TypePtr TypeFactory::makeUnresolved(const std::string &value) {
+    return std::make_shared<UnresolvedType>(value);
 }
 
 TypePtr TypeFactory::makePrimitiveType(TypeKind kind) {

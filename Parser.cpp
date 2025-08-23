@@ -564,7 +564,7 @@ TypePtr Parser::parseTypeId() {
         return parseArrayType();
     }
     if (lexer->currToken().type == TokenType::Identifier && lexer->currToken().value) {
-        const auto typeId = TypeFactory::makeReference(lexer->currToken().value.value());
+        const auto typeId = TypeFactory::makeUnresolved(lexer->currToken().value.value());
         lexer->nextToken();
         return typeId;
     }
@@ -718,7 +718,7 @@ StmtNodePtr Parser::parseStruct() {
 }
 
 ExprNodePtr Parser::parseStructInitialization() {
-    auto ident = parseIdent();
+    const auto ident = parseIdent();
     auto designator = parseDesignator();
     return std::make_unique<StructInitNode>(ident->name, std::move(designator));
 }
@@ -732,7 +732,7 @@ Designator Parser::parseDesignator() {
     Designator members;
 
     while (lexer->currToken().type != TokenType::RightCurlyBracket) {
-        auto key = parseIdent();
+        const auto key = parseIdent();
         if (lexer->currToken().type != TokenType::Colon) {
             throw std::runtime_error(makeErrorMsg("Expected ':' symbol"));
         }
