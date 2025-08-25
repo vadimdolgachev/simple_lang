@@ -5,7 +5,6 @@
 #ifndef IRVALUE_H
 #define IRVALUE_H
 
-#include <llvm/IR/Value.h>
 #include <llvm/IR/IRBuilder.h>
 
 class IRType;
@@ -29,8 +28,8 @@ public:
     [[nodiscard]] llvm::Value *getRawValue() const;
     [[nodiscard]] std::shared_ptr<IRType> getType() const;
     [[nodiscard]] llvm::Value *createLoad(llvm::IRBuilder<> &builder) const;
-
     void createStore(llvm::IRBuilder<> &builder, llvm::Value *ptr) const;
+    [[nodiscard]] ValueKind getKind() const;
 
     static IRValue createValue(llvm::Value *value,
                                std::shared_ptr<IRType> type,

@@ -11,7 +11,7 @@ IRType::IRType(const bool isPointer) :
 
 void IRType::registerCustomOperation(const TokenType op, llvm::Function *function) {}
 
-llvm::Value * IRType::createUndef(const BaseNode *node, ModuleContext &mc) const {
+llvm::Value *IRType::createUndef(const BaseNode *node, ModuleContext &mc) const {
     throw std::runtime_error("Not implemented");
 }
 
@@ -24,6 +24,9 @@ llvm::Value *IRType::createMethodCall(llvm::IRBuilder<> &builder,
 
 llvm::Value *IRType::createLoad(llvm::IRBuilder<> &builder, const IRValue &value) const {
     llvm::Type *type = nullptr;
+    if (!value.getRawValue()->getType()->isPointerTy() || value.getKind() == IRValue::ValueKind::Value) {
+        return value.getRawValue();
+    }
     if (const auto *const alloca = llvm::dyn_cast<llvm::AllocaInst>(value.getRawValue())) {
         type = alloca->getAllocatedType();
     } else if (const auto *const gv = llvm::dyn_cast<llvm::GlobalVariable>(value.getRawValue())) {
@@ -31,8 +34,7 @@ llvm::Value *IRType::createLoad(llvm::IRBuilder<> &builder, const IRValue &value
     } else {
         type = value.getType()->getLLVMType(builder.getContext());
     }
-
-    if (type && value.getRawValue()->getType()->isPointerTy()) {
+    if (type) {
         return builder.CreateLoad(type, value.getRawValue());
     }
     return value.getRawValue();

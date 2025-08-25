@@ -147,24 +147,22 @@ int main() {
 
     CompilerFronted compiler(std::make_unique<std::istringstream>(
     R"(
-        globalX: int = 1;
-
-        fn makePoint(): Point {
-            localY: int = 2;
-            text: str = "Hello";
-            point: Point = Point{x: globalX + localY, y: localY, text: text};
-            return point;
+        globalInt: int = 1;
+        globalText: str = "Hello";
+        globalText2: str = globalText;
+        fn getInt(): int {
+            return globalInt;
+        }
+        fn getText(): str {
+            return globalText2;
         }
 
         fn main() {
-            point: Point = makePoint();
-            println("point: {%f, %f, %s}", point.x, point.y, point.text);
-        }
-
-        struct Point {
-            x: double;
-            y: double;
-            text: str
+            text: str = "globalText";
+            for (i: int = 0; i < 10; ++i) {
+                println("%d, %s, %s, %s", getInt(), globalText, text, getText());
+            }
+            println("%s", globalText2);
         }
     )"), BuiltinSymbols::getInstance().getFunctions());
 

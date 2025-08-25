@@ -57,16 +57,15 @@ llvm::Type *StrIRType::getLLVMElementType(llvm::LLVMContext &context) const {
     throw std::runtime_error("Unsupported for str type");
 }
 
-llvm::Constant *StrIRType::createConstant(const BaseNode *node,
-                                          ModuleContext &mc) const {
-    const auto *strNode = dynamic_cast<const StringNode *>(node);
-    auto *gv = new llvm::GlobalVariable(*mc.module,
-                                        getLLVMType(mc.module->getContext()),
-                                        true,
-                                        llvm::GlobalValue::PrivateLinkage,
-                                        llvm::ConstantDataArray::getString(mc.module->getContext(), strNode->text),
-                                        ".str");
-    return gv;
+llvm::Constant *StrIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
+    // literal string as static value
+    return new llvm::GlobalVariable(*mc.module,
+                                getLLVMType(mc.module->getContext()),
+                                true,
+                                llvm::GlobalValue::PrivateLinkage,
+                                llvm::ConstantDataArray::getString(mc.module->getContext(),
+                                                                   asNode<StringNode>(node).value()->text),
+                                ".str");
 }
 
 llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,
@@ -77,13 +76,6 @@ llvm::Value *StrIRType::createMethodCall(llvm::IRBuilder<> &builder,
         return builder.CreateCall(getOrDeclareStrlen(builder.GetInsertBlock()->getModule()), {object});
     }
     return IRType::createMethodCall(builder, methodInfo, object, args);
-}
-
-llvm::Value *StrIRType::createLoad(llvm::IRBuilder<> &irBuilder, const IRValue &value) const {
-    if (auto *const gv = llvm::dyn_cast<llvm::GlobalVariable>(value.getRawValue())) {
-        return gv;
-    }
-    return IRType::createLoad(irBuilder, value);
 }
 
 llvm::Function *StrIRType::getOrDeclareStrcmp(llvm::Module *module) const {

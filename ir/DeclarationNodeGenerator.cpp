@@ -22,12 +22,12 @@ namespace {
             }
         }
 
-        auto *gVar = new llvm::GlobalVariable(*mc.module,
-                                              type,
-                                              true,
-                                              llvm::GlobalValue::InternalLinkage,
-                                              constInit,
-                                              node->ident->name);
+        auto *const gVar = new llvm::GlobalVariable(*mc.module,
+                                                    type,
+                                                    false,
+                                                    llvm::GlobalValue::InternalLinkage,
+                                                    constInit,
+                                                    node->ident->name);
 
         gVar->setAlignment(llvm::MaybeAlign(8));
         gVar->setDSOLocal(true);
@@ -45,7 +45,7 @@ namespace {
         auto *alloca = mc.builder->CreateAlloca(type, nullptr, node->ident->name);
 
         if (init) {
-            auto *const casted = tryCastValue(mc.builder, init, type);
+            auto *const casted = tryCastValue(mc.builder, init, init->getType());
             if (!casted) {
                 throw std::logic_error("Type mismatch in initialization of: " + node->ident->name);
             }
@@ -62,7 +62,7 @@ namespace {
         return IRValue::createAlloca(alloca, IRTypeFactory::from(node->type, mc.module->getContext()),
                                      node->ident->name);
     }
-}  // namespace
+} // namespace
 
 void DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleContext &mc) const {
     const auto irType = IRTypeFactory::from(node->type, mc.module->getContext());
@@ -74,7 +74,19 @@ void DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleContext &m
     llvm::Value *initValue = nullptr;
     if (node->init.has_value()) {
         const auto valueHandler = LLVMCodegen::generate(node->init.value().get(), mc);
-        initValue = valueHandler.value().createLoad(*mc.builder);
+        if (node->isGlobal) {
+            if (const auto ident = asNode<IdentNode>(node->init.value().get())) {
+                if (const auto si = mc.symTable.lookup(ident.value()->name)) {
+                    if (const auto gsi = std::dynamic_pointer_cast<const GlobalSymbolInfo>(si.value())) {
+                        initValue = gsi->var->getInitializer();
+                    }
+                }
+            } else {
+                initValue = valueHandler.value().getRawValue();
+            }
+        } else {
+            initValue = valueHandler.value().createLoad(*mc.builder);
+        }
         if (!initValue) {
             throw std::logic_error("Failed to generate initializer for: " + node->ident->name);
         }

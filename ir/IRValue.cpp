@@ -41,3 +41,7 @@ IRValue IRValue::createAlloca(llvm::Value *value, std::shared_ptr<IRType> type, 
 IRValue IRValue::createGlobal(llvm::Value *value, std::shared_ptr<IRType> type, const std::string &name) {
     return {value, std::move(type), ValueKind::Global, name};
 }
+
+IRValue::ValueKind IRValue::getKind() const {
+    return valueKind;
+}
