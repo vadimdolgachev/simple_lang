@@ -59,12 +59,14 @@ llvm::Type *StrIRType::getLLVMElementType(llvm::LLVMContext &context) const {
 
 llvm::Constant *StrIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
     // literal string as static value
+    const auto *const stringNode = asNode<StringNode>(node).value();
+    auto *const strType = llvm::ArrayType::get(llvm::Type::getInt8Ty(mc.builder->getContext()), stringNode->text.size() + 1);
+    auto *const init = llvm::ConstantDataArray::getString(mc.module->getContext(), stringNode->text);
     return new llvm::GlobalVariable(*mc.module,
-                                getLLVMType(mc.module->getContext()),
+                                strType,
                                 true,
                                 llvm::GlobalValue::PrivateLinkage,
-                                llvm::ConstantDataArray::getString(mc.module->getContext(),
-                                                                   asNode<StringNode>(node).value()->text),
+                                init,
                                 ".str");
 }
 
