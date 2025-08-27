@@ -9,7 +9,7 @@
 IRValueOpt IdentNodeGenerator::generateT(IdentNode *node, ModuleContext &mc) const {
     if (const auto symbol = mc.symTable.lookup(node->name)) {
         if (const auto &global = std::dynamic_pointer_cast<const GlobalSymbolInfo>(symbol.value())) {
-            return IRValue::createGlobal(global->var,
+            return IRValue::createMemory(global->var,
                                         IRTypeFactory::from(global->type, mc.module->getContext()),
                                         node->name + ".global");
         }
@@ -18,7 +18,7 @@ IRValueOpt IdentNodeGenerator::generateT(IdentNode *node, ModuleContext &mc) con
                 throw std::runtime_error(std::format("Unknown variable name: {}", node->name));
             }
 
-            return IRValue::createAlloca(alloca->inst,
+            return IRValue::createMemory(alloca->inst,
                                         IRTypeFactory::from(alloca->type, mc.module->getContext()),
                                         node->name + ".local");
         }

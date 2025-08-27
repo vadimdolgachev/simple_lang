@@ -19,13 +19,13 @@ IRValueOpt TernaryOperatorNodeGenerator::generateT(TernaryOperatorNode *node, Mo
 
     mc.builder->SetInsertPoint(thenBB);
     const auto trueValueHandler = LLVMCodegen::generate(node->trueExpr.get(), mc);
-    auto *const trueVal = trueValueHandler.value().createLoad(*mc.builder);
+    auto *const trueVal = trueValueHandler.value().load(*mc.builder);
     mc.builder->CreateBr(mergeBB);
 
     elseBB->insertInto(parentFunc);
     mc.builder->SetInsertPoint(elseBB);
     auto falseValueHandler = LLVMCodegen::generate(node->falseExpr.get(), mc);
-    auto *const falseVal = trueValueHandler.value().createLoad(*mc.builder);
+    auto *const falseVal = trueValueHandler.value().load(*mc.builder);
     mc.builder->CreateBr(mergeBB);
 
     mergeBB->insertInto(parentFunc);
@@ -38,5 +38,5 @@ IRValueOpt TernaryOperatorNodeGenerator::generateT(TernaryOperatorNode *node, Mo
     auto *const phi = mc.builder->CreatePHI(trueVal->getType(), 2, "tern_result");
     phi->addIncoming(trueVal, thenBB);
     phi->addIncoming(falseVal, elseBB);
-    return IRValue::createValue(phi, IRTypeFactory::from(node->getType(), mc.module->getContext()));
+    return IRValue::createConstant(phi, IRTypeFactory::from(node->getType(), mc.module->getContext()));
 }

@@ -149,20 +149,22 @@ int main() {
     R"(
         globalInt: int = 1;
         globalText: str = "Hello";
+        fn getStr(): str {
+            return globalText;
+        }
         globalText2: str = globalText;
-        fn getInt(): int {
-            return globalInt;
-        }
-        fn getText(): str {
-            return globalText2;
-        }
+        globalText3: str = globalText2;
 
         fn main() {
-            text: str = "globalText";
-            for (i: int = 0; i < 10; ++i) {
-                println("%d, %s, %s, %s", getInt(), globalText, text, getText());
-            }
-            println("%s", globalText2);
+            greeting: Greeting = Greeting {hello: "Hello"};
+            println("%s", greeting.hello);
+            text: str = getStr();
+            println("%s", text);
+            println("%s", getStr());
+        }
+
+        struct Greeting {
+            hello: str;
         }
     )"), BuiltinSymbols::getInstance().getFunctions());
 

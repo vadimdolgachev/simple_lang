@@ -21,7 +21,7 @@ IRValueOpt IndexAccessNodeGenerator::generateT(IndexAccessNode *node, ModuleCont
                                                  mc.module->getContext());
         const std::vector<llvm::Value *> indices = {
                 mc.builder->getInt64(0),
-                index.value().createLoad(*mc.builder)
+                index.value().load(*mc.builder)
         };
         auto *const elementLlvmValue = mc.builder->CreateLoad(arrayIrType->getLLVMElementType(mc.module->getContext()),
                                                               mc.builder->CreateInBoundsGEP(
@@ -29,7 +29,7 @@ IRValueOpt IndexAccessNodeGenerator::generateT(IndexAccessNode *node, ModuleCont
                                                                       object.value().getRawValue(),
                                                                       indices,
                                                                       "elem_ptr"));
-        return IRValue::createValue(elementLlvmValue, std::move(elementIrType));
+        return IRValue::createConstant(elementLlvmValue, std::move(elementIrType));
     }
     throw std::runtime_error("Unsupported index access type");
 }

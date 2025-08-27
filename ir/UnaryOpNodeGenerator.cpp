@@ -22,12 +22,12 @@ IRValueOpt UnaryOpNodeGenerator::generateT(UnaryOpNode *node, ModuleContext &mc)
         }
         const auto irValue = LLVMCodegen::generate(node->expr.get(), mc);
 
-        return IRValue::createValue(irValue.value().getType()->createUnaryOp(*mc.builder,
-                                                                             node->operatorType,
-                                                                             irValue.value().createLoad(*mc.builder),
-                                                                             irValue.value().getRawValue(),
-                                                                             "incdec"),
-                                    irValue.value().getType());
+        return IRValue::createConstant(irValue.value().getType()->createUnaryOp(*mc.builder,
+                                           node->operatorType,
+                                           irValue.value().load(*mc.builder),
+                                           irValue.value().getRawValue(),
+                                           "incdec"),
+                                       irValue.value().getType());
     }
 
     throw std::logic_error("Unsupported unary operator");

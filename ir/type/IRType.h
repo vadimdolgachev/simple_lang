@@ -52,10 +52,6 @@ public:
                                           llvm::Value *object,
                                           const std::vector<llvm::Value *> &args) const;
 
-    virtual llvm::Value *createLoad(llvm::IRBuilder<> &builder, const IRValue &value) const;
-
-    virtual llvm::StoreInst *createStore(llvm::IRBuilder<> &builder, const IRValue &value, llvm::Value *ptr) const;
-
 protected:
     bool isPointer;
 };

@@ -9,7 +9,7 @@
 
 void ReturnNodeGenerator::generateT(ReturnNode *node, ModuleContext &mc) const {
     if (node->expr != nullptr) {
-        mc.builder->CreateRet(LLVMCodegen::generate(node->expr.get(), mc).value().createLoad(*mc.builder));
+        mc.builder->CreateRet(LLVMCodegen::generate(node->expr.get(), mc).value().load(*mc.builder));
     } else {
         mc.builder->CreateRetVoid();
     }

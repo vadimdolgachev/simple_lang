@@ -12,7 +12,8 @@ IRValue::IRValue(llvm::Value *const value,
     value(value),
     type(std::move(type)),
     valueKind(valueKind),
-    name(std::move(name)) {}
+    name(std::move(name)) {
+}
 
 llvm::Value *IRValue::getRawValue() const {
     return value;
@@ -22,24 +23,27 @@ std::shared_ptr<IRType> IRValue::getType() const {
     return type;
 }
 
-llvm::Value *IRValue::createLoad(llvm::IRBuilder<> &builder) const {
-    return type->createLoad(builder, *this);
+llvm::Value *IRValue::load(llvm::IRBuilder<> &builder) const {
+    if (valueKind == ValueKind::Memory) {
+        return builder.CreateLoad(value->getType(), value);
+    }
+    return value;
 }
 
-void IRValue::createStore(llvm::IRBuilder<> &builder, llvm::Value *ptr) const {
-    type->createStore(builder, *this, ptr);
+void IRValue::store(llvm::IRBuilder<> &builder, llvm::Value *ptr) {
+    if (valueKind == ValueKind::Constant) {
+        builder.CreateStore(value, ptr);
+    } else {
+        value = ptr;
+    }
 }
 
-IRValue IRValue::createValue(llvm::Value *value, std::shared_ptr<IRType> type, const std::string &name) {
-    return {value, std::move(type), ValueKind::Value, name};
+IRValue IRValue::createConstant(llvm::Value *value, std::shared_ptr<IRType> type, const std::string &name) {
+    return {value, std::move(type), ValueKind::Constant, name};
 }
 
-IRValue IRValue::createAlloca(llvm::Value *value, std::shared_ptr<IRType> type, const std::string &name) {
-    return {value, std::move(type), ValueKind::Local, name};
-}
-
-IRValue IRValue::createGlobal(llvm::Value *value, std::shared_ptr<IRType> type, const std::string &name) {
-    return {value, std::move(type), ValueKind::Global, name};
+IRValue IRValue::createMemory(llvm::Value *value, std::shared_ptr<IRType> type, const std::string &name) {
+    return {value, std::move(type), ValueKind::Memory, name};
 }
 
 IRValue::ValueKind IRValue::getKind() const {

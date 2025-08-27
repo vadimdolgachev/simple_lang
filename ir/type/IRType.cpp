@@ -21,25 +21,3 @@ llvm::Value *IRType::createMethodCall(llvm::IRBuilder<> &builder,
                                       const std::vector<llvm::Value *> &args) const {
     throw std::runtime_error("Method '" + methodInfo->name + "' not supported");
 }
-
-llvm::Value *IRType::createLoad(llvm::IRBuilder<> &builder, const IRValue &value) const {
-    llvm::Type *type = nullptr;
-    if (!value.getRawValue()->getType()->isPointerTy() || value.getKind() == IRValue::ValueKind::Value) {
-        return value.getRawValue();
-    }
-    if (const auto *const alloca = llvm::dyn_cast<llvm::AllocaInst>(value.getRawValue())) {
-        type = alloca->getAllocatedType();
-    } else if (const auto *const gv = llvm::dyn_cast<llvm::GlobalVariable>(value.getRawValue())) {
-        type = gv->getValueType();
-    } else {
-        type = value.getType()->getLLVMType(builder.getContext());
-    }
-    if (type) {
-        return builder.CreateLoad(type, value.getRawValue());
-    }
-    return value.getRawValue();
-}
-
-llvm::StoreInst *IRType::createStore(llvm::IRBuilder<> &builder, const IRValue &value, llvm::Value *ptr) const {
-    return builder.CreateStore(value.createLoad(builder), ptr);
-}

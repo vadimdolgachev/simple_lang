@@ -73,7 +73,7 @@ llvm::Value *StructIRType::createGlobal(const BaseNode *node, ModuleContext &mc)
                                             structInit->ident + ".struct");
         for (const auto &[fieldName, initNode]: structInit->designator) {
             if (const auto index = structType->findFieldIndex(fieldName)) {
-                auto *const initValue = LLVMCodegen::generate(initNode.get(), mc).value().createLoad(*mc.builder);
+                auto *const initValue = LLVMCodegen::generate(initNode.get(), mc).value().load(*mc.builder);
                 auto *fieldPtr = mc.builder->CreateStructGEP(llvmStructType,
                                                              gv,
                                                              index.value(),
@@ -91,7 +91,7 @@ llvm::Value *StructIRType::createUndef(const BaseNode *node, ModuleContext &mc) 
         auto *const llvmStructType = getLLVMType(mc.module->getContext());
         llvm::Value *result = llvm::UndefValue::get(llvmStructType);
         for (const auto &[fieldName, initNode]: structInit->designator) {
-            auto *const initValue = LLVMCodegen::generate(initNode.get(), mc).value().createLoad(*mc.builder);
+            auto *const initValue = LLVMCodegen::generate(initNode.get(), mc).value().load(*mc.builder);
             result = mc.builder->CreateInsertValue(
                     result,
                     initValue,

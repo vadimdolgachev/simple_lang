@@ -14,13 +14,13 @@ IRValueOpt MethodCallNodeGenerator::generateT(MethodCallNode *node, ModuleContex
     std::vector<llvm::Value *> args;
     args.reserve(node->method->args.size());
     for (const auto &arg: node->method->args) {
-        args.push_back(LLVMCodegen::generate(arg.get(), mc).value().createLoad(*mc.builder));
+        args.push_back(LLVMCodegen::generate(arg.get(), mc).value().load(*mc.builder));
     }
 
     if (const auto fType = node->method->getType()->asFunction()) {
         const auto methodInfo = MethodInfo::create(node->method->ident->name,
                                                    fType.value());
-        return IRValue::createValue(objectType->createMethodCall(*mc.builder,
+        return IRValue::createConstant(objectType->createMethodCall(*mc.builder,
                                                                  methodInfo,
                                                                  LLVMCodegen::generate(node->object.get(), mc).value().
                                                                  getRawValue(),

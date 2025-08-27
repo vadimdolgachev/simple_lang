@@ -29,7 +29,8 @@ namespace {
     class SemanticError final : public std::runtime_error {
     public:
         explicit SemanticError(const std::string &msg) :
-            std::runtime_error(msg) {}
+            std::runtime_error(msg) {
+        }
     };
 
     ExprNodePtr castIfNeeded(TypePtr targetType, ExprNodePtr expr) {
@@ -46,21 +47,25 @@ namespace {
 
 SemanticAnalyzer::SemanticAnalyzer(SymbolTable symbolTable, std::vector<TypePtr> declarations) :
     symbolTable(std::move(symbolTable)),
-    declarations(std::move(declarations)) {}
+    declarations(std::move(declarations)) {
+}
 
 void SemanticAnalyzer::visit(IdentNode *node) {
     if (const auto &si = symbolTable.lookup(node->name)) {
         node->setType(si.value()->type);
-    } else if (const auto gi = symbolTable.lookupGlobal(node->name)) {
-        node->setType(gi.value()->type);
     } else {
         throw SemanticError("Symbol " + node->name + " does not exist");
     }
 }
 
-void SemanticAnalyzer::visit(NumberNode *node) {}
-void SemanticAnalyzer::visit(StringNode *node) {}
-void SemanticAnalyzer::visit(BooleanNode *node) {}
+void SemanticAnalyzer::visit(NumberNode *node) {
+}
+
+void SemanticAnalyzer::visit(StringNode *node) {
+}
+
+void SemanticAnalyzer::visit(BooleanNode *node) {
+}
 
 void SemanticAnalyzer::visit(BinOpNode *node) {
     node->lhs->visit(this);
@@ -209,11 +214,7 @@ void SemanticAnalyzer::visit(BlockNode *node) {
 
 void SemanticAnalyzer::visit(DeclarationNode *node) {
     node->type = resolveTypeIfNeeded(node->type);
-    if (node->isGlobal) {
-        symbolTable.insertGlobal(node->ident->name, std::make_shared<SymbolInfo>(node->type));
-    } else {
-        symbolTable.insert(node->ident->name, std::make_shared<SymbolInfo>(node->type));
-    }
+    symbolTable.insert(node->ident->name, std::make_shared<SymbolInfo>(node->type));
     if (node->init) {
         node->init.value()->visit(this);
         node->init = castIfNeeded(node->type, std::move(node->init.value()));
@@ -281,11 +282,13 @@ void SemanticAnalyzer::visit(FieldAccessNode *node) {
         node->field->setType(*fieldType);
         node->setType(*fieldType);
     } else {
-        throw SemanticError(std::format("Unknown field: {}:{}", node->object->getType()->asStruct().value()->getName(), node->field->name));
+        throw SemanticError(std::format("Unknown field: {}:{}", node->object->getType()->asStruct().value()->getName(),
+                                        node->field->name));
     }
 }
 
-void SemanticAnalyzer::visit(CommentNode *node) {}
+void SemanticAnalyzer::visit(CommentNode *node) {
+}
 
 void SemanticAnalyzer::visit(ModuleNode *node) {
     symbolTable.enterScope();
@@ -345,7 +348,7 @@ void SemanticAnalyzer::visit(StructInitNode *node) {
     }
 
     auto designatorIt = std::begin(node->designator);
-    for (const auto &[name, type] : node->type->getFields()) {
+    for (const auto &[name, type]: node->type->getFields()) {
         if (designatorIt == std::end(node->designator)) {
             break;
         }

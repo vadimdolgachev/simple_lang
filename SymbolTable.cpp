@@ -22,7 +22,7 @@ bool SymbolTable::isDeclaredInCurrentScope(const std::string &name) const {
 
 void SymbolTable::insert(const std::string &name, const std::shared_ptr<const SymbolInfo> &symbolInfo) {
     if (isDeclaredInCurrentScope(name)) {
-        throw std::logic_error("Symbol " + name + " already declared");
+        throw std::logic_error(std::format("'{}' is already declared in current scope", name));
     }
     scopes.back().emplace(name, symbolInfo);
 }
@@ -36,17 +36,8 @@ std::optional<std::shared_ptr<const SymbolInfo>> SymbolTable::lookup(const std::
     return {};
 }
 
-void SymbolTable::insertGlobal(const std::string &name, SymbolInfoPtr type) {
-    globals.emplace(name, std::move(type));
-}
-
 void SymbolTable::insertFunction(const std::string &name, SymbolInfoPtr type) {
     functions[name].push_back(std::move(type));
-}
-
-std::optional<SymbolInfoPtr> SymbolTable::lookupGlobal(const std::string &name) const {
-    const auto type = globals.find(name);
-    return type != globals.end() ? std::make_optional(type->second) : std::nullopt;
 }
 
 std::vector<SymbolInfoPtr> SymbolTable::lookupFunction(const std::string &name) const {

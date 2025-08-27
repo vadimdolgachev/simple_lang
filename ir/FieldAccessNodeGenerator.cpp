@@ -14,7 +14,7 @@ IRValueOpt FieldAccessNodeGenerator::generateT(FieldAccessNode *node, ModuleCont
         if (const auto si = mc.symTable.lookup(identNode.value()->name)) {
             if (const auto alloca = std::dynamic_pointer_cast<const AllocaInstSymbolInfo>(si.value())) {
                 const auto fieldIndex = node->object->getType()->asStruct().value()->findFieldIndex(node->field->name);
-                return IRValue::createValue(
+                return IRValue::createMemory(
                         mc.builder->CreateStructGEP(
                                 structIRType->getLLVMType(mc.builder->getContext()),
                                 alloca->inst,

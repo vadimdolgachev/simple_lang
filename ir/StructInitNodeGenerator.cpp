@@ -7,5 +7,5 @@
 
 IRValueOpt StructInitNodeGenerator::generateT(StructInitNode *node, ModuleContext &mc) const {
     const auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
-    return IRValue::createValue(type->createUndef(node, mc), type);
+    return IRValue::createConstant(type->createUndef(node, mc), type);
 }

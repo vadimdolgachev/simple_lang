@@ -56,11 +56,7 @@ public:
 
     [[nodiscard]] std::optional<SymbolInfoPtr> lookup(const std::string &name) const;
 
-    void insertGlobal(const std::string &name, SymbolInfoPtr type);
-
     void insertFunction(const std::string &name, SymbolInfoPtr type);
-
-    [[nodiscard]] std::optional<SymbolInfoPtr> lookupGlobal(const std::string &name) const;
 
     [[nodiscard]] std::vector<SymbolInfoPtr> lookupFunction(const std::string &name) const;
 
@@ -68,7 +64,6 @@ public:
 
 private:
     std::deque<std::unordered_map<std::string, SymbolInfoPtr>> scopes;
-    std::unordered_map<std::string, SymbolInfoPtr> globals;
     std::unordered_map<std::string, std::vector<SymbolInfoPtr>> functions;
 };
 

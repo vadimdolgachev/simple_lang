@@ -33,7 +33,7 @@ namespace {
         gVar->setDSOLocal(true);
 
         mc.symTable.insert(node->ident->name, std::make_shared<GlobalSymbolInfo>(node->type, gVar));
-        return IRValue::createGlobal(gVar,
+        return IRValue::createMemory(gVar,
                                      IRTypeFactory::from(node->type, mc.module->getContext()),
                                      node->ident->name);
     }
@@ -52,14 +52,10 @@ namespace {
             mc.builder->CreateStore(casted, alloca);
         }
 
-        if (mc.symTable.lookup(node->ident->name)) {
-            throw std::logic_error("Redeclaration of variable: " + node->ident->name);
-        }
-
         mc.symTable.insert(node->ident->name,
                            std::make_shared<AllocaInstSymbolInfo>(node->type,
                                                                   alloca));
-        return IRValue::createAlloca(alloca, IRTypeFactory::from(node->type, mc.module->getContext()),
+        return IRValue::createMemory(alloca, IRTypeFactory::from(node->type, mc.module->getContext()),
                                      node->ident->name);
     }
 } // namespace
@@ -85,7 +81,7 @@ void DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleContext &m
                 initValue = valueHandler.value().getRawValue();
             }
         } else {
-            initValue = valueHandler.value().createLoad(*mc.builder);
+            initValue = valueHandler.value().load(*mc.builder);
         }
         if (!initValue) {
             throw std::logic_error("Failed to generate initializer for: " + node->ident->name);
