@@ -15,6 +15,8 @@ public:
 
     [[nodiscard]] std::string getName() const override;
 
+    bool isPointTo(const TypePtr &base) const;
+
 private:
     const TypePtr baseType;
 };

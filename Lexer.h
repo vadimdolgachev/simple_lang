@@ -220,14 +220,12 @@ inline std::string toString(const TokenType token) {
 
 struct Token final {
     TokenType type = TokenType::Unknown;
-    std::optional<std::string> value;
+    std::string value;
     int32_t startPosition = 0;
     int32_t endPosition = 0;
 
     [[nodiscard]] std::string toString() const {
-        return value
-                   ? std::format("type: {}, value: {}", ::toString(type), *value)
-                   : std::format("type: {}", ::toString(type));
+        return std::format("type: {}, value: {}", ::toString(type), value);
     }
 };
 

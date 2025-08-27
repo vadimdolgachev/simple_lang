@@ -19,6 +19,8 @@ public:
 
     [[nodiscard]] TypePtr getElementType() const;
 
+    void setElementType(TypePtr type);
+
     size_t size() const noexcept;
 
     const std::vector<MethodInfoPtr> &getMethods() const override;

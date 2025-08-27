@@ -111,6 +111,10 @@ bool Type::isStruct() const noexcept {
     return getKind() == TypeKind::Struct;
 }
 
+bool Type::isPointer() const noexcept {
+    return getKind() == TypeKind::Pointer;
+}
+
 std::optional<FunctionTypePtr> Type::asFunction() {
     return std::dynamic_pointer_cast<FunctionType>(shared_from_this());
 }

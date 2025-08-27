@@ -88,8 +88,6 @@ void Lexer::readNextChar() {
 }
 
 Token Lexer::fetchNextToken() {
-    std::optional<std::string> tokenValue;
-
     if (currTokIndex + 1 < tokenQueue.size()) {
         currTokIndex += 1;
         return currToken();
@@ -102,6 +100,7 @@ Token Lexer::fetchNextToken() {
     const auto startTokenPosition = currChar.pos;
     auto resultToken = TokenType::Unknown;
 
+    std::string tokenValue(1, currChar.val);
     if (currChar.val == EOF) {
         resultToken = TokenType::Eos;
     } else if (std::isdigit(currChar.val) || (currChar.val == '.' && std::isdigit(getPeekChar()))) {
@@ -126,7 +125,7 @@ Token Lexer::fetchNextToken() {
                 return isStringLiteral ? c != '"' : std::isalnum(c);
             };
             while (isAllowChar(currChar.val)) {
-                tokenValue.value().push_back(currChar.val);
+                tokenValue.push_back(currChar.val);
                 if (const int peekChar = getPeekChar(); !isAllowChar(peekChar)) {
                     break;
                 }
@@ -135,7 +134,7 @@ Token Lexer::fetchNextToken() {
             if (isStringLiteral && currChar.val != '"') {
                 readNextChar();
             }
-            if (const auto it = KEYWORDS.find(tokenValue.value()); it != KEYWORDS.end()) {
+            if (const auto it = KEYWORDS.find(tokenValue); it != KEYWORDS.end()) {
                 resultToken = it->second;
             } else if (isStringLiteral) {
                 resultToken = TokenType::String;

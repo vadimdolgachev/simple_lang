@@ -24,6 +24,7 @@
 #include "ast/StructInitNode.h"
 #include "type/FunctionType.h"
 #include "type/TypeFactory.h"
+#include "ast/NumberNode.h"
 
 namespace {
     class SemanticError final : public std::runtime_error {
@@ -324,6 +325,12 @@ void SemanticAnalyzer::visit(IndexAccessNode *node) {
         if (!node->index->getType()->isInteger()) {
             throw SemanticError("Index type must be integer");
         }
+        if (const auto numberNode = asNode<NumberNode>(node->index.get())) {
+            if (const auto index = numberNode.value()->value;
+                index < 0 || index >= arrayType.value()->size()) {
+                throw SemanticError(std::format("Index value: {} is out of array bounds: {}", index, arrayType.value()->getName()));
+            }
+        }
         // TODO: node->index->getType() should it be unsigned int?
         node->setType(arrayType.value()->getElementType());
     } else {
@@ -378,6 +385,9 @@ TypePtr SemanticAnalyzer::resolveTypeIfNeeded(TypePtr type) const {
         if (auto resolvedType = resolveTypeRef(type->getName())) {
             return *resolvedType;
         }
+    } else if (type->getKind() == TypeKind::Array) {
+        const auto arrayType = std::dynamic_pointer_cast<ArrayType>(type);
+        arrayType->setElementType(resolveTypeIfNeeded(arrayType->getElementType()));
     }
     return type;
 }

@@ -18,3 +18,7 @@ bool PointerType::operator==(const Type &other) const {
 std::string PointerType::getName() const {
     return std::format("{} *", baseType->getName());
 }
+
+bool PointerType::isPointTo(const TypePtr &base) const {
+    return baseType == base;
+}

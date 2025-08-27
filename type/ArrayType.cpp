@@ -34,6 +34,10 @@ TypePtr ArrayType::getElementType() const {
     return elementType;
 }
 
+void ArrayType::setElementType(TypePtr type) {
+    this->elementType = std::move(type);
+}
+
 size_t ArrayType::size() const noexcept {
     return arraySize;
 }

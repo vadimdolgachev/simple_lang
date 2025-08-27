@@ -123,6 +123,8 @@ public:
 
     bool isStruct() const noexcept;
 
+    bool isPointer() const noexcept;
+
     std::optional<FunctionTypePtr> asFunction();
 
     std::optional<StructTypePtr> asStruct();
