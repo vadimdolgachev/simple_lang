@@ -120,7 +120,7 @@ Token Lexer::fetchNextToken() {
             if (isStringLiteral) {
                 readNextChar();
             }
-            tokenValue = std::string();
+            tokenValue.clear();
             const auto isAllowChar = [isStringLiteral](const int c) {
                 return isStringLiteral ? c != '"' : std::isalnum(c);
             };

@@ -145,8 +145,7 @@ int main() {
     ModuleContext moduleContext(llvmModule, llvmIRBuilder);
     defineEmbeddedFunctions(moduleContext);
 
-    CompilerFronted compiler(std::make_unique<std::istringstream>(
-    R"(
+    constexpr auto text = replaceEscapeSequences(R"(
         globalInt: int = 1;
         globalText: str = "Hello";
         fn getStr(): str {
@@ -159,15 +158,16 @@ int main() {
             greeting: Greeting = Greeting {hello: "Hello"};
             println("%s", greeting.hello);
             text: str = getStr();
-            println("%s", text);
-            println("%s", getStr());
+            printf("%s\n", text);
+            printf("%s\n", getStr());
         }
 
         struct Greeting {
             hello: str;
         }
-    )"), BuiltinSymbols::getInstance().getFunctions());
-
+    )");
+    CompilerFronted compiler(std::make_unique<std::istringstream>(text.data()),
+        BuiltinSymbols::getInstance().getFunctions());
     compiler.generateIR(moduleContext);
     executeMain();
     return 0;

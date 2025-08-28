@@ -12,6 +12,7 @@ BuiltinSymbols::BuiltinSymbols() {
                                                      true);
     builtinFunctions["println"].push_back(std::make_shared<SymbolInfo>(printType));
     builtinFunctions["print"].push_back(std::make_shared<SymbolInfo>(printType));
+    builtinFunctions["printf"].push_back(std::make_shared<SymbolInfo>(printType));
 }
 
 const std::unordered_map<std::string, std::vector<SymbolInfoPtr>> &BuiltinSymbols::getFunctions() const {
@@ -19,6 +20,6 @@ const std::unordered_map<std::string, std::vector<SymbolInfoPtr>> &BuiltinSymbol
 }
 
 const BuiltinSymbols &BuiltinSymbols::getInstance() {
-    static BuiltinSymbols builtinSymbols;
+    const static BuiltinSymbols builtinSymbols;
     return builtinSymbols;
 }

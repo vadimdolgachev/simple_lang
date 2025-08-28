@@ -5,6 +5,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <cstring>
 #include <memory>
 #include <vector>
 #include <expected>
@@ -98,5 +99,59 @@ std::vector<std::unique_ptr<T>> clone(const std::vector<std::unique_ptr<T>> &sou
 
 template<typename T>
 using Result = std::expected<T, std::string>;
+
+template<std::size_t Size>
+consteval auto replaceEscapeSequences(const char (&text)[Size]) {
+    std::array<char, Size> result{};
+    std::size_t out = 0;
+
+    for (std::size_t i = 0; i < Size - 1;) {
+        if (text[i] == '\\' && i + 1 < Size - 1) {
+            switch (text[i + 1]) {
+                case 'a':
+                    result[out++] = '\a';
+                    i += 2;
+                    break;
+                case 'b':
+                    result[out++] = '\b';
+                    i += 2;
+                    break;
+                case 'n':
+                    result[out++] = '\n';
+                    i += 2;
+                    break;
+                case 'r':
+                    result[out++] = '\r';
+                    i += 2;
+                    break;
+                case 't':
+                    result[out++] = '\t';
+                    i += 2;
+                    break;
+                case '\'':
+                    result[out++] = '\'';
+                    i += 2;
+                    break;
+                case '\"':
+                    result[out++] = '\"';
+                    i += 2;
+                    break;
+                case '\\':
+                    result[out++] = '\\';
+                    i += 2;
+                    break;
+                default:
+                    result[out++] = text[i++];
+                    result[out++] = text[i++];
+                    break;
+            }
+        } else {
+            result[out++] = text[i++];
+        }
+    }
+
+    result[out] = '\0';
+    return result;
+}
 
 #endif //UTIL_H
