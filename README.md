@@ -15,4 +15,18 @@
     }
 ```
 
+Compilation:
+
+```./simple_lang ./text_program | llc -relocation-model=pic | clang -x assembler - -o a.out```
+
+Or
+
+```./simple_lang ./text_program | llc -relocation-model=pic | gcc -x assembler - -o a.out```
+
+Execution:
+
+```
+./a.out
+```
+
 Base on tutorial https://llvm.org/docs/tutorial/MyFirstLanguageFrontend

@@ -18,10 +18,6 @@ CompilerFronted::CompilerFronted(std::unique_ptr<std::istream> stream,
 
 void CompilerFronted::generateIR(ModuleContext &moduleContext) {
     const auto module = compile();
-
-    NodePrinter printer;
-    module->visit(&printer);
-
     LLVMCodegen::generate(module.get(), moduleContext);
 }
 

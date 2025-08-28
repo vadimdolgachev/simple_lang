@@ -1,0 +1,19 @@
+globalInt: int = 1;
+globalText: str = "Hello";
+fn getStr(): str {
+    return globalText;
+}
+globalText2: str = globalText;
+globalText3: str = globalText2;
+
+fn main() {
+    greeting: Greeting = Greeting {hello: "Hello"};
+    printf("%s\n", greeting.hello);
+    text: str = getStr();
+    printf("%s\n", text);
+    printf("%s\n", getStr());
+}
+
+struct Greeting {
+    hello: str;
+}

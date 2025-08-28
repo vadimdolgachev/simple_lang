@@ -253,13 +253,9 @@ public:
 
 private:
     void pushToken(Token token);
-
     void readNextChar();
-
     [[nodiscard]] Token fetchNextToken();
-
     [[nodiscard]] int getPeekChar() const;
-
     [[nodiscard]] std::string parseNumber();
     [[nodiscard]] std::string parseComment();
 

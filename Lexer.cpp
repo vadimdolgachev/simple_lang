@@ -66,12 +66,27 @@ namespace {
             {{'&', '&'}, TokenType::LogicalAnd},
             {{'/', '/'}, TokenType::Comment},
     };
+    const std::unordered_map<char, char> ESCAPE_SEQUENCES = {
+        {'a', '\a'},
+        {'b', '\b'},
+        {'n', '\n'},
+        {'r', '\r'},
+        {'t', '\t'},
+    };
 } // namespace
 
 void Lexer::readNextChar() {
     do {
         currChar.val = static_cast<char>(stream->get());
         if (!stream->eof()) {
+            if (currChar.val == '\\') {
+                currChar.val = static_cast<char>(stream->get());
+                if (const auto it = ESCAPE_SEQUENCES.find(currChar.val); it != std::end(ESCAPE_SEQUENCES)) {
+                    currChar.val = it->second;
+                } else {
+                    throw std::logic_error("Invalid escape sequence");
+                }
+            }
             if (const auto lineCounts = std::ranges::count_if(textQueue, isLineSepPred);
                 lineCounts >= MAX_READ_LINES) {
                 const auto it = std::ranges::next(std::ranges::find_if(textQueue,

@@ -2,6 +2,8 @@
 #include <sstream>
 #include <utility>
 #include <cstdarg>
+#include <fstream>
+#include <iostream>
 
 #include <llvm/Analysis/MemorySSA.h>
 #include <llvm/IR/IRBuilder.h>
@@ -78,16 +80,8 @@ namespace {
                                          *moduleAnalysisManager);
     }
 
-    void print(const llvm::Value *const llvmIR) {
-        llvm::outs() << "IR: ";
-        llvmIR->print(llvm::outs(), true);
-        llvm::outs() << '\n';
-    }
-
     void print(const llvm::Module *const module) {
-        llvm::outs() << "Module IR: ";
         module->print(llvm::outs(), nullptr);
-        llvm::outs() << '\n';
     }
 
     extern "C" void libPrint(const char *fmt, ...) {
@@ -107,7 +101,6 @@ namespace {
 
     void executeMain() {
         const auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
-        print(llvmModule.get());
         ExitOnError(llvmJit->addModule(
                 llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)),
                 resourceTracker));
@@ -136,7 +129,62 @@ namespace {
     }
 } // namespace
 
-int main() {
+struct ProgramArgs final {
+    bool execute;
+    std::string inputFile;
+};
+
+void printHelp(const char *progName) {
+    std::cout
+            << "Usage: " << progName << " [options] [file]\n\n"
+            << "Options:\n"
+            << "  -e, --exec       Execute the program after compilation\n"
+            << "  -h, --help       Show this help message\n\n"
+            << "Arguments:\n"
+            << "  file             Input source file (optional)\n";
+}
+
+ProgramArgs parseArgs(const int argc, char **argv) {
+    ProgramArgs programArgs = {
+            .execute = false,
+            .inputFile = ""
+    };
+
+    std::string fileArg;
+
+    for (int i = 1; i < argc; i++) {
+        if (std::string_view arg{argv[i]}; arg == "--exec" || arg == "-e") {
+            programArgs.execute = true;
+        } else if (arg == "--help" || arg == "-h") {
+            printHelp(argv[0]);
+            std::exit(0);
+        } else if (arg.starts_with('-')) {
+            std::cerr << "Unknown option: " << arg << "\n";
+            printHelp(argv[0]);
+            std::exit(1);
+        } else {
+            if (!fileArg.empty()) {
+                std::cerr << "Error: multiple input files specified: "
+                        << fileArg << " and " << arg << "\n";
+                printHelp(argv[0]);
+                std::exit(1);
+            }
+            fileArg = arg;
+        }
+    }
+
+    if (fileArg.empty()) {
+        std::cerr << "Error: input file is required\n";
+        printHelp(argv[0]);
+        std::exit(1);
+    }
+
+    programArgs.inputFile = fileArg;
+    return programArgs;
+}
+
+int main(int argc, char **argv) {
+    const auto [execute, inputFile] = parseArgs(argc, argv);
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
     llvm::InitializeNativeTargetAsmParser();
@@ -145,30 +193,12 @@ int main() {
     ModuleContext moduleContext(llvmModule, llvmIRBuilder);
     defineEmbeddedFunctions(moduleContext);
 
-    constexpr auto text = replaceEscapeSequences(R"(
-        globalInt: int = 1;
-        globalText: str = "Hello";
-        fn getStr(): str {
-            return globalText;
-        }
-        globalText2: str = globalText;
-        globalText3: str = globalText2;
-
-        fn main() {
-            greeting: Greeting = Greeting {hello: "Hello"};
-            println("%s", greeting.hello);
-            text: str = getStr();
-            printf("%s\n", text);
-            printf("%s\n", getStr());
-        }
-
-        struct Greeting {
-            hello: str;
-        }
-    )");
-    CompilerFronted compiler(std::make_unique<std::istringstream>(text.data()),
-        BuiltinSymbols::getInstance().getFunctions());
+    CompilerFronted compiler(std::make_unique<std::ifstream>(inputFile),
+                             BuiltinSymbols::getInstance().getFunctions());
     compiler.generateIR(moduleContext);
-    executeMain();
+    print(llvmModule.get());
+    if (execute) {
+        executeMain();
+    }
     return 0;
 }
