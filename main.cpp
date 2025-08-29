@@ -1,204 +1,81 @@
 #include <memory>
-#include <sstream>
 #include <utility>
-#include <cstdarg>
 #include <fstream>
 #include <iostream>
 
-#include <llvm/Analysis/MemorySSA.h>
-#include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
-#include <llvm/IR/PassManager.h>
-#include <llvm/IR/Verifier.h>
-#include <llvm/Passes/PassBuilder.h>
-#include <llvm/Passes/StandardInstrumentations.h>
-#include <llvm/Support/TargetSelect.h>
-#include <llvm/Transforms/InstCombine/InstCombine.h>
-#include <llvm/Transforms/Scalar/GVN.h>
-#include <llvm/Transforms/Scalar/Reassociate.h>
-#include <llvm/Transforms/Scalar/SimplifyCFG.h>
-#include <llvm/Transforms/Utils/Mem2Reg.h>
 
 #include "BuiltinSymbols.h"
 #include "CompilerFronted.h"
-#include "KaleidoscopeJIT.h"
+#include "Interpreter.h"
 
 namespace {
-    std::unique_ptr<llvm::LLVMContext> llvmContext;
-    std::unique_ptr<llvm::Module> llvmModule;
-    std::unique_ptr<llvm::IRBuilder<>> llvmIRBuilder;
-    std::unique_ptr<llvm::orc::KaleidoscopeJIT> llvmJit;
-    std::unique_ptr<llvm::FunctionPassManager> functionPassManager;
-    std::unique_ptr<llvm::LoopAnalysisManager> loopAnalysisManager;
-    std::unique_ptr<llvm::FunctionAnalysisManager> functionAnalysisManager;
-    std::unique_ptr<llvm::CGSCCAnalysisManager> cGSCCAnalysisManager;
-    std::unique_ptr<llvm::ModuleAnalysisManager> moduleAnalysisManager;
-    std::unique_ptr<llvm::PassInstrumentationCallbacks> passInstsCallbacks;
-    std::unique_ptr<llvm::StandardInstrumentations> standardInsts;
-    const llvm::ExitOnError ExitOnError;
+    struct ProgramArgs final {
+        bool execute;
+        std::string inputFile;
+    };
 
-    void initLlvmModules() {
-        llvmContext = std::make_unique<llvm::LLVMContext>();
-        llvmModule = std::make_unique<llvm::Module>("my cool jit", *llvmContext);
-
-        llvmModule->setDataLayout(llvmJit->getDataLayout());
-
-        llvmIRBuilder = std::make_unique<llvm::IRBuilder<>>(*llvmContext);
-
-        functionPassManager = std::make_unique<llvm::FunctionPassManager>();
-        loopAnalysisManager = std::make_unique<llvm::LoopAnalysisManager>();
-        functionAnalysisManager = std::make_unique<llvm::FunctionAnalysisManager>();
-        cGSCCAnalysisManager = std::make_unique<llvm::CGSCCAnalysisManager>();
-        moduleAnalysisManager = std::make_unique<llvm::ModuleAnalysisManager>();
-        passInstsCallbacks = std::make_unique<llvm::PassInstrumentationCallbacks>();
-        standardInsts = std::make_unique<llvm::StandardInstrumentations>(
-                *llvmContext, /*DebugLogging*/ true);
-        standardInsts->registerCallbacks(*passInstsCallbacks, moduleAnalysisManager.get());
-
-        // Add transform passes.
-        functionPassManager->addPass(llvm::VerifierPass());
-        // Do simple "peephole" optimizations and bit-twiddling optzns.
-        functionPassManager->addPass(llvm::InstCombinePass());
-        // Reassociate expressions.
-        functionPassManager->addPass(llvm::ReassociatePass());
-        // Eliminate Common SubExpressions.
-        functionPassManager->addPass(llvm::GVNPass());
-        // Simplify the control flow graph (deleting unreachable blocks, etc).
-        functionPassManager->addPass(llvm::SimplifyCFGPass());
-        functionPassManager->addPass(llvm::PromotePass());
-        functionPassManager->addPass(llvm::InstCombinePass());
-        functionPassManager->addPass(llvm::ReassociatePass());
-
-        // Register analysis passes used in these transform passes.
-        llvm::PassBuilder passBuilder;
-        passBuilder.registerModuleAnalyses(*moduleAnalysisManager);
-        passBuilder.registerFunctionAnalyses(*functionAnalysisManager);
-        passBuilder.crossRegisterProxies(*loopAnalysisManager,
-                                         *functionAnalysisManager,
-                                         *cGSCCAnalysisManager,
-                                         *moduleAnalysisManager);
+    void printHelp(const char *progName) {
+        std::cout << "Usage: " << progName << " [options] [file]\n\n"
+                << "Options:\n"
+                << "  -e, --exec       Execute the program after compilation\n"
+                << "  -h, --help       Show this help message\n\n"
+                << "Arguments:\n"
+                << "  file             Input source file (required)\n";
     }
 
-    void print(const llvm::Module *const module) {
-        module->print(llvm::outs(), nullptr);
-    }
+    ProgramArgs parseArgs(const int argc, char **argv) {
+        ProgramArgs programArgs = {.execute = false, .inputFile = ""};
 
-    extern "C" void libPrint(const char *fmt, ...) {
-        va_list args;
-        va_start(args, fmt);
-        vprintf(fmt, args);
-        va_end(args);
-    }
+        std::string fileArg;
 
-    extern "C" void libPrintln(const char *fmt, ...) {
-        va_list args;
-        va_start(args, fmt);
-        vprintf(fmt, args);
-        va_end(args);
-        putchar('\n');
-    }
-
-    void executeMain() {
-        const auto resourceTracker = llvmJit->getMainJITDylib().createResourceTracker();
-        ExitOnError(llvmJit->addModule(
-                llvm::orc::ThreadSafeModule(std::move(llvmModule), std::move(llvmContext)),
-                resourceTracker));
-        const auto mainSymbolDef = ExitOnError(llvmJit->lookup("main"));
-        auto *const main = mainSymbolDef.getAddress().toPtr<void (*)()>();
-        main();
-        ExitOnError(resourceTracker->remove());
-    }
-
-    void defineEmbeddedFunctions(ModuleContext &cm) {
-        llvm::orc::MangleAndInterner mangle(llvmJit->getMainJITDylib().getExecutionSession(),
-                                            llvmJit->getDataLayout());
-        llvm::orc::SymbolMap symbols;
-
-        for (const auto &[name, signatures]: BuiltinSymbols::getInstance().getFunctions()) {
-            cm.symTable.insertFunction(name, signatures[0]);
-            const auto printFun = name == "println" ? &libPrintln : &libPrint;
-            symbols[mangle(name)] = {
-                    llvm::orc::ExecutorAddr::fromPtr<std::remove_reference_t<decltype(*printFun)>>(printFun),
-                    llvm::JITSymbolFlags(
-                            llvm::JITSymbolFlags::Callable | llvm::JITSymbolFlags::Exported)
-            };
+        for (int i = 1; i < argc; i++) {
+            if (const std::string_view arg{argv[i]}; arg == "--exec" || arg == "-e") {
+                programArgs.execute = true;
+            } else if (arg == "--help" || arg == "-h") {
+                printHelp(argv[0]);
+                std::exit(0);
+            } else if (arg.starts_with('-')) {
+                std::cerr << "Unknown option: " << arg << "\n";
+                printHelp(argv[0]);
+                std::exit(1);
+            } else {
+                if (!fileArg.empty()) {
+                    std::cerr << "Error: multiple input files specified: " << fileArg << " and " << arg << "\n";
+                    printHelp(argv[0]);
+                    std::exit(1);
+                }
+                fileArg = arg;
+            }
         }
 
-        ExitOnError(llvmJit->getMainJITDylib().define(absoluteSymbols(std::move(symbols))));
+        if (fileArg.empty()) {
+            std::cerr << "Error: input file is required\n";
+            printHelp(argv[0]);
+            std::exit(1);
+        }
+
+        programArgs.inputFile = fileArg;
+        return programArgs;
     }
 } // namespace
 
-struct ProgramArgs final {
-    bool execute;
-    std::string inputFile;
-};
-
-void printHelp(const char *progName) {
-    std::cout
-            << "Usage: " << progName << " [options] [file]\n\n"
-            << "Options:\n"
-            << "  -e, --exec       Execute the program after compilation\n"
-            << "  -h, --help       Show this help message\n\n"
-            << "Arguments:\n"
-            << "  file             Input source file (optional)\n";
-}
-
-ProgramArgs parseArgs(const int argc, char **argv) {
-    ProgramArgs programArgs = {
-            .execute = false,
-            .inputFile = ""
-    };
-
-    std::string fileArg;
-
-    for (int i = 1; i < argc; i++) {
-        if (std::string_view arg{argv[i]}; arg == "--exec" || arg == "-e") {
-            programArgs.execute = true;
-        } else if (arg == "--help" || arg == "-h") {
-            printHelp(argv[0]);
-            std::exit(0);
-        } else if (arg.starts_with('-')) {
-            std::cerr << "Unknown option: " << arg << "\n";
-            printHelp(argv[0]);
-            std::exit(1);
-        } else {
-            if (!fileArg.empty()) {
-                std::cerr << "Error: multiple input files specified: "
-                        << fileArg << " and " << arg << "\n";
-                printHelp(argv[0]);
-                std::exit(1);
-            }
-            fileArg = arg;
-        }
-    }
-
-    if (fileArg.empty()) {
-        std::cerr << "Error: input file is required\n";
-        printHelp(argv[0]);
-        std::exit(1);
-    }
-
-    programArgs.inputFile = fileArg;
-    return programArgs;
-}
-
 int main(int argc, char **argv) {
     const auto [execute, inputFile] = parseArgs(argc, argv);
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
-    llvmJit = ExitOnError(llvm::orc::KaleidoscopeJIT::Create());
-    initLlvmModules();
-    ModuleContext moduleContext(llvmModule, llvmIRBuilder);
-    defineEmbeddedFunctions(moduleContext);
+    ModuleContext moduleContext("my cool jit");
+    for (const auto &[name, signatures]: BuiltinSymbols::getInstance().getFunctions()) {
+        moduleContext.symTable.insertFunction(name, signatures[0]);
+    }
 
     CompilerFronted compiler(std::make_unique<std::ifstream>(inputFile),
                              BuiltinSymbols::getInstance().getFunctions());
     compiler.generateIR(moduleContext);
-    print(llvmModule.get());
+    compiler.optimizeModule(*moduleContext.module);
+    moduleContext.module->print(llvm::outs(), nullptr);
+
     if (execute) {
-        executeMain();
+        Interpreter interpreter;
+        interpreter.execute(std::move(moduleContext), "main");
     }
     return 0;
 }

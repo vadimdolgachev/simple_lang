@@ -11,17 +11,29 @@
 #include <llvm/IR/Module.h>
 
 struct ModuleContext final {
-    ModuleContext(const std::unique_ptr<llvm::Module> &llvmContext,
-                  const std::unique_ptr<llvm::IRBuilder<>> &irBuilder):
-        module(llvmContext),
-        builder(irBuilder) {}
+    explicit ModuleContext(const std::string_view moduleID) :
+        context(std::make_unique<llvm::LLVMContext>()),
+        module(std::make_unique<llvm::Module>(moduleID, *context)),
+        builder(std::make_unique<llvm::IRBuilder<>>(*context)) {
+    }
 
-    ModuleContext(const ModuleContext &) = delete;
-    ModuleContext &operator=(ModuleContext &) = delete;
+    ModuleContext(ModuleContext &&other) noexcept :
+        symTable(std::move(other.symTable)),
+        context(std::move(other.context)),
+        module(std::move(other.module)) {
+    }
+
+    ModuleContext &operator=(ModuleContext &&other) noexcept {
+        symTable = std::move(other.symTable);
+        context = std::move(other.context);
+        module = std::move(other.module);
+        return *this;
+    }
 
     SymbolTable symTable;
-    const std::unique_ptr<llvm::Module> &module;
-    const std::unique_ptr<llvm::IRBuilder<>> &builder;
+    std::unique_ptr<llvm::LLVMContext> context;
+    std::unique_ptr<llvm::Module> module;
+    const std::unique_ptr<llvm::IRBuilder<>> builder;
 };
 
 #endif //MODULECONTEXT_H

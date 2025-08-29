@@ -10,8 +10,8 @@ BuiltinSymbols::BuiltinSymbols() {
     const auto printType = TypeFactory::makeFunction(TypeFactory::makePrimitiveType(TypeKind::Void),
                                                      std::vector{TypeFactory::makePrimitiveType(TypeKind::Str)},
                                                      true);
-    // builtinFunctions["println"].push_back(std::make_shared<SymbolInfo>(printType));
-    // builtinFunctions["print"].push_back(std::make_shared<SymbolInfo>(printType));
+    builtinFunctions["println"].push_back(std::make_shared<SymbolInfo>(printType));
+    builtinFunctions["print"].push_back(std::make_shared<SymbolInfo>(printType));
     builtinFunctions["printf"].push_back(std::make_shared<SymbolInfo>(printType));
 }
 

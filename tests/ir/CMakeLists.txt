@@ -1,0 +1,210 @@
+cmake_minimum_required(VERSION 3.26)
+project(ir_tests)
+
+set(CMAKE_CXX_STANDARD 23)
+
+find_package(LLVM REQUIRED CONFIG)
+
+include_directories(${LLVM_INCLUDE_DIRS})
+separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
+add_definitions(${LLVM_DEFINITIONS})
+
+add_executable(ir_tests main.cpp
+        ../../ast/ArrayNode.cpp
+        ../../ast/ArrayNode.h
+        ../../ast/AssignmentNode.cpp
+        ../../ast/AssignmentNode.h
+        ../../ast/BaseNode.h
+        ../../ast/BinOpNode.cpp
+        ../../ast/BinOpNode.h
+        ../../ast/BlockNode.cpp
+        ../../ast/BlockNode.h
+        ../../ast/BooleanNode.cpp
+        ../../ast/BooleanNode.h
+        ../../ast/CommentNode.cpp
+        ../../ast/CommentNode.h
+        ../../ast/DeclarationNode.cpp
+        ../../ast/DeclarationNode.h
+        ../../ast/FieldAccessNode.cpp
+        ../../ast/FieldAccessNode.h
+        ../../ast/FunctionCallNode.cpp
+        ../../ast/FunctionCallNode.h
+        ../../ast/FunctionNode.cpp
+        ../../ast/FunctionNode.h
+        ../../ast/IdentNode.cpp
+        ../../ast/IdentNode.h
+        ../../ast/IfStatement.cpp
+        ../../ast/IfStatement.h
+        ../../ast/IndexAccessNode.cpp
+        ../../ast/IndexAccessNode.h
+        ../../ast/LoopCondNode.cpp
+        ../../ast/LoopCondNode.h
+        ../../ast/MemberAccessNode.cpp
+        ../../ast/MemberAccessNode.h
+        ../../ast/MethodCallNode.cpp
+        ../../ast/MethodCallNode.h
+        ../../ast/ModuleNode.cpp
+        ../../ast/ModuleNode.h
+        ../../ast/NumberNode.cpp
+        ../../ast/NumberNode.h
+        ../../ast/ProtoFunctionStatement.cpp
+        ../../ast/ProtoFunctionStatement.h
+        ../../ast/ReturnNode.cpp
+        ../../ast/ReturnNode.h
+        ../../ast/StringNode.cpp
+        ../../ast/StringNode.h
+        ../../ast/StructDeclarationNode.cpp
+        ../../ast/StructDeclarationNode.h
+        ../../ast/StructInitNode.cpp
+        ../../ast/StructInitNode.h
+        ../../ast/TernaryOperatorNode.cpp
+        ../../ast/TernaryOperatorNode.h
+        ../../ast/TypeCastNode.cpp
+        ../../ast/TypeCastNode.h
+        ../../ast/UnaryOpNode.cpp
+        ../../ast/UnaryOpNode.h
+        ../../BuiltinSymbols.cpp
+        ../../BuiltinSymbols.h
+        ../../CompilerFronted.cpp
+        ../../CompilerFronted.h
+        ../../DeclarationCollector.cpp
+        ../../DeclarationCollector.h
+        ../../Interpreter.cpp
+        ../../Interpreter.h
+        ../../ir/ArrayNodeGenerator.cpp
+        ../../ir/ArrayNodeGenerator.h
+        ../../ir/AssignmentNodeGenerator.cpp
+        ../../ir/AssignmentNodeGenerator.h
+        ../../ir/BinOpNodeGenerator.cpp
+        ../../ir/BinOpNodeGenerator.h
+        ../../ir/BlockNodeGenerator.cpp
+        ../../ir/BlockNodeGenerator.h
+        ../../ir/BooleanNodeGenerator.cpp
+        ../../ir/BooleanNodeGenerator.h
+        ../../ir/DeclarationNodeGenerator.cpp
+        ../../ir/DeclarationNodeGenerator.h
+        ../../ir/FieldAccessNodeGenerator.cpp
+        ../../ir/FieldAccessNodeGenerator.h
+        ../../ir/FunctionCallNodeGenerator.cpp
+        ../../ir/FunctionCallNodeGenerator.h
+        ../../ir/FunctionNodeGenerator.cpp
+        ../../ir/FunctionNodeGenerator.h
+        ../../ir/IdentNodeGenerator.cpp
+        ../../ir/IdentNodeGenerator.h
+        ../../ir/IfStatementGenerator.cpp
+        ../../ir/IfStatementGenerator.h
+        ../../ir/IndexAccessNodeGenerator.cpp
+        ../../ir/IndexAccessNodeGenerator.h
+        ../../ir/IRGenerator.h
+        ../../ir/IRTypeFactory.cpp
+        ../../ir/IRTypeFactory.h
+        ../../ir/IRValue.cpp
+        ../../ir/IRValue.h
+        ../../ir/LLVMCodegen.cpp
+        ../../ir/LLVMCodegen.h
+        ../../ir/LoopCondNodeGenerator.cpp
+        ../../ir/LoopCondNodeGenerator.h
+        ../../ir/MethodCallNodeGenerator.cpp
+        ../../ir/MethodCallNodeGenerator.h
+        ../../ir/ModuleContext.h
+        ../../ir/ModuleNodeGenerator.cpp
+        ../../ir/ModuleNodeGenerator.h
+        ../../ir/NumberNodeGenerator.cpp
+        ../../ir/NumberNodeGenerator.h
+        ../../ir/ProtoFunctionGenerator.cpp
+        ../../ir/ProtoFunctionGenerator.h
+        ../../ir/ReturnNodeGenerator.cpp
+        ../../ir/ReturnNodeGenerator.h
+        ../../ir/StringNodeGenerator.cpp
+        ../../ir/StringNodeGenerator.h
+        ../../ir/StructInitNodeGenerator.cpp
+        ../../ir/StructInitNodeGenerator.h
+        ../../ir/TernaryOperatorNodeGenerator.cpp
+        ../../ir/TernaryOperatorNodeGenerator.h
+        ../../ir/type/ArrayIRType.cpp
+        ../../ir/type/ArrayIRType.h
+        ../../ir/type/BooleanIRType.cpp
+        ../../ir/type/BooleanIRType.h
+        ../../ir/type/ByteIRType.cpp
+        ../../ir/type/ByteIRType.h
+        ../../ir/TypeCastNodeGenerator.cpp
+        ../../ir/TypeCastNodeGenerator.h
+        ../../ir/type/CharIRType.cpp
+        ../../ir/type/CharIRType.h
+        ../../ir/type/DoubleIRType.cpp
+        ../../ir/type/DoubleIRType.h
+        ../../ir/type/IntIRType.cpp
+        ../../ir/type/IntIRType.h
+        ../../ir/type/IRType.cpp
+        ../../ir/type/IRType.h
+        ../../ir/type/NumericIRType.cpp
+        ../../ir/type/NumericIRType.h
+        ../../ir/type/StrIRType.cpp
+        ../../ir/type/StrIRType.h
+        ../../ir/type/StructIRType.cpp
+        ../../ir/type/StructIRType.h
+        ../../ir/type/VoidIRType.cpp
+        ../../ir/type/VoidIRType.h
+        ../../ir/UnaryOpNodeGenerator.cpp
+        ../../ir/UnaryOpNodeGenerator.h
+        ../../KaleidoscopeJIT.h
+        ../../Lexer.cpp
+        ../../Lexer.h
+        ../../NodePrinter.cpp
+        ../../NodePrinter.h
+        ../../Parser.cpp
+        ../../Parser.h
+        ../../SemanticAnalyzer.cpp
+        ../../SemanticAnalyzer.h
+        ../../SymbolTable.cpp
+        ../../SymbolTable.h
+        ../../type/ArrayType.cpp
+        ../../type/ArrayType.h
+        ../../type/BoolType.cpp
+        ../../type/BoolType.h
+        ../../type/ByteType.cpp
+        ../../type/ByteType.h
+        ../../type/CharType.cpp
+        ../../type/CharType.h
+        ../../type/FunctionType.cpp
+        ../../type/FunctionType.h
+        ../../type/NumericType.cpp
+        ../../type/NumericType.h
+        ../../type/PointerType.cpp
+        ../../type/PointerType.h
+        ../../type/StrType.cpp
+        ../../type/StrType.h
+        ../../type/StructType.cpp
+        ../../type/StructType.h
+        ../../type/Type.cpp
+        ../../type/TypeFactory.cpp
+        ../../type/TypeFactory.h
+        ../../type/Type.h
+        ../../type/TypePtrFwd.h
+        ../../type/UnresolvedType.cpp
+        ../../type/UnresolvedType.h
+        ../../type/VoidType.cpp
+        ../../type/VoidType.h
+        ../../Util.h
+)
+
+target_include_directories(ir_tests PRIVATE ../..)
+
+target_compile_options(ir_tests PRIVATE
+        -Wall
+        -Wpedantic
+        -Wextra
+        -Werror=unused-result
+        -Werror=return-type
+        -Wstrict-aliasing
+)
+
+llvm_map_components_to_libnames(llvm_libs
+        Core
+        OrcJIT
+        native
+)
+
+target_compile_options(ir_tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_options(ir_tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_link_libraries(ir_tests PRIVATE ${llvm_libs})

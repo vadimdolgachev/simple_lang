@@ -6,7 +6,8 @@ find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-add_subdirectory(tests)
+add_subdirectory(tests/ast)
+add_subdirectory(tests/ir)
 
 # Set your project compile flags.
 # E.g. if using the C++ header files
@@ -196,8 +197,9 @@ add_executable(simple_lang
         type/TypePtrFwd.h
         type/UnresolvedType.cpp
         type/UnresolvedType.h
+        Interpreter.cpp
+        Interpreter.h
 )
-
 
 target_compile_options(simple_lang PRIVATE
     $<$<CONFIG:Debug>:

@@ -9,6 +9,7 @@
 #include <memory>
 
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/Passes/OptimizationLevel.h>
 
 #include "ir/ModuleContext.h"
 
@@ -16,12 +17,14 @@ class Parser;
 class Lexer;
 class ModuleNode;
 
-class CompilerFronted {
+class CompilerFronted final {
 public:
     explicit CompilerFronted(std::unique_ptr<std::istream> stream,
                              std::unordered_map<std::string, std::vector<SymbolInfoPtr>> builtinSymbols);
 
     void generateIR(ModuleContext &moduleContext);
+
+    void optimizeModule(llvm::Module &module, llvm::OptimizationLevel OL = llvm::OptimizationLevel::O2);
 
 private:
     std::unique_ptr<ModuleNode> compile();

@@ -28,7 +28,7 @@
 #include "ast/ProtoFunctionStatement.h"
 #include "ast/ReturnNode.h"
 #include "ast/TernaryOperatorNode.h"
-#include "../type/Type.h"
+#include "type/Type.h"
 #include "ast/ArrayNode.h"
 #include "ast/IndexAccessNode.h"
 #include "type/ArrayType.h"

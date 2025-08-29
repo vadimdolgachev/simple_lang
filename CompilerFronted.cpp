@@ -3,22 +3,50 @@
 //
 
 #include "CompilerFronted.h"
+
+#include <llvm/Passes/OptimizationLevel.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Passes/StandardInstrumentations.h>
+
 #include "DeclarationCollector.h"
 #include "Parser.h"
 #include "Lexer.h"
-#include "NodePrinter.h"
 #include "SemanticAnalyzer.h"
 #include "ast/ModuleNode.h"
 #include "ir/LLVMCodegen.h"
 
 CompilerFronted::CompilerFronted(std::unique_ptr<std::istream> stream,
-                                 std::unordered_map<std::string, std::vector<SymbolInfoPtr>> builtinSymbols):
+                                 std::unordered_map<std::string, std::vector<SymbolInfoPtr>> builtinSymbols) :
     stream(std::move(stream)),
-    builtinSymbols(std::move(builtinSymbols)) {}
+    builtinSymbols(std::move(builtinSymbols)) {
+}
 
 void CompilerFronted::generateIR(ModuleContext &moduleContext) {
     const auto module = compile();
     LLVMCodegen::generate(module.get(), moduleContext);
+}
+
+void CompilerFronted::optimizeModule(llvm::Module &module, const llvm::OptimizationLevel OL) {
+    llvm::LLVMContext &context = module.getContext();
+
+    llvm::LoopAnalysisManager LAM;
+    llvm::FunctionAnalysisManager FAM;
+    llvm::CGSCCAnalysisManager CGAM;
+    llvm::ModuleAnalysisManager MAM;
+
+    llvm::PassInstrumentationCallbacks PIC;
+    llvm::StandardInstrumentations SI(context, true);
+    SI.registerCallbacks(PIC, &MAM);
+
+    llvm::PassBuilder passBuilder(nullptr, llvm::PipelineTuningOptions(), std::nullopt, &PIC);
+
+    passBuilder.registerModuleAnalyses(MAM);
+    passBuilder.registerCGSCCAnalyses(CGAM);
+    passBuilder.registerFunctionAnalyses(FAM);
+    passBuilder.registerLoopAnalyses(LAM);
+    passBuilder.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    passBuilder.buildPerModuleDefaultPipeline(OL).run(module, MAM);
 }
 
 std::unique_ptr<ModuleNode> CompilerFronted::compile() {
