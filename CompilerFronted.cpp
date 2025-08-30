@@ -7,6 +7,7 @@
 #include <llvm/Passes/OptimizationLevel.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Passes/StandardInstrumentations.h>
+#include <llvm/IR/Verifier.h>
 
 #include "DeclarationCollector.h"
 #include "Parser.h"
@@ -47,6 +48,14 @@ void CompilerFronted::optimizeModule(llvm::Module &module, const llvm::Optimizat
     passBuilder.crossRegisterProxies(LAM, FAM, CGAM, MAM);
 
     passBuilder.buildPerModuleDefaultPipeline(OL).run(module, MAM);
+}
+
+void CompilerFronted::verifyModule(const llvm::Module &module) {
+    std::string verifyError;
+    llvm::raw_string_ostream os(verifyError);
+    if (llvm::verifyModule(module, &os)) {
+        throw std::logic_error("Module verification failed:\n" + os.str());
+    }
 }
 
 std::unique_ptr<ModuleNode> CompilerFronted::compile() {

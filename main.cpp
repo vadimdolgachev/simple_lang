@@ -71,6 +71,7 @@ int main(int argc, char **argv) {
                              BuiltinSymbols::getInstance().getFunctions());
     compiler.generateIR(moduleContext);
     compiler.optimizeModule(*moduleContext.module);
+    compiler.verifyModule(*moduleContext.module);
     moduleContext.module->print(llvm::outs(), nullptr);
 
     if (execute) {

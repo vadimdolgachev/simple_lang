@@ -23,31 +23,52 @@ extern "C" void irTestPrint(const char *fmt, ...) {
         free(p);
     });
     va_end(args);
-    printf("%s", buf);
     programLog.append(buf);
 }
 
-void testGlobalStrVar() {
-    ModuleContext moduleContext("my cool jit");
-    for (const auto &[name, signatures]: BuiltinSymbols::getInstance().getFunctions()) {
-        moduleContext.symTable.insertFunction(name, signatures[0]);
+namespace {
+    void execProgram(const std::string &text) {
+        ModuleContext moduleContext("my cool jit");
+        for (const auto &[name, signatures]: BuiltinSymbols::getInstance().getFunctions()) {
+            moduleContext.symTable.insertFunction(name, signatures[0]);
+        }
+        CompilerFronted compiler(std::make_unique<std::istringstream>(text),
+                                 BuiltinSymbols::getInstance().getFunctions());
+        compiler.generateIR(moduleContext);
+        moduleContext.module->print(llvm::errs(), nullptr);
+        compiler.optimizeModule(*moduleContext.module, llvm::OptimizationLevel::O0);
+        Interpreter interpreter(irTestPrint);
+        programLog.clear();
+        interpreter.execute(std::move(moduleContext), "main");
     }
-    CompilerFronted compiler(std::make_unique<std::istringstream>(R"(
+
+    void testGlobalStrVar() {
+        execProgram(R"(
             text: str = "Hello World!";
             fn main() {
-                printf("%s", text);
+                printf("%s\n", text);
+                text = "New string";
+                printf("%s\n", text);
             }
-        )"), BuiltinSymbols::getInstance().getFunctions());
-    compiler.generateIR(moduleContext);
-    moduleContext.module->print(llvm::errs(), nullptr);
-    compiler.optimizeModule(*moduleContext.module, llvm::OptimizationLevel::O0);
-    Interpreter interpreter(irTestPrint);
-    interpreter.execute(std::move(moduleContext), "main");
-    assert(programLog == "Hello World!");
-    programLog.clear();
-}
+        )");
+        assert(programLog == "Hello World!\nNew string\n");
+    }
+
+    void testGlobalIntVar() {
+        execProgram(R"(
+            i: int = 1;
+            fn main() {
+                printf("%d\n", i);
+                i = 2;
+                printf("%d\n", i);
+            }
+        )");
+        assert(programLog == "1\n2\n");
+    }
+} // namespace
 
 int main() {
     testGlobalStrVar();
+    testGlobalIntVar();
     return 0;
 }

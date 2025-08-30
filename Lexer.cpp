@@ -79,14 +79,7 @@ void Lexer::readNextChar() {
     do {
         currChar.val = static_cast<char>(stream->get());
         if (!stream->eof()) {
-            if (currChar.val == '\\') {
-                currChar.val = static_cast<char>(stream->get());
-                if (const auto it = ESCAPE_SEQUENCES.find(currChar.val); it != std::end(ESCAPE_SEQUENCES)) {
-                    currChar.val = it->second;
-                } else {
-                    throw std::logic_error("Invalid escape sequence");
-                }
-            }
+            replaceEscapeSequences();
             if (const auto lineCounts = std::ranges::count_if(textQueue, isLineSepPred);
                 lineCounts >= MAX_READ_LINES) {
                 const auto it = std::ranges::next(std::ranges::find_if(textQueue,
@@ -200,6 +193,17 @@ std::string Lexer::parseComment() {
         readNextChar();
     }
     return comment;
+}
+
+void Lexer::replaceEscapeSequences() {
+    if (currChar.val == '\\') {
+        currChar.val = static_cast<char>(stream->get());
+        if (const auto it = ESCAPE_SEQUENCES.find(currChar.val); it != std::end(ESCAPE_SEQUENCES)) {
+            currChar.val = it->second;
+        } else {
+            throw std::logic_error("Invalid escape sequence");
+        }
+    }
 }
 
 Lexer::Lexer(std::unique_ptr<std::istream> stream):

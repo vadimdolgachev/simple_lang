@@ -205,6 +205,6 @@ llvm_map_components_to_libnames(llvm_libs
         native
 )
 
-target_compile_options(ir_tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+target_compile_options(ir_tests PRIVATE -fsanitize=address -fno-omit-frame-pointer -Wno-unused-parameter)
 target_link_options(ir_tests PRIVATE -fsanitize=address -fno-omit-frame-pointer)
 target_link_libraries(ir_tests PRIVATE ${llvm_libs})

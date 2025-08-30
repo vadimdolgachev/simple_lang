@@ -25,7 +25,7 @@ std::shared_ptr<IRType> IRValue::getType() const {
 
 llvm::Value *IRValue::load(llvm::IRBuilder<> &builder) const {
     if (valueKind == ValueKind::Memory) {
-        return builder.CreateLoad(value->getType(), value);
+        return builder.CreateLoad(type->getLLVMType(builder.getContext()), value);
     }
     return value;
 }

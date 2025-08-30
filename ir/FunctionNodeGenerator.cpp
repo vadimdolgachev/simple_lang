@@ -50,7 +50,7 @@ void FunctionNodeGenerator::generateT(FunctionNode *node, ModuleContext &mc) con
 
     std::string verifyError;
     llvm::raw_string_ostream os(verifyError);
-    if (verifyFunction(*func, &os)) {
+    if (llvm::verifyFunction(*func, &os)) {
         throw std::logic_error("Function verification failed:\n" + os.str());
     }
 }

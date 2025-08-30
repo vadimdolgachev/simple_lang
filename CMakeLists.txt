@@ -223,6 +223,7 @@ target_compile_options(simple_lang PRIVATE
         -Werror=unused-result
         -Werror=return-type
         -Wstrict-aliasing
+        -Wno-unused-parameter
 )
 
 # Find the libraries that correspond to the LLVM components

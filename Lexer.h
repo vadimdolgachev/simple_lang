@@ -258,6 +258,7 @@ private:
     [[nodiscard]] int getPeekChar() const;
     [[nodiscard]] std::string parseNumber();
     [[nodiscard]] std::string parseComment();
+    void replaceEscapeSequences();
 
     std::unique_ptr<std::istream> stream;
     Character currChar = {EOF, 0, 0};

@@ -13,8 +13,6 @@
 
 #include "ir/ModuleContext.h"
 
-class Parser;
-class Lexer;
 class ModuleNode;
 
 class CompilerFronted final {
@@ -23,8 +21,8 @@ public:
                              std::unordered_map<std::string, std::vector<SymbolInfoPtr>> builtinSymbols);
 
     void generateIR(ModuleContext &moduleContext);
-
     void optimizeModule(llvm::Module &module, llvm::OptimizationLevel OL = llvm::OptimizationLevel::O2);
+    void verifyModule(const llvm::Module &module);
 
 private:
     std::unique_ptr<ModuleNode> compile();
