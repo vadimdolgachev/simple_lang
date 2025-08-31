@@ -10,7 +10,7 @@ DoubleIRType::DoubleIRType(const bool isPointer):
 
 llvm::Constant *DoubleIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
     const auto *const numberNode = dynamic_cast<const NumberNode *>(node);
-    return llvm::ConstantFP::get(getLLVMType(mc.module->getContext()),
+    return llvm::ConstantFP::get(getLLVMType(*mc.context),
                                  llvm::APFloat(numberNode->value));
 }
 

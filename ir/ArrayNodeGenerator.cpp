@@ -8,6 +8,6 @@
 #include "ast/ArrayNode.h"
 
 IRValueOpt ArrayNodeGenerator::generateT(ArrayNode *node, ModuleContext &mc) const {
-    const auto arrayType = IRTypeFactory::from(node->getType(), mc.module->getContext());
+    const auto arrayType = IRTypeFactory::from(node->getType(), *mc.context);
     return IRValue::createConstant(arrayType->createConstant(node, mc), arrayType);
 }

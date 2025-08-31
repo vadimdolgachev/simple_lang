@@ -22,7 +22,7 @@ IRValueOpt FunctionCallNodeGenerator::generateT(FunctionCallNode *node, ModuleCo
         if (!arg) {
             throw std::runtime_error("Error argument function generation");
         }
-        const auto argType = IRTypeFactory::from(node->args[i]->getType(), mc.module->getContext());
+        const auto argType = IRTypeFactory::from(node->args[i]->getType(), *mc.context);
         auto *argValue = arg.value().load(*mc.builder);
         if (i < funcType->getNumParams()) {
             argValue = tryCastValue(mc.builder, argValue, funcType->getParamType(i));
@@ -30,6 +30,6 @@ IRValueOpt FunctionCallNodeGenerator::generateT(FunctionCallNode *node, ModuleCo
         argsFunc.push_back(argValue);
     }
 
-    auto irType = IRTypeFactory::from(node->getType(), mc.module->getContext());
+    auto irType = IRTypeFactory::from(node->getType(), *mc.context);
     return IRValue::createConstant(mc.builder->CreateCall(calleeFunc, argsFunc), std::move(irType));
 }

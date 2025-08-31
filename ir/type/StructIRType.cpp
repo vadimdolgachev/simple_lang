@@ -56,7 +56,7 @@ llvm::Constant *StructIRType::createConstant(const BaseNode *node, ModuleContext
             auto *const constValue = LLVMCodegen::generate(valueNode.get(), mc).value().getRawValue();
             fieldValues.push_back(llvm::dyn_cast<llvm::Constant>(constValue));
         }
-        return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(getLLVMType(mc.module->getContext())),
+        return llvm::ConstantStruct::get(llvm::cast<llvm::StructType>(getLLVMType(*mc.context)),
                                          fieldValues);
     }
     throw std::runtime_error("Unexpected node type");
@@ -64,7 +64,7 @@ llvm::Constant *StructIRType::createConstant(const BaseNode *node, ModuleContext
 
 llvm::Value *StructIRType::createGlobal(const BaseNode *node, ModuleContext &mc) const {
     if (const auto *structInit = dynamic_cast<const StructInitNode *>(node); structInit != nullptr) {
-        auto *const llvmStructType = getLLVMType(mc.module->getContext());
+        auto *const llvmStructType = getLLVMType(*mc.context);
         auto *gv = new llvm::GlobalVariable(*mc.module,
                                             llvmStructType,
                                             false,
@@ -88,7 +88,7 @@ llvm::Value *StructIRType::createGlobal(const BaseNode *node, ModuleContext &mc)
 
 llvm::Value *StructIRType::createUndef(const BaseNode *node, ModuleContext &mc) const {
     if (const auto *structInit = dynamic_cast<const StructInitNode *>(node); structInit != nullptr) {
-        auto *const llvmStructType = getLLVMType(mc.module->getContext());
+        auto *const llvmStructType = getLLVMType(*mc.context);
         llvm::Value *result = llvm::UndefValue::get(llvmStructType);
         for (const auto &[fieldName, initNode]: structInit->designator) {
             auto *const initValue = LLVMCodegen::generate(initNode.get(), mc).value().load(*mc.builder);

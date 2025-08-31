@@ -53,7 +53,7 @@ llvm::Constant *ArrayIRType::createConstant(const BaseNode *node, ModuleContext 
     elements.reserve(arrayNode.value()->elements.size());
 
     const auto elemIRType =
-            IRTypeFactory::from(arrayNode.value()->getType()->asArray().value()->getElementType(), mc.module->getContext());
+            IRTypeFactory::from(arrayNode.value()->getType()->asArray().value()->getElementType(), *mc.context);
     for (const auto &element: arrayNode.value()->elements) {
         auto *const elementConstant =
                 elemIRType->createConstant(element.get(), mc);

@@ -10,8 +10,8 @@
 
 IRValueOpt TypeCastNodeGenerator::generateT(TypeCastNode *node, ModuleContext &mc) const {
     const auto value = LLVMCodegen::generate(node->expr.get(), mc).value();
-    const auto irType = IRTypeFactory::from(node->targetType, mc.module->getContext());
+    const auto irType = IRTypeFactory::from(node->targetType, *mc.context);
     return IRValue::createConstant(
-            tryCastValue(mc.builder, value.load(*mc.builder), irType->getLLVMType(mc.module->getContext())),
+            tryCastValue(mc.builder, value.load(*mc.builder), irType->getLLVMType(*mc.context)),
             irType);
 }

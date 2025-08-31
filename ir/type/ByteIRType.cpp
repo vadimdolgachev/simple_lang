@@ -29,7 +29,7 @@ llvm::Value *ByteIRType::createBinaryOp(llvm::IRBuilder<> &builder,
 
 llvm::Constant *ByteIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
     const auto *const numberNode = dynamic_cast<const NumberNode *>(node);
-    return llvm::ConstantInt::get(getLLVMType(mc.module->getContext()),
+    return llvm::ConstantInt::get(getLLVMType(*mc.context),
                                   static_cast<uint8_t>(numberNode->value),
                                   false);
 }

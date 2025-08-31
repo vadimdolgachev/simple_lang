@@ -17,9 +17,9 @@ void IfStatementGenerator::generateT(IfStatement *node, ModuleContext &mc) const
 
     auto *const parentFunc = mc.builder->GetInsertBlock()->getParent();
 
-    auto *const firstIfBB = llvm::BasicBlock::Create(mc.module->getContext(), "if", parentFunc);
-    auto *lastElseBB = llvm::BasicBlock::Create(mc.module->getContext(), "else");
-    auto *const mergeBB = llvm::BasicBlock::Create(mc.module->getContext(), "merge_if");
+    auto *const firstIfBB = llvm::BasicBlock::Create(*mc.context, "if", parentFunc);
+    auto *lastElseBB = llvm::BasicBlock::Create(*mc.context, "else");
+    auto *const mergeBB = llvm::BasicBlock::Create(*mc.context, "merge_if");
 
     mc.builder->CreateCondBr(firstCV, firstIfBB, lastElseBB);
 
@@ -41,9 +41,9 @@ void IfStatementGenerator::generateT(IfStatement *node, ModuleContext &mc) const
         if (!value) {
             throw std::logic_error("Condition must be boolean type");
         }
-        auto *const ifBB = llvm::BasicBlock::Create(mc.module->getContext(),
+        auto *const ifBB = llvm::BasicBlock::Create(*mc.context,
                                                     "elif_" + std::to_string(i), parentFunc);
-        lastElseBB = llvm::BasicBlock::Create(mc.module->getContext(), "else_" + std::to_string(i));
+        lastElseBB = llvm::BasicBlock::Create(*mc.context, "else_" + std::to_string(i));
         mc.builder->CreateCondBr(value, ifBB, lastElseBB);
 
         mc.builder->SetInsertPoint(ifBB);

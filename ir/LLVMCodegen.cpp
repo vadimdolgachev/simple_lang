@@ -263,10 +263,10 @@ llvm::Function *getModuleFunction(const std::string &name, const ModuleContext &
             functionParams.reserve(functionType.value()->parametersType().size());
             for (const auto &param: functionType.value()->parametersType()) {
                 functionParams.push_back(
-                        IRTypeFactory::from(param, mc.module->getContext())->getLLVMType(mc.module->getContext()));
+                        IRTypeFactory::from(param, *mc.context)->getLLVMType(*mc.context));
             }
-            auto *retType = IRTypeFactory::from(functionType.value()->returnType(), mc.module->getContext())
-                    ->getLLVMType(mc.module->getContext());
+            auto *retType = IRTypeFactory::from(functionType.value()->returnType(), *mc.context)
+                    ->getLLVMType(*mc.context);
             auto *const llvmFunctionType =
                     llvm::FunctionType::get(retType, functionParams, functionType.value()->isVariadic());
             return llvm::Function::Create(llvmFunctionType, llvm::Function::ExternalLinkage, name, mc.module.get());

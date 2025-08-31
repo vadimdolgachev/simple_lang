@@ -11,9 +11,9 @@
 IRValueOpt TernaryOperatorNodeGenerator::generateT(TernaryOperatorNode *node, ModuleContext &mc) const {
     auto *const parentFunc = mc.builder->GetInsertBlock()->getParent();
 
-    auto *const thenBB = llvm::BasicBlock::Create(mc.module->getContext(), "tern_then", parentFunc);
-    auto *const elseBB = llvm::BasicBlock::Create(mc.module->getContext(), "tern_else");
-    auto *const mergeBB = llvm::BasicBlock::Create(mc.module->getContext(), "tern_merge");
+    auto *const thenBB = llvm::BasicBlock::Create(*mc.context, "tern_then", parentFunc);
+    auto *const elseBB = llvm::BasicBlock::Create(*mc.context, "tern_else");
+    auto *const mergeBB = llvm::BasicBlock::Create(*mc.context, "tern_merge");
 
     mc.builder->CreateCondBr(LLVMCodegen::generate(node->cond.get(), mc).value().getRawValue(), thenBB, elseBB);
 
@@ -38,5 +38,5 @@ IRValueOpt TernaryOperatorNodeGenerator::generateT(TernaryOperatorNode *node, Mo
     auto *const phi = mc.builder->CreatePHI(trueVal->getType(), 2, "tern_result");
     phi->addIncoming(trueVal, thenBB);
     phi->addIncoming(falseVal, elseBB);
-    return IRValue::createConstant(phi, IRTypeFactory::from(node->getType(), mc.module->getContext()));
+    return IRValue::createConstant(phi, IRTypeFactory::from(node->getType(), *mc.context));
 }

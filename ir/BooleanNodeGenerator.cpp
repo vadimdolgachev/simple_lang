@@ -7,6 +7,6 @@
 #include "IRTypeFactory.h"
 
 IRValueOpt BooleanNodeGenerator::generateT(BooleanNode *node, ModuleContext &mc) const {
-    const auto type = IRTypeFactory::from(node->getType(), mc.module->getContext());
+    const auto type = IRTypeFactory::from(node->getType(), *mc.context);
     return IRValue::createConstant(type->createConstant(node, mc), type);
 }

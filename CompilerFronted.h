@@ -17,8 +17,8 @@ class ModuleNode;
 
 class CompilerFronted final {
 public:
-    explicit CompilerFronted(std::unique_ptr<std::istream> stream,
-                             std::unordered_map<std::string, std::vector<SymbolInfoPtr>> builtinSymbols);
+    CompilerFronted(std::unique_ptr<std::istream> stream,
+                    std::unordered_map<std::string, std::vector<SymbolInfoPtr>> builtinSymbols);
 
     void generateIR(ModuleContext &moduleContext);
     void optimizeModule(llvm::Module &module, llvm::OptimizationLevel OL = llvm::OptimizationLevel::O2);

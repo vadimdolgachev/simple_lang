@@ -20,11 +20,11 @@ IRValueOpt BinOpNodeGenerator::generateT(BinOpNode *node, ModuleContext &mc) con
     }
     const auto category = getOperationCategory(node->binOp);
     if (category == OperationCategory::Comparison) {
-        const auto type = IRTypeFactory::from(node->lhs->getType(), mc.module->getContext());
+        const auto type = IRTypeFactory::from(node->lhs->getType(), *mc.context);
         return IRValue::createConstant(type->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp"), type);
     }
     if (category == OperationCategory::Arithmetic) {
-        const auto resultTypeNode = IRTypeFactory::from(node->getType(), mc.module->getContext());
+        const auto resultTypeNode = IRTypeFactory::from(node->getType(), *mc.context);
         return IRValue::createConstant(
                 resultTypeNode->createBinaryOp(*mc.builder, node->binOp, lhsValue, rhsValue, "binOp"),
                 resultTypeNode);

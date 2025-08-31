@@ -18,7 +18,7 @@ namespace {
         for (auto &arg: func->args()) {
             const auto &paramType = node->proto->params[arg.getArgNo()]->type;
             auto *const alloca = mc.builder->CreateAlloca(
-                    IRTypeFactory::from(paramType, mc.module->getContext())->getLLVMType(mc.module->getContext()), nullptr,
+                    IRTypeFactory::from(paramType, *mc.context)->getLLVMType(*mc.context), nullptr,
                     arg.getName());
 
             mc.builder->CreateStore(&arg, alloca);
@@ -33,7 +33,7 @@ void FunctionNodeGenerator::generateT(FunctionNode *node, ModuleContext &mc) con
     if (!func) {
         throw std::logic_error("Function prototype generation failed for: " + node->proto->name);
     }
-    auto *const basicBlock = llvm::BasicBlock::Create(mc.module->getContext(),
+    auto *const basicBlock = llvm::BasicBlock::Create(*mc.context,
                                                       "entry",
                                                       func);
 

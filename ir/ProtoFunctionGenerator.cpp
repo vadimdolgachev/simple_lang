@@ -14,12 +14,12 @@ void ProtoFunctionGenerator::generateT(ProtoFunctionStatement *node, ModuleConte
     functionParams.reserve(node->params.size());
     for (const auto &param: node->params) {
         functionParams.push_back(
-            IRTypeFactory::from(param->type, mc.module->getContext())->getLLVMType(mc.module->getContext()));
+            IRTypeFactory::from(param->type, *mc.context)->getLLVMType(*mc.context));
     }
 
     auto *const functionType =
-            llvm::FunctionType::get(IRTypeFactory::from(node->returnType, mc.module->getContext())
-                                    ->getLLVMType(mc.module->getContext()),
+            llvm::FunctionType::get(IRTypeFactory::from(node->returnType, *mc.context)
+                                    ->getLLVMType(*mc.context),
                                     functionParams, node->isVarArgs);
 
     auto *const function = llvm::Function::Create(functionType,

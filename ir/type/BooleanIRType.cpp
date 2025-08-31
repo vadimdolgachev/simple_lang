@@ -27,7 +27,7 @@ llvm::Value *BooleanIRType::createUnaryOp(llvm::IRBuilder<> &builder,
 
 llvm::Constant *BooleanIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
     const auto *const boolNode = dynamic_cast<const BooleanNode *>(node);
-    return llvm::ConstantInt::getBool(getLLVMType(mc.module->getContext()),boolNode->value);
+    return llvm::ConstantInt::getBool(getLLVMType(*mc.context),boolNode->value);
 }
 
 llvm::Type *BooleanIRType::getLLVMType(llvm::LLVMContext &context) const {

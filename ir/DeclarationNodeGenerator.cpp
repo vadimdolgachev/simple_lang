@@ -34,7 +34,7 @@ namespace {
 
         mc.symTable.insert(node->ident->name, std::make_shared<GlobalSymbolInfo>(node->type, gVar));
         return IRValue::createMemory(gVar,
-                                     IRTypeFactory::from(node->type, mc.module->getContext()),
+                                     IRTypeFactory::from(node->type, *mc.context),
                                      node->ident->name);
     }
 
@@ -55,14 +55,14 @@ namespace {
         mc.symTable.insert(node->ident->name,
                            std::make_shared<AllocaInstSymbolInfo>(node->type,
                                                                   alloca));
-        return IRValue::createMemory(alloca, IRTypeFactory::from(node->type, mc.module->getContext()),
+        return IRValue::createMemory(alloca, IRTypeFactory::from(node->type, *mc.context),
                                      node->ident->name);
     }
 } // namespace
 
 void DeclarationNodeGenerator::generateT(DeclarationNode *node, ModuleContext &mc) const {
-    const auto irType = IRTypeFactory::from(node->type, mc.module->getContext());
-    auto *const llvmType = irType->getLLVMType(mc.module->getContext());
+    const auto irType = IRTypeFactory::from(node->type, *mc.context);
+    auto *const llvmType = irType->getLLVMType(*mc.context);
     if (llvmType == nullptr) {
         throw std::logic_error("Unknown type for variable: " + node->ident->name);
     }

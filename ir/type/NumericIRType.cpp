@@ -6,17 +6,18 @@
 
 NumericIRType::NumericIRType(const bool isPointer,
                              const bool isSigned,
-                             const bool isFloat):
+                             const bool isFloat) :
     IRType(isPointer),
     isSigned(isSigned),
-    isFloat(isFloat) {}
+    isFloat(isFloat) {
+}
 
 llvm::Type *NumericIRType::getLLVMType(llvm::LLVMContext &context) const {
     auto *const baseType = getBaseLLVMType(context);
     return isPointer ? baseType->getPointerTo() : baseType;
 }
 
-llvm::Type * NumericIRType::getLLVMElementType(llvm::LLVMContext &context) const {
+llvm::Type *NumericIRType::getLLVMElementType(llvm::LLVMContext &context) const {
     throw std::runtime_error("Unsupported for numeric type");
 }
 
@@ -32,7 +33,7 @@ llvm::Value *NumericIRType::createBinaryOp(llvm::IRBuilder<> &builder,
             return CreateSub(builder, lhs, rhs, name);
         case TokenType::Star:
             return CreateMul(builder, lhs, rhs, name);
-        case TokenType::Slash:
+        case TokenType::Divide:
             return CreateDiv(builder, lhs, rhs, name);
         case TokenType::LeftAngleBracket:
         case TokenType::LeftAngleBracketEqual:
@@ -75,7 +76,7 @@ llvm::Value *NumericIRType::createAdd(llvm::IRBuilder<> &builder,
     }
     // if (llvm::dyn_cast<llvm::APInt> (lhs) && llvm::dyn_cast<llvm::APInt> (rhs)) {
 
-        // return nullptr;
+    // return nullptr;
     // }
     return builder.CreateAdd(lhs, rhs, name);
 }
@@ -104,6 +105,17 @@ llvm::Value *NumericIRType::CreateDiv(llvm::IRBuilder<> &builder,
                                       llvm::Value *lhs,
                                       llvm::Value *rhs,
                                       const std::string &name) const {
+    if (!isFloat) {
+        auto *const isZero = builder.CreateICmpEQ(rhs, builder.getInt32(0));
+        auto *const func = builder.GetInsertBlock()->getParent();
+        auto *const divByZeroBB = llvm::BasicBlock::Create(builder.getContext(), "div_by_zero", func);
+        auto *const doDivBB = llvm::BasicBlock::Create(builder.getContext(), "div", func);
+        builder.CreateCondBr(isZero, divByZeroBB, doDivBB);
+        builder.SetInsertPoint(divByZeroBB);
+        builder.CreateCall( llvm::Intrinsic::getDeclaration(builder.GetInsertBlock()->getModule(), llvm::Intrinsic::trap));
+        builder.CreateUnreachable();
+        builder.SetInsertPoint(doDivBB);
+    }
     if (isSigned) {
         if (isFloat) {
             return builder.CreateFSub(lhs, rhs, name);

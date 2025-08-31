@@ -10,7 +10,7 @@ IRValueOpt IdentNodeGenerator::generateT(IdentNode *node, ModuleContext &mc) con
     if (const auto symbol = mc.symTable.lookup(node->name)) {
         if (const auto &global = std::dynamic_pointer_cast<const GlobalSymbolInfo>(symbol.value())) {
             return IRValue::createMemory(global->var,
-                                        IRTypeFactory::from(global->type, mc.module->getContext()),
+                                        IRTypeFactory::from(global->type, *mc.context),
                                         node->name + ".global");
         }
         if (const auto &alloca = std::dynamic_pointer_cast<const AllocaInstSymbolInfo>(symbol.value())) {
@@ -19,7 +19,7 @@ IRValueOpt IdentNodeGenerator::generateT(IdentNode *node, ModuleContext &mc) con
             }
 
             return IRValue::createMemory(alloca->inst,
-                                        IRTypeFactory::from(alloca->type, mc.module->getContext()),
+                                        IRTypeFactory::from(alloca->type, *mc.context),
                                         node->name + ".local");
         }
     }

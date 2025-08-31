@@ -12,7 +12,7 @@ IntIRType::IntIRType(const bool isPointer):
 
 llvm::Constant *IntIRType::createConstant(const BaseNode *node, ModuleContext &mc) const {
     const auto *const numberNode = dynamic_cast<const NumberNode *>(node);
-    return llvm::ConstantInt::get(getLLVMType(mc.module->getContext()),
+    return llvm::ConstantInt::get(getLLVMType(*mc.context),
                                   llvm::APInt(32, static_cast<int64_t>(numberNode->value),
                                               true));
 }

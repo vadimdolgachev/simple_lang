@@ -14,7 +14,7 @@ IRValueOpt UnaryOpNodeGenerator::generateT(UnaryOpNode *node, ModuleContext &mc)
         || node->operatorType == TokenType::Decrement
         || node->operatorType == TokenType::Plus
         || node->operatorType == TokenType::Minus) {
-        const auto irType = IRTypeFactory::from(node->getType(), mc.module->getContext());
+        const auto irType = IRTypeFactory::from(node->getType(), *mc.context);
         if (!isNode<IdentNode>(node->expr.get())
             && (node->operatorType == TokenType::Increment || node->operatorType ==
                 TokenType::Decrement)) {

@@ -15,15 +15,14 @@ IRValueOpt IndexAccessNodeGenerator::generateT(IndexAccessNode *node, ModuleCont
 
     if (const auto arrayType = node->object->getType()->asArray()) {
         const auto elementType = arrayType.value()->getElementType();
-        const auto arrayIrType = IRTypeFactory::from(arrayType.value(), mc.module->getContext());
-        auto *const arrayLlvmType = llvm::dyn_cast<llvm::ArrayType>(arrayIrType->getLLVMType(mc.module->getContext()));
-        auto elementIrType = IRTypeFactory::from(arrayType.value()->getElementType(),
-                                                 mc.module->getContext());
+        const auto arrayIrType = IRTypeFactory::from(arrayType.value(), *mc.context);
+        auto *const arrayLlvmType = llvm::dyn_cast<llvm::ArrayType>(arrayIrType->getLLVMType(*mc.context));
+        auto elementIrType = IRTypeFactory::from(arrayType.value()->getElementType(), *mc.context);
         const std::vector<llvm::Value *> indices = {
                 mc.builder->getInt64(0),
                 index.value().load(*mc.builder)
         };
-        auto *const elementLlvmValue = mc.builder->CreateLoad(arrayIrType->getLLVMElementType(mc.module->getContext()),
+        auto *const elementLlvmValue = mc.builder->CreateLoad(arrayIrType->getLLVMElementType(*mc.context),
                                                               mc.builder->CreateInBoundsGEP(
                                                                       arrayLlvmType,
                                                                       object.value().getRawValue(),
