@@ -54,6 +54,18 @@ namespace {
         assert(programLog == "Hello World!\nNew string\n");
     }
 
+    void testLocalStrVar() {
+        execProgram(R"(
+            fn main() {
+                text: str = "Hello World!";
+                printf("%s\n", text);
+                text = "New string";
+                printf("%s\n", text);
+            }
+        )");
+        assert(programLog == "Hello World!\nNew string\n");
+    }
+
     void testGlobalIntVar() {
         execProgram(R"(
             i: int = 1;
@@ -66,7 +78,19 @@ namespace {
         assert(programLog == "1\n2\n");
     }
 
-    void testArrayIndexRead() {
+    void testLocalIntVar() {
+        execProgram(R"(
+            fn main() {
+                i: int = 1;
+                printf("%d\n", i);
+                i = 2;
+                printf("%d\n", i);
+            }
+        )");
+        assert(programLog == "1\n2\n");
+    }
+
+    void testReadArrayElement() {
         execProgram(R"(
             a: [int; 1] = [1];
             fn main() {
@@ -76,7 +100,7 @@ namespace {
         assert(programLog == "a=1\n");
     }
 
-    void testArrayIndexWrite() {
+    void testWriteToArrayElement() {
         execProgram(R"(
             a: [int; 2] = [1, 2];
             fn main() {
@@ -87,12 +111,47 @@ namespace {
         )");
         assert(programLog == "a=[3, 4]\n");
     }
+    void testArithmeticExpr() {
+        execProgram(R"(
+            fn main() {
+                printf("%d\n", 1 + 2 * 3 + 1);
+            }
+        )");
+        assert(programLog == "8\n");
+    }
+    void testFunctionCallStrRet() {
+        execProgram(R"(
+            fn foo(): str {
+                return "from foo function";
+            }
+            fn main() {
+                printf("%s\n", foo());
+            }
+        )");
+        assert(programLog == "from foo function\n");
+    }
+    void testFunctionCallIntRet() {
+        execProgram(R"(
+            fn foo(): int {
+                return 1 + 2 * 3 + 1;
+            }
+            fn main() {
+                printf("%d\n", foo());
+            }
+        )");
+        assert(programLog == "8\n");
+    }
 } // namespace
 
 int main() {
     testGlobalStrVar();
+    testLocalStrVar();
     testGlobalIntVar();
-    testArrayIndexRead();
-    testArrayIndexWrite();
+    testLocalStrVar();
+    testReadArrayElement();
+    testWriteToArrayElement();
+    testArithmeticExpr();
+    testFunctionCallStrRet();
+    testFunctionCallIntRet();
     return 0;
 }
