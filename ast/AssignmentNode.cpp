@@ -2,13 +2,16 @@
 
 #include "IdentNode.h"
 
-AssignmentNode::AssignmentNode(std::unique_ptr<IdentNode> lvalue,
+AssignmentNode::AssignmentNode(ExprNodePtr lvalue,
                                ExprNodePtr rvalue) :
     lvalue(std::move(lvalue)),
     rvalue(std::move(rvalue)) {}
 
 std::string AssignmentNode::toString() const {
-    return lvalue->name + "=" + rvalue->toString();
+    if (const auto ident = asNode<IdentNode>(lvalue.get())) {
+        return ident.value()->name + "=" + rvalue->toString();
+    }
+    throw std::runtime_error("Unknown lvalue type");
 }
 
 void AssignmentNode::visit(NodeVisitor *const visitor) {

@@ -65,10 +65,34 @@ namespace {
         )");
         assert(programLog == "1\n2\n");
     }
+
+    void testArrayIndexRead() {
+        execProgram(R"(
+            a: [int; 1] = [1];
+            fn main() {
+                printf("a=%d\n", a[0]);
+            }
+        )");
+        assert(programLog == "a=1\n");
+    }
+
+    void testArrayIndexWrite() {
+        execProgram(R"(
+            a: [int; 2] = [1, 2];
+            fn main() {
+                a[0] = 3;
+                a[1] = 4;
+                printf("a=[%d, %d]\n", a[0], a[1]);
+            }
+        )");
+        assert(programLog == "a=[3, 4]\n");
+    }
 } // namespace
 
 int main() {
     testGlobalStrVar();
     testGlobalIntVar();
+    testArrayIndexRead();
+    testArrayIndexWrite();
     return 0;
 }

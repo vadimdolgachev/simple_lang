@@ -49,14 +49,10 @@ BaseNodePtr Parser::nextNode() {
     if (const auto &token = lexer->currToken(); token.type == TokenType::Identifier) {
         lexer->nextToken();
         if (lexer->currToken().type == TokenType::Colon && !token.value.empty()) {
-            lexer->prevToken();
+            lexer->rewindToken();
             return parseDeclarationNode(true, isLocalScope);
         }
-        lexer->prevToken();
-    }
-    // Assignment
-    if (auto assignment = tryParseAssignment()) {
-        return assignment;
+        lexer->rewindToken();
     }
     const auto token = lexer->currToken().type;
     const auto value = lexer->currToken().value;
@@ -94,9 +90,12 @@ BaseNodePtr Parser::nextNode() {
         return parseStruct();
     }
     // Expressions
-    auto result = parseExpr();
+    auto expr = parseExpr();
+    if (lexer->currToken().type == TokenType::Assignment) {
+        expr = parseAssignment(std::move(expr));
+    }
     consumeSemicolon();
-    return result;
+    return expr;
 }
 
 CondBranch Parser::parseCondBranch() {
@@ -105,20 +104,12 @@ CondBranch Parser::parseCondBranch() {
     return {std::move(condition), std::move(thenBranch)};
 }
 
-NodePtr<AssignmentNode> Parser::tryParseAssignment() {
-    if (const auto token = lexer->currToken(); token.type == TokenType::Identifier) {
-        auto ident = parseIdent();
-        if (lexer->currToken().type == TokenType::Assignment && !token.value.empty()) {
-            lexer->nextToken();
-            auto result = std::make_unique<AssignmentNode>(std::move(ident),
-                                                           parseExpr());
-            consumeSemicolon();
-            return result;
-        }
-        // Rollback
-        lexer->prevToken();
+ExprNodePtr Parser::parseAssignment(ExprNodePtr lvalue) {
+    while (lexer->currToken().type == TokenType::Assignment) {
+        lexer->nextToken();
+        lvalue = std::make_unique<AssignmentNode>(std::move(lvalue), parseExpr());
     }
-    return nullptr;
+    return lvalue;
 }
 
 StmtNodePtr Parser::parseForStatement() {
@@ -334,8 +325,8 @@ ExprNodePtr Parser::tryParseUnaryOp() {
 }
 
 ExprNodePtr Parser::tryParsePrefixOp() {
-    if (lexer->currToken().type == TokenType::MinusMinus
-        || lexer->currToken().type == TokenType::PlusPlus) {
+    if (lexer->currToken().type == TokenType::Increment
+        || lexer->currToken().type == TokenType::Decrement) {
         const auto type = lexer->currToken().type;
         lexer->nextToken();
         auto val = parseFactor();
@@ -349,8 +340,8 @@ ExprNodePtr Parser::tryParsePrefixOp() {
 ExprNodePtr Parser::tryParseIdentifier() {
     if (lexer->currToken().type == TokenType::Identifier) {
         auto ident = parseIdent();
-        if (lexer->currToken().type == TokenType::MinusMinus
-            || lexer->currToken().type == TokenType::PlusPlus) {
+        if (lexer->currToken().type == TokenType::Increment
+            || lexer->currToken().type == TokenType::Decrement) {
             const auto type = lexer->currToken().type;
             lexer->nextToken();
             return std::make_unique<UnaryOpNode>(type,
@@ -647,7 +638,7 @@ ExprNodePtr Parser::parseObjectMember(ExprNodePtr object) {
                          return std::make_unique<MethodCallNode>(std::move(object), std::move(node));
                      }, [&object](std::unique_ptr<IdentNode> node) {
                          return std::make_unique<FieldAccessNode>(std::move(object), std::move(node));
-                     }, [](ExprNodePtr orig) {
+                     }, [](ExprNodePtr) {
                          return nullptr;
                      });
     if (member) {

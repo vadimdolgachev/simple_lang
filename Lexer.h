@@ -10,7 +10,6 @@
 #include <format>
 #include <memory>
 #include <istream>
-#include <optional>
 
 enum class TokenType : std::uint8_t {
     // Keywords
@@ -37,9 +36,9 @@ enum class TokenType : std::uint8_t {
     Plus,                // +
     Minus,               // -
     Star,                // *
-    Multiply = Star,
+    Mul = Star,
     Slash,               // /
-    Divide = Slash,
+    Div = Slash,
     Assignment,          // =
 
     // Comparison and relational operators
@@ -241,7 +240,7 @@ public:
 
     Token nextToken();
 
-    Token prevToken();
+    Token rewindToken();
 
     Token peekToken();
 

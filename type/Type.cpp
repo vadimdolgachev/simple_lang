@@ -131,8 +131,8 @@ OperationCategory getOperationCategory(const TokenType op) {
     switch (op) {
         case TokenType::Plus:
         case TokenType::Minus:
-        case TokenType::Multiply:
-        case TokenType::Divide:
+        case TokenType::Mul:
+        case TokenType::Div:
             return OperationCategory::Arithmetic;
         case TokenType::Less:
         case TokenType::LessEqual:

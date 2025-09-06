@@ -82,7 +82,9 @@ namespace {
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
+        const auto ident = asNode<IdentNode>(varDef->lvalue.get());
+        EXPECT_TRUE(ident.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident.value()->name, "varName") << "Wrong variable name: " << input;
 
         const auto *binExpr = dynamic_cast<BinOpNode *>(varDef->rvalue.get());
         ASSERT_NE(binExpr, nullptr) << "RHS is not a binary expression: " << input;
@@ -99,7 +101,9 @@ namespace {
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
+        const auto ident = asNode<IdentNode>(varDef->lvalue.get());
+        EXPECT_TRUE(ident.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident.value()->name, "varName") << "Wrong variable name: " << input;
 
         const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
         ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
@@ -118,7 +122,9 @@ namespace {
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
+        const auto ident = asNode<IdentNode>(varDef->lvalue.get());
+        EXPECT_TRUE(ident.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident.value()->name, "varName") << "Wrong variable name: " << input;
 
         const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
         ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
@@ -138,7 +144,9 @@ namespace {
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
+        const auto ident = asNode<IdentNode>(varDef->lvalue.get());
+        EXPECT_TRUE(ident.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident.value()->name, "varName") << "Wrong variable name: " << input;
 
         const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
         ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
@@ -157,7 +165,9 @@ namespace {
         auto [varDef, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef->lvalue->name, "varName") << "Wrong variable name: " << input;
+        const auto ident = asNode<IdentNode>(varDef->lvalue.get());
+        EXPECT_TRUE(ident.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident.value()->name, "varName") << "Wrong variable name: " << input;
 
         const auto *number = dynamic_cast<NumberNode *>(varDef->rvalue.get());
         ASSERT_NE(number, nullptr) << "RHS is not a number: " << input;
@@ -176,7 +186,9 @@ namespace {
         auto [varDef1, orig] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef1, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef1->lvalue->name, "varName1") << "Wrong variable name: " << input;
+        const auto ident1 = asNode<IdentNode>(varDef1->lvalue.get());
+        EXPECT_TRUE(ident1.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident1.value()->name, "varName1") << "Wrong variable name: " << input;
 
         const auto *number1 = dynamic_cast<NumberNode *>(varDef1->rvalue.get());
         ASSERT_NE(number1, nullptr) << "RHS is not a number: " << input;
@@ -188,7 +200,9 @@ namespace {
         auto [varDef2, orig2] = tryCast<AssignmentNode>(std::move(node));
         ASSERT_NE(varDef2, nullptr) << "Not a variable definition: " << input;
 
-        EXPECT_EQ(varDef2->lvalue->name, "varName2") << "Wrong variable name: " << input;
+        const auto ident2 = asNode<IdentNode>(varDef2->lvalue.get());
+        EXPECT_TRUE(ident2.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident2.value()->name, "varName2") << "Wrong variable name: " << input;
 
         const auto *number2 = dynamic_cast<NumberNode *>(varDef2->rvalue.get());
         ASSERT_NE(number2, nullptr) << "RHS is not a number: " << input;
@@ -508,6 +522,34 @@ namespace {
         EXPECT_DOUBLE_EQ(rhsRhs->value, 3.0) << "Wrong nested RHS value: " << input;
     }
 
+    class AssignmentTest : public testing::Test {};
+
+    TEST_F(AssignmentTest, MultiAssignment) {
+        const std::string input = "v1=v2=1;";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+        auto [assignNode, orig] = tryCast<AssignmentNode>(std::move(node));
+        ASSERT_NE(assignNode, nullptr) << "Not a variable definition: " << input;
+
+        const auto assignNode2 = asNode<AssignmentNode>(assignNode->lvalue.get());
+        EXPECT_TRUE(assignNode2.has_value()) << "Wrong variable type: " << input;
+
+        const auto ident1 = asNode<IdentNode>(assignNode2.value()->lvalue.get());
+        EXPECT_TRUE(ident1.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident1.value()->name, "v1") << "Wrong variable name: " << input;
+
+        const auto ident2 = asNode<IdentNode>(assignNode2.value()->rvalue.get());
+        EXPECT_TRUE(ident2.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident2.value()->name, "v2") << "Wrong variable name: " << input;
+
+        const auto numberNode = asNode<NumberNode>(assignNode->rvalue.get());
+        EXPECT_TRUE(numberNode.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(numberNode.value()->value, 1) << "Wrong variable name: " << input;
+    }
+
     class NodesTest : public testing::Test {};
 
     TEST_F(NodesTest, NumberNode) {
@@ -784,7 +826,9 @@ namespace {
 
         const auto *stmt1 = dynamic_cast<AssignmentNode *>(fnNode->body->statements[0].get());
         ASSERT_NE(stmt1, nullptr) << "First statement is not a variable definition";
-        EXPECT_EQ(stmt1->lvalue->name, "v") << "Wrong identifier in first statement";
+        const auto ident1 = asNode<IdentNode>(stmt1->lvalue.get());
+        EXPECT_TRUE(ident1.has_value()) << "Wrong variable type: " << input;
+        EXPECT_EQ(ident1.value()->name, "v") << "Wrong identifier in first statement";
 
         const auto *stmt2 = dynamic_cast<UnaryOpNode *>(fnNode->body->statements[1].get());
         ASSERT_NE(stmt2, nullptr) << "Second statement is not a unary operation";
@@ -1252,6 +1296,29 @@ namespace {
         auto [numberNode, origIndex] = tryCast<NumberNode>(std::move(indexAccessNode->index));
         ASSERT_NE(numberNode, nullptr) << "Not a NumberNode: " << input;
         ASSERT_EQ(numberNode->value, 1) << "Incorrect index value: " << input;
+    }
+
+    TEST_F(NodesTest, ArrayNodeElementWrite) {
+        const std::string input = R"(arr[1] = 1;)";
+        const auto parser = std::make_unique<Parser>(
+                std::make_unique<Lexer>(std::make_unique<std::istringstream>(input)));
+
+        auto node = parser->nextNode();
+        ASSERT_NE(node, nullptr) << "Failed to parse: " << input;
+
+        auto [assignmentNode, orig] = tryCast<AssignmentNode>(std::move(node));
+        ASSERT_NE(assignmentNode, nullptr) << "Not a DeclarationNode: " << input;
+
+        const auto indexAccessNode = asNode<IndexAccessNode>(assignmentNode->lvalue.get());
+        EXPECT_TRUE(indexAccessNode.has_value()) << "Wrong value type: " << input;
+
+        const auto objectNode = asNode<IdentNode>(indexAccessNode.value()->object.get());
+        EXPECT_TRUE(objectNode.has_value()) << "Wrong value type: " << input;
+        EXPECT_EQ(objectNode.value()->name, "arr") << "Wrong variable name: " << input;
+
+        const auto value = asNode<NumberNode>(assignmentNode->rvalue.get());
+        EXPECT_TRUE(value.has_value()) << "Wrong value type: " << input;
+        EXPECT_EQ(value.value()->value, 1) << "Wrong value: " << input;
     }
 
     TEST_F(NodesTest, StructNode) {

@@ -36,7 +36,7 @@ private:
     [[nodiscard]] StmtNodePtr parseIfStatement();
     [[nodiscard]] NodePtr<BlockNode> parseCurlyBracketBlock();
     [[nodiscard]] CondBranch parseCondBranch();
-    [[nodiscard]] NodePtr<AssignmentNode> tryParseAssignment();
+    [[nodiscard]] ExprNodePtr parseAssignment(ExprNodePtr lvalue);
     [[nodiscard]] StmtNodePtr parseForStatement();
     [[nodiscard]] StmtNodePtr parseWhileStatement();
     [[nodiscard]] StmtNodePtr parseDoWhileStatement();

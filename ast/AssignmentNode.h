@@ -11,7 +11,7 @@
 
 class AssignmentNode final : public ExpressionNode {
 public:
-    AssignmentNode(std::unique_ptr<IdentNode> lvalue,
+    AssignmentNode(ExprNodePtr lvalue,
                    ExprNodePtr rvalue);
 
     [[nodiscard]] std::string toString() const override;
@@ -21,7 +21,7 @@ public:
     [[nodiscard]] TypePtr getType() const override;
     void setType(TypePtr type) override;
 
-    std::unique_ptr<IdentNode> lvalue;
+    ExprNodePtr lvalue;
     ExprNodePtr rvalue;
 
 private:

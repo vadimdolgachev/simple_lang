@@ -31,9 +31,9 @@ llvm::Value *NumericIRType::createBinaryOp(llvm::IRBuilder<> &builder,
             return createAdd(builder, lhs, rhs, name);
         case TokenType::Minus:
             return CreateSub(builder, lhs, rhs, name);
-        case TokenType::Star:
+        case TokenType::Mul:
             return CreateMul(builder, lhs, rhs, name);
-        case TokenType::Divide:
+        case TokenType::Div:
             return CreateDiv(builder, lhs, rhs, name);
         case TokenType::LeftAngleBracket:
         case TokenType::LeftAngleBracketEqual:

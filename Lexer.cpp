@@ -231,7 +231,7 @@ std::deque<Lexer::Character> Lexer::readText() const {
     return textQueue;
 }
 
-Token Lexer::prevToken() {
+Token Lexer::rewindToken() {
     if (tokenQueue.empty()) {
         throw std::out_of_range("Empty token history");
     }

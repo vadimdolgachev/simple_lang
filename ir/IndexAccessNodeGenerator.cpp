@@ -22,13 +22,12 @@ IRValueOpt IndexAccessNodeGenerator::generateT(IndexAccessNode *node, ModuleCont
                 mc.builder->getInt64(0),
                 index.value().load(*mc.builder)
         };
-        auto *const elementLlvmValue = mc.builder->CreateLoad(arrayIrType->getLLVMElementType(*mc.context),
-                                                              mc.builder->CreateInBoundsGEP(
-                                                                      arrayLlvmType,
-                                                                      object.value().getRawValue(),
-                                                                      indices,
-                                                                      "elem_ptr"));
-        return IRValue::createConstant(elementLlvmValue, std::move(elementIrType));
+        auto *const elementLlvmValue = mc.builder->CreateInBoundsGEP(
+                arrayLlvmType,
+                object.value().getRawValue(),
+                indices,
+                "elem_ptr");
+        return IRValue::createMemory(elementLlvmValue, std::move(elementIrType));
     }
     throw std::runtime_error("Unsupported index access type");
 }
