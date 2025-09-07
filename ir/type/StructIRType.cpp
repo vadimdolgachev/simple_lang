@@ -9,10 +9,6 @@
 
 #include <ranges>
 
-namespace {
-    std::unordered_map<std::string, llvm::StructType *> cachedStructTypes;
-}
-
 StructIRType::StructIRType(StructTypePtr structType) :
     IRType(false),
     structType(std::move(structType)) {}
@@ -38,10 +34,7 @@ llvm::Type *StructIRType::getLLVMType(llvm::LLVMContext &context) const {
     for (const auto &[name, type]: structType->getFields()) {
         fieldTypes.push_back(IRTypeFactory::from(type, context)->getLLVMType(context));
     }
-    if (!cachedStructTypes.contains(structType->getName())) {
-        cachedStructTypes[structType->getName()] = llvm::StructType::create(context, fieldTypes, structType->getName());
-    }
-    return cachedStructTypes[structType->getName()];
+    return llvm::StructType::create(context, fieldTypes, structType->getName());
 }
 
 llvm::Type *StructIRType::getLLVMElementType(llvm::LLVMContext &context) const {

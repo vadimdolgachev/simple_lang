@@ -111,6 +111,7 @@ namespace {
         )");
         assert(programLog == "a=[3, 4]\n");
     }
+
     void testArithmeticExpr() {
         execProgram(R"(
             fn main() {
@@ -119,6 +120,7 @@ namespace {
         )");
         assert(programLog == "8\n");
     }
+
     void testFunctionCallStrRet() {
         execProgram(R"(
             fn foo(): str {
@@ -130,6 +132,7 @@ namespace {
         )");
         assert(programLog == "from foo function\n");
     }
+
     void testFunctionCallIntRet() {
         execProgram(R"(
             fn foo(): int {
@@ -140,6 +143,32 @@ namespace {
             }
         )");
         assert(programLog == "8\n");
+    }
+
+    void testReadFieldLocalStruct() {
+        execProgram(R"(
+            fn main() {
+                greeting: Greeting = Greeting {hello: "Hello"};
+                printf("%s\n", greeting.hello);
+            }
+            struct Greeting {
+                hello: str;
+            }
+        )");
+        assert(programLog == "Hello\n");
+    }
+
+    void testReadFieldGlobalStruct() {
+        execProgram(R"(
+            greeting: Greeting = Greeting {hello: "Hello"};
+            fn main() {
+                printf("%s\n", greeting.hello);
+            }
+            struct Greeting {
+                hello: str;
+            }
+        )");
+        assert(programLog == "Hello\n");
     }
 } // namespace
 
@@ -153,5 +182,7 @@ int main() {
     testArithmeticExpr();
     testFunctionCallStrRet();
     testFunctionCallIntRet();
+    testReadFieldGlobalStruct();
+    testReadFieldLocalStruct();
     return 0;
 }
